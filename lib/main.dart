@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'core/di/injector.dart';
 import 'core/routes/app_router.dart';
+import 'core/services/firebase_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase
+  await FirebaseService.initialize();
+
+  // Setup dependency injection
   setupDependencyInjection();
+
   runApp(const MyApp());
 }
 

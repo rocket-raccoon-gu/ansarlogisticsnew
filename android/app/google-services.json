@@ -1,0 +1,98 @@
+{
+    "project_info": {
+      "project_number": "208080088446",
+      "firebase_url": "https://ah-market-5ab28-default-rtdb.firebaseio.com",
+      "project_id": "ah-market-5ab28",
+      "storage_bucket": "ah-market-5ab28.appspot.com"
+    },
+    "client": [
+      {
+        "client_info": {
+          "mobilesdk_app_id": "1:208080088446:android:192113bfb18f4805ab572f",
+          "android_client_info": {
+            "package_name": "com.ahqa.pickerdriver.ahpickerdriver"
+          }
+        },
+        "oauth_client": [
+          {
+            "client_id": "208080088446-ta38l05u8vqsgtrjufqtmnqg55c85qo5.apps.googleusercontent.com",
+            "client_type": 3
+          }
+        ],
+        "api_key": [
+          {
+            "current_key": "AIzaSyBHov69SYGB7YBSgdlRQYvSKop62mFHaHM"
+          }
+        ],
+        "services": {
+          "appinvite_service": {
+            "other_platform_oauth_client": [
+              {
+                "client_id": "208080088446-ta38l05u8vqsgtrjufqtmnqg55c85qo5.apps.googleusercontent.com",
+                "client_type": 3
+              }
+            ]
+          }
+        }
+      },
+      {
+        "client_info": {
+          "mobilesdk_app_id": "1:208080088446:android:52ae9cbb12c03a51ab572f",
+          "android_client_info": {
+            "package_name": "com.anhdelivery.anhpicker"
+          }
+        },
+        "oauth_client": [
+          {
+            "client_id": "208080088446-ta38l05u8vqsgtrjufqtmnqg55c85qo5.apps.googleusercontent.com",
+            "client_type": 3
+          }
+        ],
+        "api_key": [
+          {
+            "current_key": "AIzaSyBHov69SYGB7YBSgdlRQYvSKop62mFHaHM"
+          }
+        ],
+        "services": {
+          "appinvite_service": {
+            "other_platform_oauth_client": [
+              {
+                "client_id": "208080088446-ta38l05u8vqsgtrjufqtmnqg55c85qo5.apps.googleusercontent.com",
+                "client_type": 3
+              }
+            ]
+          }
+        }
+      },
+      {
+        "client_info": {
+          "mobilesdk_app_id": "1:208080088446:android:86c22d75d321c6e5ab572f",
+          "android_client_info": {
+            "package_name": "com.ansar.ansarlogistics"
+          }
+        },
+        "oauth_client": [
+          {
+            "client_id": "208080088446-ta38l05u8vqsgtrjufqtmnqg55c85qo5.apps.googleusercontent.com",
+            "client_type": 3
+          }
+        ],
+        "api_key": [
+          {
+            "current_key": "AIzaSyBHov69SYGB7YBSgdlRQYvSKop62mFHaHM"
+          }
+        ],
+        "services": {
+          "appinvite_service": {
+            "other_platform_oauth_client": [
+              {
+                "client_id": "208080088446-ta38l05u8vqsgtrjufqtmnqg55c85qo5.apps.googleusercontent.com",
+                "client_type": 3
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "configuration_version": "1"
+  }

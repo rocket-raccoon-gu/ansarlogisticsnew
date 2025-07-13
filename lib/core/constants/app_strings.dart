@@ -17,4 +17,12 @@ class AppStrings {
   static const rememberMe = 'Remember Me';
   static const dontHaveAccount = 'Don\'t have an account?';
   static const alreadyHaveAccount = 'Already have an account?';
+  static const createAccount = 'Create Account';
+  static const registerSuccess = 'Registration successful!';
+  static const registerFailure = 'Registration failed!';
+  static const registerFailureMessage =
+      'Please check your information and try again.';
+  static const registerFailureButton = 'Retry';
+  static const registerFailureTitle = 'Registration Failed';
+  static const pleaseFillInTheDetailsBelow = 'Please fill in the details below';
 }

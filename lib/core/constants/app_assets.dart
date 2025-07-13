@@ -1,5 +1,5 @@
 class AppAssets {
-  static const logo = 'assets/images/logo.png';
+  static const logo = 'assets/ansar-logistics.png';
   static const loginBackground = 'assets/images/login_background.png';
   static const registerBackground = 'assets/images/register_background.png';
   static const forgotPasswordBackground =

@@ -2,18 +2,97 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/auth_cubit.dart';
 import '../widgets/login_form.dart';
+import '../widgets/splash_screen.dart';
 import '../../../../core/di/injector.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  bool _showSplash = true;
+
+  void _onSplashComplete() {
+    setState(() {
+      _showSplash = false;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
-      body: BlocProvider(
-        create: (context) => getIt<AuthCubit>(),
-        child: const LoginForm(),
+    if (_showSplash) {
+      return SplashScreen(onSplashComplete: _onSplashComplete);
+    }
+
+    return SafeArea(
+      child: Scaffold(
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(0.0),
+          child: AppBar(elevation: 0, backgroundColor: Colors.white),
+        ),
+        backgroundColor: Colors.white,
+        resizeToAvoidBottomInset: true,
+        body: BlocProvider(
+          create: (context) => getIt<AuthCubit>(),
+          child: BlocConsumer<AuthCubit, AuthState>(
+            builder: (context, state) {
+              if (state is AuthLoading) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        height: 150,
+                        width: 250,
+                        child: Image.asset(
+                          "assets/ansar-logistics.png",
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              height: 150,
+                              width: 250,
+                              decoration: BoxDecoration(
+                                color: Colors.grey[300],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  "Logo",
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 12.0),
+                      const SizedBox(
+                        width: 100,
+                        child: LinearProgressIndicator(),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return const LoginForm();
+            },
+            listener: (context, state) {
+              if (state is AuthFailure) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.error),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+          ),
+        ),
       ),
     );
   }

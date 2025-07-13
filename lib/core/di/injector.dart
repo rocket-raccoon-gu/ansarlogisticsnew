@@ -9,6 +9,11 @@ import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/usecases/login_cases.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
+import '../../features/auth/domain/usecases/register_cases.dart';
+import '../../features/auth/presentation/cubit/register_cubit.dart';
+import '../../features/auth/presentation/cubit/info_data_cubit.dart';
+import '../services/firebase_service.dart';
+import '../services/firebase_auth_service.dart';
 
 final getIt = GetIt.instance;
 
@@ -28,6 +33,9 @@ void setupDependencyInjection() {
     ),
   );
 
+  // Firebase Services
+  getIt.registerLazySingleton(() => FirebaseAuthService());
+
   // Auth
   getIt.registerLazySingleton(
     () => AuthRemoteDatasource(apiGateway: getIt<ApiGateway>()),
@@ -39,7 +47,16 @@ void setupDependencyInjection() {
   getIt.registerLazySingleton(
     () => LoginCases(authRepository: getIt<AuthRepository>()),
   );
+  getIt.registerLazySingleton(
+    () => RegisterCases(authRepository: getIt<AuthRepository>()),
+  );
 
   // Cubit
   getIt.registerFactory(() => AuthCubit(loginCases: getIt<LoginCases>()));
+  getIt.registerFactory(
+    () => RegisterCubit(registerCases: getIt<RegisterCases>()),
+  );
+  getIt.registerFactory(
+    () => InfoDataCubit(authRepository: getIt<AuthRepository>()),
+  );
 }

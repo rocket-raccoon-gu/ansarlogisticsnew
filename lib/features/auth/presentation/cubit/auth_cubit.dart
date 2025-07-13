@@ -14,7 +14,14 @@ class AuthCubit extends Cubit<AuthState> {
     emit(AuthLoading());
     try {
       final loginResponseModel = await loginCases.login(loginRequestModel);
-      emit(AuthSuccess(loginResponseModel: loginResponseModel));
+
+      // Check if the response indicates success or failure
+      if (loginResponseModel.success) {
+        emit(AuthSuccess(loginResponseModel: loginResponseModel));
+      } else {
+        // API returned success: false with an error message
+        emit(AuthFailure(error: loginResponseModel.message ?? 'Login failed'));
+      }
     } catch (e) {
       emit(AuthFailure(error: e.toString()));
     }

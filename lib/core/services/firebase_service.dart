@@ -25,7 +25,7 @@ class FirebaseService {
       await NotificationService.initialize();
 
       // Request notification permissions
-      await _requestNotificationPermissions();
+      // await _requestNotificationPermissions();
 
       // Configure messaging
       await _configureMessaging();
@@ -35,7 +35,7 @@ class FirebaseService {
   }
 
   // Request notification permissions
-  static Future<void> _requestNotificationPermissions() async {
+  static Future<void> requestNotificationPermissions() async {
     try {
       NotificationSettings settings = await messaging.requestPermission(
         alert: true,

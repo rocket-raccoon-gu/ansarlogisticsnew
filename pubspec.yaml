@@ -49,12 +49,20 @@ dependencies:
   
   # Google Auth OAuth2
   googleapis_auth: any
+  # Shared Preferences for local storage
+  shared_preferences: any
+  # Flutter Secure Storage
+  flutter_secure_storage: any
+  connectivity_plus: any
+  geolocator: any 
+  flutter_foreground_task: any
   
   # Local Notifications - temporarily disabled due to Android compatibility issues
   # flutter_local_notifications: ^15.1.3
   
   api_gateway:
     path: ./api_gateway
+  
 
 dev_dependencies:
   flutter_test:

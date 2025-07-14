@@ -8,8 +8,9 @@ class AuthLoading extends AuthState {}
 
 class AuthSuccess extends AuthState {
   final LoginResponseModel loginResponseModel;
+  final UserRole userRole;
 
-  AuthSuccess({required this.loginResponseModel});
+  AuthSuccess({required this.loginResponseModel, required this.userRole});
 }
 
 class AuthFailure extends AuthState {

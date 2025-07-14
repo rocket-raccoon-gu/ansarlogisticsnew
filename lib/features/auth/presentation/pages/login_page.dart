@@ -4,6 +4,8 @@ import '../cubit/auth_cubit.dart';
 import '../widgets/login_form.dart';
 import '../widgets/splash_screen.dart';
 import '../../../../core/di/injector.dart';
+import '../../../../core/services/firebase_service.dart';
+import '../../../../core/constants/app_assets.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,6 +21,15 @@ class _LoginPageState extends State<LoginPage> {
     setState(() {
       _showSplash = false;
     });
+  }
+
+  Future<void> _handleLoginSuccess() async {
+    // Request notification permissions
+    await FirebaseService.requestNotificationPermissions();
+    // Navigate to home
+    if (mounted) {
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+    }
   }
 
   @override
@@ -48,7 +59,7 @@ class _LoginPageState extends State<LoginPage> {
                         height: 150,
                         width: 250,
                         child: Image.asset(
-                          "assets/ansar-logistics.png",
+                          AppAssets.logo,
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
                               height: 150,
@@ -81,8 +92,10 @@ class _LoginPageState extends State<LoginPage> {
               }
               return const LoginForm();
             },
-            listener: (context, state) {
-              if (state is AuthFailure) {
+            listener: (context, state) async {
+              if (state is AuthSuccess) {
+                await _handleLoginSuccess();
+              } else if (state is AuthFailure) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(state.error),

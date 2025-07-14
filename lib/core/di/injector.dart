@@ -12,8 +12,9 @@ import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/domain/usecases/register_cases.dart';
 import '../../features/auth/presentation/cubit/register_cubit.dart';
 import '../../features/auth/presentation/cubit/info_data_cubit.dart';
-import '../services/firebase_service.dart';
+import '../../features/navigation/presentation/cubit/bottom_navigation_cubit.dart';
 import '../services/firebase_auth_service.dart';
+import '../services/user_storage_service.dart';
 
 final getIt = GetIt.instance;
 
@@ -59,4 +60,5 @@ void setupDependencyInjection() {
   getIt.registerFactory(
     () => InfoDataCubit(authRepository: getIt<AuthRepository>()),
   );
+  getIt.registerFactory(() => BottomNavigationCubit(role: UserRole.picker));
 }

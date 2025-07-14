@@ -25,4 +25,12 @@ class AppStrings {
   static const registerFailureButton = 'Retry';
   static const registerFailureTitle = 'Registration Failed';
   static const pleaseFillInTheDetailsBelow = 'Please fill in the details below';
+  static const pickerOrders = 'Picker Orders';
+  static const pickerReport = 'Picker Report';
+  static const products = 'Products';
+  static const profile = 'Profile';
+  static const driverOrders = 'Driver Orders';
+  static const driverReport = 'Driver Report';
+  static const driverProducts = 'Driver Products';
+  static const driverProfile = 'Driver Profile';
 }

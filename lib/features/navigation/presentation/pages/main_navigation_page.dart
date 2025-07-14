@@ -50,7 +50,7 @@ class _MainNavigationView extends StatelessWidget {
       case 0:
         return role == UserRole.picker
             ? const PickerOrdersPage()
-            : const DriverOrdersPage();
+            :  DriverOrdersPage();
       case 1:
         return role == UserRole.picker
             ? const PickerReportPage()
@@ -62,7 +62,7 @@ class _MainNavigationView extends StatelessWidget {
       default:
         return role == UserRole.picker
             ? const PickerOrdersPage()
-            : const DriverOrdersPage();
+            : DriverOrdersPage();
     }
   }
 }

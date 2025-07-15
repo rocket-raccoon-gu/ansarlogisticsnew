@@ -7,6 +7,7 @@ import '../../../picker/presentation/pages/picker_orders_page.dart';
 import '../../../picker/presentation/pages/picker_report_page.dart';
 import '../../../driver/presentation/pages/driver_orders_page.dart';
 import '../../../driver/presentation/pages/driver_report_page.dart';
+import '../../../driver/presentation/pages/driver_bloc_wrapper.dart';
 import '../../../products/presentation/pages/products_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
 
@@ -50,11 +51,11 @@ class _MainNavigationView extends StatelessWidget {
       case 0:
         return role == UserRole.picker
             ? const PickerOrdersPage()
-            :  DriverOrdersPage();
+            : DriverBlocWrapper(child: const DriverOrdersPage());
       case 1:
         return role == UserRole.picker
             ? const PickerReportPage()
-            : const DriverReportPage();
+            : DriverBlocWrapper(child: const DriverReportPage());
       case 2:
         return const ProductsPage();
       case 3:
@@ -62,7 +63,7 @@ class _MainNavigationView extends StatelessWidget {
       default:
         return role == UserRole.picker
             ? const PickerOrdersPage()
-            : DriverOrdersPage();
+            : DriverBlocWrapper(child: const DriverOrdersPage());
     }
   }
 }

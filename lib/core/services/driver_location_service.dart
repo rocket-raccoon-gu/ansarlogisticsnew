@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:geolocator/geolocator.dart';
 import 'package:api_gateway/ws/websockt_client.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:api_gateway/services/api_service.dart';
+import 'package:api_gateway/http/http_client.dart';
 
 class DriverLocationService {
   static final DriverLocationService _instance =
@@ -65,4 +68,47 @@ class DriverLocationService {
   }
 
   bool get isTracking => _isTracking;
+}
+
+class LocationTaskHandler extends TaskHandler {
+  @override
+  Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
+    print('[LocationTask] onStart at $timestamp');
+  }
+
+  @override
+  void onRepeatEvent(DateTime timestamp) {
+    () async {
+      print('[LocationTask] onRepeatEvent at $timestamp');
+      try {
+        final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+        );
+        print(
+          '[LocationTask] position: lat=${pos.latitude}, lng=${pos.longitude}',
+        );
+        await ApiService(
+          HttpClient(),
+          WebSocketClient(),
+        ).sendLocation(pos.latitude, pos.longitude);
+      } catch (e) {
+        print('[LocationTask] error fetching/sending location: $e');
+      }
+    }();
+  }
+
+  @override
+  Future<void> onDestroy(DateTime timestamp, bool isForceStop) async {
+    print('[LocationTask] onDestroy at $timestamp');
+  }
+
+  @override
+  void onNotificationPressed() {
+    print('[LocationTask] notification pressed');
+  }
+
+  @override
+  void onButtonPressed(String id) {
+    print('[LocationTask] button pressed: $id');
+  }
 }

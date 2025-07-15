@@ -57,6 +57,8 @@ dependencies:
   geolocator: any 
   google_maps_flutter: any
   permission_handler: any
+  flutter_foreground_task: any
+  fluttertoast: any
   
   # Local Notifications - temporarily disabled due to Android compatibility issues
   # flutter_local_notifications: ^15.1.3

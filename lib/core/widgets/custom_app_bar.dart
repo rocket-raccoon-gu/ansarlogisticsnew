@@ -36,7 +36,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (trailing != null) trailing!,
+          trailing ?? SizedBox.shrink(),
         ],
       ),
     );

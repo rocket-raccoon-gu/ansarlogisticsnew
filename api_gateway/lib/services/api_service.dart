@@ -1,10 +1,14 @@
 import 'package:api_gateway/http/http_client.dart';
+import 'package:api_gateway/ws/websockt_client.dart';
 import 'package:dio/dio.dart';
+import 'dart:convert';
+import '../config/api_config.dart';
 
 class ApiService {
   final HttpClient _httpClient;
+  final WebSocketClient _wsClient;
 
-  ApiService(this._httpClient);
+  ApiService(this._httpClient, this._wsClient);
 
   Future<dynamic> login(
     String username,
@@ -121,5 +125,14 @@ class ApiService {
 
   Future<dynamic> fetchProfile() async {
     return await _httpClient.get('/profile');
+  }
+
+  Future<void> connectWebSocket() async {
+    _wsClient.connect(ApiConfig.wsUrl);
+  }
+
+  Future<void> sendLocation(double lat, double lng) async {
+    _wsClient.connect(ApiConfig.wsUrl);
+    _wsClient.send(jsonEncode({'latitude': lat, 'longitude': lng}));
   }
 }

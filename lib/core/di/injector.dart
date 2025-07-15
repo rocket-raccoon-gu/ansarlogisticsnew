@@ -14,7 +14,6 @@ import '../../features/auth/presentation/cubit/register_cubit.dart';
 import '../../features/auth/presentation/cubit/info_data_cubit.dart';
 import '../../features/navigation/presentation/cubit/bottom_navigation_cubit.dart';
 import '../services/firebase_auth_service.dart';
-import '../services/user_storage_service.dart';
 
 final getIt = GetIt.instance;
 
@@ -25,7 +24,9 @@ void setupDependencyInjection() {
   // API Gateway
   getIt.registerLazySingleton(() => HttpClient());
   getIt.registerLazySingleton(() => WebSocketClient());
-  getIt.registerLazySingleton(() => ApiService(getIt<HttpClient>()));
+  getIt.registerLazySingleton(
+    () => ApiService(getIt<HttpClient>(), getIt<WebSocketClient>()),
+  );
   getIt.registerLazySingleton(
     () => ApiGateway(
       httpClient: getIt<HttpClient>(),

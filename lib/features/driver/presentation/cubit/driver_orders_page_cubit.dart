@@ -2,19 +2,37 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:api_gateway/services/api_service.dart';
-import 'package:api_gateway/http/http_client.dart';
-import 'package:api_gateway/ws/websockt_client.dart';
 
 part 'driver_orders_page_state.dart';
 
 class DriverOrdersPageCubit extends Cubit<DriverOrdersPageState> {
-  final HttpClient _httpClient = HttpClient();
-  final WebSocketClient _wsClient = WebSocketClient();
   late final ApiService _apiService;
 
-  DriverOrdersPageCubit() : super(DriverOrdersPageInitial()) {
-    _apiService = ApiService(_httpClient, _wsClient);
-    _apiService.connectWebSocket(); // Connect once
+  DriverOrdersPageCubit({required ApiService apiService})
+    : super(DriverOrdersPageInitial()) {
+    _apiService = apiService;
+    // _apiService.connectWebSocket(); // Connect once
+  }
+
+  updateData() {
+    _apiService.getOrders().then((value) {
+      emit(
+        DriverOrdersPageLoaded(
+          position: Position(
+            latitude: 0,
+            longitude: 0,
+            timestamp: DateTime.now(),
+            accuracy: 0,
+            altitude: 0,
+            altitudeAccuracy: 0,
+            heading: 0,
+            headingAccuracy: 0,
+            speed: 0,
+            speedAccuracy: 0,
+          ),
+        ),
+      );
+    });
   }
 
   void updateLocation(Position position) {

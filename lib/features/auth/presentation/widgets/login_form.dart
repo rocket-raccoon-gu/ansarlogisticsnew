@@ -217,8 +217,8 @@ class _LoginFormState extends State<LoginForm> {
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor:
                                           state is AuthLoading
-                                              ? AppColors.primary.withOpacity(
-                                                0.4,
+                                              ? AppColors.primary.withValues(
+                                                alpha: 0.4,
                                               )
                                               : AppColors.primary,
                                       shape: RoundedRectangleBorder(

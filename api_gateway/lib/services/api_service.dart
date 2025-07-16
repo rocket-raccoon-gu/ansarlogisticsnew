@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:api_gateway/http/http_client.dart';
 import 'package:api_gateway/ws/websockt_client.dart';
 import 'package:dio/dio.dart';
@@ -134,5 +136,28 @@ class ApiService {
   Future<void> sendLocation(double lat, double lng) async {
     _wsClient.connect(ApiConfig.wsUrl);
     _wsClient.send(jsonEncode({'latitude': lat, 'longitude': lng}));
+  }
+
+  Future<dynamic> getOrders() async {
+    final response = await _httpClient.get('${ApiConfig.baseUrl}/orders');
+    print('Orders response status: ${response.statusCode}');
+    print('Orders response data: ${response.data}');
+    return response;
+  }
+
+  Future<dynamic> updateAvailabilityStatus(int status, int id) async {
+    final dio = Dio();
+    final response = await dio.put(
+      '${ApiConfig.baseUrl}/pd_online_status.php',
+      data: {'status': status, 'user_id': id},
+      options: Options(
+        headers: {'Content-Type': 'application/json'},
+        followRedirects: false,
+        validateStatus: (status) => true,
+      ),
+    );
+    log('Update availability status response status: ${response.statusCode}');
+    log('Update availability status response data: ${response.data}');
+    return response;
   }
 }

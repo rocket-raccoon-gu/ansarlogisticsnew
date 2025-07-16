@@ -1,19 +1,9 @@
-import 'package:api_gateway/http/http_client.dart';
 import 'package:api_gateway/services/api_service.dart';
-import 'package:api_gateway/ws/websockt_client.dart';
 
 class ApiGateway {
-  final HttpClient _httpClient;
-  final WebSocketClient _webSocketClient;
   final ApiService _apiService;
 
-  ApiGateway({
-    required HttpClient httpClient,
-    required WebSocketClient webSocketClient,
-    required ApiService apiService,
-  }) : _httpClient = httpClient,
-       _webSocketClient = webSocketClient,
-       _apiService = apiService;
+  ApiGateway({required ApiService apiService}) : _apiService = apiService;
 
   Future<dynamic> login(
     String username,
@@ -39,5 +29,9 @@ class ApiGateway {
 
   Future<dynamic> loginAlternative(String username, String password) async {
     return await _apiService.loginAlternative(username, password);
+  }
+
+  Future<dynamic> updateAvailabilityStatus(int status, int id) async {
+    return await _apiService.updateAvailabilityStatus(status, id);
   }
 }

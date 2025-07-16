@@ -77,7 +77,7 @@ class _SplashScreenState extends State<SplashScreen>
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
+                                    color: Colors.black.withValues(alpha: 0.1),
                                     blurRadius: 10,
                                     offset: const Offset(0, 5),
                                   ),
@@ -148,7 +148,7 @@ class _SplashScreenState extends State<SplashScreen>
                   SizedBox(
                     width: 200,
                     child: LinearProgressIndicator(
-                      backgroundColor: AppColors.primary.withOpacity(0.3),
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.3),
                       valueColor: const AlwaysStoppedAnimation<Color>(
                         Colors.white,
                       ),

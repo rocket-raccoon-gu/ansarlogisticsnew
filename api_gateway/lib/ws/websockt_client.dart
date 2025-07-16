@@ -6,30 +6,27 @@ class WebSocketClient {
   WebSocketChannel? _channel;
 
   void connect(String url1) {
-    // _channel = WebSocketChannel.connect(Uri.parse(url));
-    // _wsStatusSub = _channel!.stream.listen((status) {
-    //   print('WebSocket status: $status');
-    // });
-    final url =
-        'ws://qatar-api.testuatah.com/api/notification/?userId=1&role=admin';
+    log("🌐 Connecting to WebSocket: $url1");
 
-    _channel = WebSocketChannel.connect(
-      Uri.parse(
-        'ws://qatar-api.testuatah.com/api/notification/?userId=1&role=admin',
-      ),
-    );
+    try {
+      _channel = WebSocketChannel.connect(Uri.parse(url1));
 
-    _channel!.stream.listen(
-      (message) {
-        log('🔔 New WebSocket Message: $message');
-      },
-      onDone: () {
-        log('❌ WebSocket connection closed');
-      },
-      onError: (error) {
-        log('⚠️ WebSocket error: $error');
-      },
-    );
+      log("✅ WebSocket connected");
+
+      _channel!.stream.listen(
+        (message) {
+          log('🔔 New WebSocket Message: $message');
+        },
+        onDone: () {
+          log('❌ WebSocket connection closed');
+        },
+        onError: (error) {
+          log('⚠️ WebSocket error: $error');
+        },
+      );
+    } catch (e) {
+      log("🚨 WebSocket failed to connect: $e");
+    }
   }
 
   void disconnect() {

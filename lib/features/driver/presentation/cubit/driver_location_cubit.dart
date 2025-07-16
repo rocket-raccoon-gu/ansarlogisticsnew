@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:api_gateway/services/api_service.dart';
@@ -34,7 +35,7 @@ class DriverLocationCubit extends Cubit<Position?> {
       emit(pos);
       await _apiService.sendLocation(pos.latitude, pos.longitude);
     } catch (e) {
-      print('Location error: $e');
+      log('Location error: $e');
     }
   }
 

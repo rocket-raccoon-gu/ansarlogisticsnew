@@ -14,6 +14,7 @@ import '../../features/auth/presentation/cubit/register_cubit.dart';
 import '../../features/auth/presentation/cubit/info_data_cubit.dart';
 import '../../features/navigation/presentation/cubit/bottom_navigation_cubit.dart';
 import '../services/firebase_auth_service.dart';
+import '../../features/driver/presentation/cubit/driver_orders_page_cubit.dart';
 
 final getIt = GetIt.instance;
 
@@ -28,11 +29,7 @@ void setupDependencyInjection() {
     () => ApiService(getIt<HttpClient>(), getIt<WebSocketClient>()),
   );
   getIt.registerLazySingleton(
-    () => ApiGateway(
-      httpClient: getIt<HttpClient>(),
-      webSocketClient: getIt<WebSocketClient>(),
-      apiService: getIt<ApiService>(),
-    ),
+    () => ApiGateway(apiService: getIt<ApiService>()),
   );
 
   // Firebase Services
@@ -62,4 +59,8 @@ void setupDependencyInjection() {
     () => InfoDataCubit(authRepository: getIt<AuthRepository>()),
   );
   getIt.registerFactory(() => BottomNavigationCubit(role: UserRole.picker));
+
+  getIt.registerFactory(
+    () => DriverOrdersPageCubit(apiService: getIt<ApiService>()),
+  );
 }

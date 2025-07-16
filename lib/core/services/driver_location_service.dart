@@ -6,6 +6,9 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:api_gateway/services/api_service.dart';
 import 'package:api_gateway/http/http_client.dart';
 
+// Add this enum for tracking status
+enum LocationTrackingStatus { idle, loading, tracking, error }
+
 class DriverLocationService {
   static final DriverLocationService _instance =
       DriverLocationService._internal();
@@ -17,9 +20,12 @@ class DriverLocationService {
   bool _isTracking = false;
   DateTime? _lastSentTime;
 
+  // Add status stream
+
   Future<void> startTracking() async {
     if (_isTracking) return;
     _isTracking = true;
+    // setStatus(LocationTrackingStatus.loading);
 
     // Request permissions
     LocationPermission permission = await Geolocator.checkPermission();
@@ -30,6 +36,7 @@ class DriverLocationService {
         permission == LocationPermission.denied) {
       // Handle permission denied
       _isTracking = false;
+      // setStatus(LocationTrackingStatus.error);
       return;
     }
 
@@ -54,6 +61,9 @@ class DriverLocationService {
         log(data);
         // _wsClient.send(data);
         // _lastSentTime = now;
+        // setStatus(
+        //   LocationTrackingStatus.tracking,
+        // ); // Set to tracking on first location
       }
     });
   }
@@ -64,6 +74,7 @@ class DriverLocationService {
     _positionStream = null;
     _wsClient.disconnect();
     _lastSentTime = null;
+    // setStatus(LocationTrackingStatus.idle);
     // TODO: Stop foreground service for Android
   }
 
@@ -105,10 +116,5 @@ class LocationTaskHandler extends TaskHandler {
   @override
   void onNotificationPressed() {
     print('[LocationTask] notification pressed');
-  }
-
-  @override
-  void onButtonPressed(String id) {
-    print('[LocationTask] button pressed: $id');
   }
 }

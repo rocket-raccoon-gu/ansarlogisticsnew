@@ -108,4 +108,17 @@ class UserStorageService {
     final userData = await getUserData();
     return userData?.user?.id;
   }
+
+  // Update user availability status in SharedPreferences
+  static Future<void> updateAvailabilityStatus(String status) async {
+    final prefs = await SharedPreferences.getInstance();
+    final userDataString = prefs.getString(_userKey);
+    if (userDataString != null) {
+      final userData = jsonDecode(userDataString);
+      if (userData['user'] != null) {
+        userData['user']['availabilityStatus'] = status;
+        await prefs.setString(_userKey, jsonEncode(userData));
+      }
+    }
+  }
 }

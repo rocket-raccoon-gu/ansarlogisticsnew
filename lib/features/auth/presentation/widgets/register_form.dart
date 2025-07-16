@@ -152,8 +152,10 @@ class _RegisterFormState extends State<RegisterForm> {
                           infoState is InfoDataLoading)
                         LinearProgressIndicator(
                           minHeight: 6.0,
-                          color: AppColors.primary.withOpacity(0.8),
-                          backgroundColor: AppColors.primary.withOpacity(0.2),
+                          color: AppColors.primary.withValues(alpha: 0.8),
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: 0.2,
+                          ),
                         ),
                       if (registerState is! RegisterLoading &&
                           infoState is! InfoDataLoading)
@@ -662,7 +664,7 @@ class _RegisterFormState extends State<RegisterForm> {
                                             backgroundColor:
                                                 registerState is RegisterLoading
                                                     ? AppColors.primary
-                                                        .withOpacity(0.4)
+                                                        .withValues(alpha: 0.4)
                                                     : AppColors.primary,
                                             shape: RoundedRectangleBorder(
                                               borderRadius:

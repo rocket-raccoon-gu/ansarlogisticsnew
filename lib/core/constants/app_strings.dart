@@ -33,4 +33,35 @@ class AppStrings {
   static const driverReport = 'Driver Report';
   static const driverProducts = 'Driver Products';
   static const driverProfile = 'Driver Profile';
+  static const orderDetails = 'Order Details';
+  static const toPick = 'To Pick';
+  static const picked = 'Picked';
+  static const canceled = 'Canceled';
+  static const notAvailable = 'Not Available';
+  static const customerName = 'Customer Name';
+  static const customerPhone = 'Customer Phone';
+  static const customerWhatsapp = 'Customer WhatsApp';
+  static const customerComment = 'Customer Comment';
+  static const items = 'Items';
+  static const quantity = 'Quantity';
+  static const status = 'Status';
+  static const description = 'Description';
+  static const orderId = 'Order ID';
+  static const deliveryDate = 'Delivery Date';
+  static const customer = 'Customer';
+  static const call = 'Call';
+  static const whatsapp = 'WhatsApp';
+  static const pickup = 'Pickup';
+  static const outOfStock = 'Out of Stock';
+  static const cancelItem = 'Cancel Item';
+  static const cancelOrder = 'Cancel Order';
+  static const cancelOrderConfirmation =
+      'Are you sure you want to cancel this order?';
+  static const customerNotAnswer = 'Customer Not Answer';
+  static const markCustomerNotAnswer = 'Mark Customer Not Answer';
+  static const customerNotAnswerConfirmation =
+      'Are you sure you want to mark this customer as not answered?';
+  static const customerNotAnswerConfirmationMessage =
+      'This action will mark the customer as not answered and will not be able to receive any further orders.';
+  static const customerNotAnswerConfirmationButton = 'Mark as Not Answered';
 }

@@ -59,6 +59,10 @@ dependencies:
   permission_handler: any
   flutter_foreground_task: any
   fluttertoast: any
+  intl: any
+  url_launcher: any
+  font_awesome_flutter: any
+  flutter_polyline_points: any
   
   # Local Notifications - temporarily disabled due to Android compatibility issues
   # flutter_local_notifications: ^15.1.3

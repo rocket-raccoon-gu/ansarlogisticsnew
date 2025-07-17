@@ -1,7 +1,10 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:api_gateway/services/api_service.dart';
+import '../../../picker/data/models/order_model.dart';
+import '../../../../core/services/user_storage_service.dart';
 
 part 'driver_orders_page_state.dart';
 
@@ -12,33 +15,108 @@ class DriverOrdersPageCubit extends Cubit<DriverOrdersPageState> {
     : super(DriverOrdersPageInitial()) {
     _apiService = apiService;
     // _apiService.connectWebSocket(); // Connect once
+    loadOrders();
+  }
+
+  List<OrderModel> orders = [
+    OrderModel(
+      preparationId: 'DORD001',
+      status: 'pending',
+      deliveryFrom: DateTime.now().add(const Duration(days: 1)),
+      customerFirstname: 'Driver Customer 1',
+      customerZone: '123 Main St, City',
+      phone: '1234567890',
+      itemCount: 1,
+      branchCode: 'BR001',
+      customerId: 1,
+      customerEmail: 'driver1@example.com',
+      createdAt: DateTime.now(),
+      pickerId: 1,
+      items: [],
+    ),
+    OrderModel(
+      preparationId: 'DORD002',
+      status: 'completed',
+      deliveryFrom: DateTime.now().subtract(const Duration(days: 1)),
+      customerFirstname: 'Driver Customer 2',
+      customerZone: '456 Elm St, City',
+      phone: '1234567890',
+      itemCount: 1,
+      branchCode: 'BR001',
+      customerId: 1,
+      customerEmail: 'driver1@example.com',
+      createdAt: DateTime.now(),
+      pickerId: 1,
+      items: [],
+    ),
+  ];
+
+  void loadOrders() {
+    emit(DriverOrdersPageLoaded(orders: orders));
   }
 
   updateData() {
-    _apiService.getOrders().then((value) {
-      emit(
-        DriverOrdersPageLoaded(
-          position: Position(
-            latitude: 0,
-            longitude: 0,
-            timestamp: DateTime.now(),
-            accuracy: 0,
-            altitude: 0,
-            altitudeAccuracy: 0,
-            heading: 0,
-            headingAccuracy: 0,
-            speed: 0,
-            speedAccuracy: 0,
-          ),
-        ),
-      );
+    UserStorageService.getUserData().then((value) {
+      final token = value?.token;
+      if (token != null) {
+        _apiService.getOrders(token).then((value) {
+          emit(
+            DriverOrdersPageLoaded(
+              orders: value.data,
+              position: Position(
+                latitude: 0,
+                longitude: 0,
+                timestamp: DateTime.now(),
+                accuracy: 0,
+                altitude: 0,
+                altitudeAccuracy: 0,
+                heading: 0,
+                headingAccuracy: 0,
+                speed: 0,
+                speedAccuracy: 0,
+              ),
+            ),
+          );
+        });
+      }
     });
   }
 
   void updateLocation(Position position) {
-    emit(DriverOrdersPageLoaded(position: position));
+    emit(DriverOrdersPageLoaded(orders: orders, position: position));
+    UserStorageService.getUserData().then((value) {
+      final token = value?.token;
+      if (token != null) {
+        _apiService.getOrders(token).then((value) {
+          emit(
+            DriverOrdersPageLoaded(
+              orders: value.data,
+              position: Position(
+                latitude: 0,
+                longitude: 0,
+                timestamp: DateTime.now(),
+                accuracy: 0,
+                altitude: 0,
+                altitudeAccuracy: 0,
+                heading: 0,
+                headingAccuracy: 0,
+                speed: 0,
+                speedAccuracy: 0,
+              ),
+            ),
+          );
+        });
+      }
+    });
+
+    emit(DriverOrdersPageLoaded(orders: orders, position: position));
     sendLocationToBackend(position.latitude, position.longitude);
   }
+
+  // void updateLocation(Position position) {
+  //   emit(DriverOrdersPageLoaded(orders: orders, position: position));
+  //   sendLocationToBackend(position.latitude, position.longitude);
+  // }
 
   void reset() {
     emit(DriverOrdersPageInitial());

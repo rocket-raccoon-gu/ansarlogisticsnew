@@ -2,20 +2,24 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:ansarlogisticsnew/features/driver/presentation/cubit/driver_orders_page_cubit.dart';
+import 'package:ansarlogisticsnew/core/services/user_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:http/http.dart' as http;
 import 'package:fluttertoast/fluttertoast.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
-import 'package:api_gateway/services/api_service.dart';
-import 'package:api_gateway/http/http_client.dart';
 import 'package:api_gateway/ws/websockt_client.dart';
 import 'package:api_gateway/config/api_config.dart';
 import 'dart:convert';
 import '../../../../core/services/driver_location_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injector.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../widgets/driver_order_list_item.dart';
+import 'driver_order_details_page.dart';
+import 'driver_route_page.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class DriverOrdersPage extends StatefulWidget {
   const DriverOrdersPage({super.key});
@@ -28,12 +32,11 @@ class _DriverOrdersPageState extends State<DriverOrdersPage> {
   Timer? _timer;
   Position? _currentPosition;
   late WebSocketClient _wsClient;
-
   @override
   void initState() {
     super.initState();
-    _wsClient = WebSocketClient();
-    _wsClient.connect(ApiConfig.wsUrl);
+    _wsClient = getIt<WebSocketClient>();
+
     _initForegroundTask();
   }
 
@@ -81,7 +84,7 @@ class _DriverOrdersPageState extends State<DriverOrdersPage> {
 
     setStatus(LocationTrackingStatus.loading);
 
-    _timer = Timer.periodic(Duration(seconds: 30), (timer) async {
+    _timer = Timer.periodic(Duration(minutes: 1), (timer) async {
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
@@ -115,6 +118,7 @@ class _DriverOrdersPageState extends State<DriverOrdersPage> {
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTgsImlhdCI6MTc1MjY0MzkzMywiZXhwIjoxNzUyNzMwMzMzfQ.F3vbuFocVeMWzyvbDz6QbB_vt3kc4LoaFzlswg15yE8';
     // Simulated request (replace with your API)
     try {
+      final user = await UserStorageService.getUserData();
       final response = await http.put(
         Uri.parse(
           'https://pickerdriver.testuatah.com/v1/api/qatar/pd_driverstatus.php',
@@ -124,7 +128,7 @@ class _DriverOrdersPageState extends State<DriverOrdersPage> {
           'Authorization': 'Bearer ${token}',
         },
         body: jsonEncode({
-          'user_id': 18,
+          'user_id': user?.user?.id,
           'lat': lat.toString(),
           'long': lng.toString(),
         }),
@@ -147,44 +151,140 @@ class _DriverOrdersPageState extends State<DriverOrdersPage> {
             ? 'Not tracking yet'
             : 'Lat:  {_currentPosition!.latitude}, Lng:  {_currentPosition!.longitude}';
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            CustomAppBar(
-              title: 'Location Tracking',
-              trailing: StreamBuilder<LocationTrackingStatus>(
-                stream: statusStream,
-                builder: (context, snapshot) {
-                  final status = snapshot.data ?? LocationTrackingStatus.idle;
-                  if (status == LocationTrackingStatus.loading) {
-                    return const SizedBox(
-                      width: 32,
-                      height: 32,
-                      child: CircularProgressIndicator(),
+      body: Column(
+        children: [
+          FutureBuilder<String?>(
+            future: UserStorageService.getUserName(),
+            builder: (context, snapshot) {
+              final username = snapshot.data ?? '';
+              return CustomAppBar(
+                title: 'Hi, $username',
+                trailing: StreamBuilder<LocationTrackingStatus>(
+                  stream: statusStream,
+                  builder: (context, snapshot) {
+                    final status = snapshot.data ?? LocationTrackingStatus.idle;
+                    return ElevatedButton(
+                      onPressed:
+                          status == LocationTrackingStatus.tracking
+                              ? null
+                              : status == LocationTrackingStatus.loading
+                              ? () {
+                                Fluttertoast.showToast(
+                                  msg: 'Your location is being fetched',
+                                  toastLength: Toast.LENGTH_SHORT,
+                                  gravity: ToastGravity.CENTER,
+                                  timeInSecForIosWeb: 1,
+                                  backgroundColor: Colors.orange,
+                                  textColor: Colors.white,
+                                  fontSize: 16.0,
+                                );
+                              }
+                              : _startForegroundTask,
+                      child: Text('Start Tracking'),
                     );
+                  },
+                ),
+              );
+            },
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.route),
+                label: const Text('View My Route'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                onPressed: () async {
+                  // Get current location
+                  Position? position;
+                  try {
+                    position = await Geolocator.getCurrentPosition(
+                      desiredAccuracy: LocationAccuracy.high,
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Could not get current location.'),
+                      ),
+                    );
+                    return;
                   }
-                  return ElevatedButton(
-                    onPressed:
-                        status == LocationTrackingStatus.tracking
-                            ? null
-                            : _startForegroundTask,
-                    child: Text('Start Tracking'),
+                  if (position == null) return;
+                  final cubit = getIt<DriverOrdersPageCubit>();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (_) => DriverRoutePage(
+                            orders: cubit.orders,
+                            driverLocation: LatLng(
+                              position!.latitude,
+                              position.longitude,
+                            ),
+                          ),
+                    ),
                   );
                 },
               ),
             ),
-            BlocProvider(
+          ),
+          Expanded(
+            child: BlocProvider(
               create: (context) => getIt<DriverOrdersPageCubit>(),
               child: BlocBuilder<DriverOrdersPageCubit, DriverOrdersPageState>(
                 builder: (context, state) {
-                  return Text(state.toString());
+                  if (state is DriverOrdersPageLoaded) {
+                    final orders = state.orders;
+                    if (orders.isEmpty) {
+                      return const Center(child: Text('No orders available.'));
+                    }
+                    return ListView.builder(
+                      itemCount: orders.length,
+                      itemBuilder: (context, index) {
+                        final order = orders[index];
+                        return DriverOrderListItem(
+                          order: order,
+                          onDirectionTap:
+                              order.customerZone != null
+                                  ? () => _openMaps(order.customerZone)
+                                  : null,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (_) => DriverOrderDetailsPage(order: order),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  }
+                  return const Center(child: CircularProgressIndicator());
                 },
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
+  }
+
+  void _openMaps(String address) async {
+    final encoded = Uri.encodeComponent(address);
+    final url = 'https://www.google.com/maps/search/?api=1&query=$encoded';
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    }
   }
 }

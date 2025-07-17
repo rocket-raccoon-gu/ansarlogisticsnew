@@ -4,12 +4,18 @@ import 'core/routes/app_router.dart';
 import 'core/services/firebase_service.dart';
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:api_gateway/ws/websockt_client.dart';
+import 'package:api_gateway/config/api_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Firebase
   await FirebaseService.initialize();
+
+  final ws = WebSocketClient();
+  ws.connect(ApiConfig.wsUrl);
+  getIt.registerSingleton<WebSocketClient>(ws);
 
   // Setup dependency injection
   setupDependencyInjection();

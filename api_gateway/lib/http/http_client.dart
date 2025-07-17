@@ -38,7 +38,7 @@ class HttpClient {
     String path, {
     Map<String, dynamic>? queryParameters,
   }) async {
-    return await _dio.get(path, queryParameters: queryParameters ?? {});
+    return await _dio.get(path, options: Options(headers: queryParameters));
   }
 
   Future<Response> post(String path, {dynamic data}) async {

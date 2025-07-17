@@ -30,11 +30,17 @@ class WebSocketClient {
   }
 
   void disconnect() {
-    _channel!.sink.close();
+    if (_channel != null) {
+      _channel!.sink.close();
+    }
   }
 
   void send(String message) {
-    _channel!.sink.add(message);
+    if (_channel != null) {
+      _channel!.sink.add(message);
+    } else {
+      // Optionally: throw or log an error
+    }
   }
 
   void onMessage(void Function(dynamic) onMessage) {

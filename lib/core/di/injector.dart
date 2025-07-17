@@ -15,6 +15,7 @@ import '../../features/auth/presentation/cubit/info_data_cubit.dart';
 import '../../features/navigation/presentation/cubit/bottom_navigation_cubit.dart';
 import '../services/firebase_auth_service.dart';
 import '../../features/driver/presentation/cubit/driver_orders_page_cubit.dart';
+import '../../features/picker/presentation/cubit/picker_orders_cubit.dart';
 
 final getIt = GetIt.instance;
 
@@ -24,7 +25,7 @@ void setupDependencyInjection() {
 
   // API Gateway
   getIt.registerLazySingleton(() => HttpClient());
-  getIt.registerLazySingleton(() => WebSocketClient());
+  // getIt.registerLazySingleton(() => WebSocketClient());
   getIt.registerLazySingleton(
     () => ApiService(getIt<HttpClient>(), getIt<WebSocketClient>()),
   );
@@ -63,4 +64,6 @@ void setupDependencyInjection() {
   getIt.registerFactory(
     () => DriverOrdersPageCubit(apiService: getIt<ApiService>()),
   );
+
+  getIt.registerFactory(() => PickerOrdersCubit());
 }

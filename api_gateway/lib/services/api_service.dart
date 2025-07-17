@@ -138,11 +138,37 @@ class ApiService {
     _wsClient.send(jsonEncode({'latitude': lat, 'longitude': lng}));
   }
 
-  Future<dynamic> getOrders() async {
-    final response = await _httpClient.get('${ApiConfig.baseUrl}/orders');
-    print('Orders response status: ${response.statusCode}');
-    print('Orders response data: ${response.data}');
-    return response;
+  Future<Response> getOrders(String token) async {
+    try {
+      final response = await _httpClient.get(
+        '${ApiConfig.baseUrl}picker/orders',
+        queryParameters: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${token}',
+        },
+      );
+      log('Orders response status: ${response.statusCode}');
+      log('Orders response data: ${response.data}');
+      return response;
+    } catch (e) {
+      log('Orders error: $e.toString()');
+      rethrow;
+    }
+  }
+
+  Future<dynamic> fetchPickerOrderDetails(String orderId, String token) async {
+    final response = await _httpClient.get(
+      '${ApiConfig.baseUrl}picker/orders/$orderId',
+      queryParameters: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    if (response.data != null) {
+      return response.data['data'];
+    } else {
+      throw Exception('No data found for order');
+    }
   }
 
   Future<dynamic> updateAvailabilityStatus(int status, int id) async {

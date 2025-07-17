@@ -9,6 +9,7 @@ import '../../../driver/presentation/pages/driver_orders_page.dart';
 import '../../../driver/presentation/pages/driver_report_page.dart';
 import '../../../products/presentation/pages/products_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
+import '../../../picker/presentation/cubit/picker_orders_cubit.dart';
 
 class RoleBasedNavigationPage extends StatelessWidget {
   final UserRole userRole;
@@ -51,7 +52,10 @@ class _RoleBasedNavigationView extends StatelessWidget {
     switch (currentIndex) {
       case 0:
         return userRole == UserRole.picker
-            ? const PickerOrdersPage()
+            ? BlocProvider(
+              create: (context) => getIt<PickerOrdersCubit>(),
+              child: PickerOrdersPage(),
+            )
             : DriverOrdersPage();
       case 1:
         return userRole == UserRole.picker

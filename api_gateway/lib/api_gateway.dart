@@ -34,4 +34,8 @@ class ApiGateway {
   Future<dynamic> updateAvailabilityStatus(int status, int id) async {
     return await _apiService.updateAvailabilityStatus(status, id);
   }
+
+  Future<dynamic> getOrders(String token) async {
+    return await _apiService.getOrders(token);
+  }
 }

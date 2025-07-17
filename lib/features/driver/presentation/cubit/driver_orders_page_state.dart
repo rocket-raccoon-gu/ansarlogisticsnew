@@ -12,10 +12,11 @@ class DriverOrdersPageInitial extends DriverOrdersPageState {}
 class DriverOrdersPageLoading extends DriverOrdersPageState {}
 
 class DriverOrdersPageLoaded extends DriverOrdersPageState {
-  final Position position;
+  final List<OrderModel> orders;
+  final Position? position;
 
-  const DriverOrdersPageLoaded({required this.position});
+  const DriverOrdersPageLoaded({required this.orders, this.position});
 
   @override
-  List<Object> get props => [position];
+  List<Object> get props => [orders, if (position != null) position!];
 }

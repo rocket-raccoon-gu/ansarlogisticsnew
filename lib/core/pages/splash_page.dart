@@ -3,6 +3,11 @@ import '../constants/app_colors.dart';
 import '../constants/app_assets.dart';
 import '../services/user_storage_service.dart';
 import '../routes/app_router.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../features/auth/presentation/cubit/auth_cubit.dart';
+import '../../features/auth/data/models/login_request_model.dart';
+import '../../features/auth/domain/usecases/login_cases.dart';
+import '../../core/di/injector.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -27,10 +32,48 @@ class _SplashPageState extends State<SplashPage> {
     final isLoggedIn = await UserStorageService.isLoggedIn();
 
     if (isLoggedIn) {
-      // User is logged in, navigate to home
-      Navigator.pushReplacementNamed(context, AppRoutes.home);
+      // Try to get saved credentials for auto-login
+      final savedUsername = await UserStorageService.getSavedUsername();
+      final savedPassword = await UserStorageService.getSavedPassword();
+
+      if (savedUsername != null && savedPassword != null) {
+        // Attempt auto-login with saved credentials
+        await _performAutoLogin(savedUsername, savedPassword);
+      } else {
+        // No saved credentials, go to login
+        Navigator.pushReplacementNamed(context, AppRoutes.login);
+      }
     } else {
       // User is not logged in, navigate to login
+      Navigator.pushReplacementNamed(context, AppRoutes.login);
+    }
+  }
+
+  Future<void> _performAutoLogin(String email, String password) async {
+    try {
+      // Create auth cubit for auto-login
+      final authCubit = AuthCubit(loginCases: getIt<LoginCases>());
+
+      // Listen to auth state changes
+      authCubit.stream.listen((state) {
+        if (state is AuthSuccess) {
+          // Auto-login successful, navigate to home
+          Navigator.pushReplacementNamed(context, AppRoutes.home);
+        } else if (state is AuthFailure) {
+          // Auto-login failed, go to login page
+          Navigator.pushReplacementNamed(context, AppRoutes.login);
+        }
+      });
+
+      // Perform login with saved credentials
+      final loginRequest = LoginRequestModel(
+        username: email,
+        password: password,
+      );
+
+      await authCubit.login(loginRequest);
+    } catch (e) {
+      // Auto-login failed, go to login page
       Navigator.pushReplacementNamed(context, AppRoutes.login);
     }
   }

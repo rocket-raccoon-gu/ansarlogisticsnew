@@ -28,8 +28,12 @@ class AuthCubit extends Cubit<AuthState> {
           loginResponseModel.user?.driverType ?? '',
         );
 
-        // Save user data to SharedPreferences
-        await UserStorageService.saveUserData(loginResponseModel);
+        // Save user data to SharedPreferences with credentials
+        await UserStorageService.saveUserData(
+          loginResponseModel,
+          loginRequestModel.username,
+          loginRequestModel.password,
+        );
 
         // Start driver location tracking if the user is a driver
         if (userRole == UserRole.driver) {

@@ -63,6 +63,8 @@ dependencies:
   url_launcher: any
   font_awesome_flutter: any
   flutter_polyline_points: any
+  flutter_slidable: any
+  mobile_scanner: any
   
   # Local Notifications - temporarily disabled due to Android compatibility issues
   # flutter_local_notifications: ^15.1.3

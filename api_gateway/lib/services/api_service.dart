@@ -186,4 +186,57 @@ class ApiService {
     log('Update availability status response data: ${response.data}');
     return response;
   }
+
+  Future<dynamic> updateOrderStatus(
+    String status,
+    int preparationId,
+    String token,
+  ) async {
+    try {
+      final dio = Dio();
+      final response = await dio.patch(
+        '${ApiConfig.baseUrl}picker/orders/status',
+        data: {'status': status, 'preparation_id': preparationId},
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+      log('Update order status response status: ${response.statusCode}');
+      log('Update order status response data: ${response.data}');
+      return response;
+    } catch (e) {
+      log('Update order status error: $e.toString()');
+      rethrow;
+    }
+  }
+
+  Future<dynamic> scanBarcodeAndPickItem(
+    String sku,
+    String token,
+    String orderSku,
+  ) async {
+    try {
+      final dio = Dio();
+      log('Scan barcode and pick item: $orderSku, $token, $sku');
+      final response = await dio.post(
+        '${ApiConfig.baseUrl}picker/orders/check-sku',
+        data: {'sku': orderSku, 'skuAction': 'pick', 'skuOrder': sku},
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+      log('Scan barcode response status: ${response.statusCode}');
+      log('Scan barcode response data: ${response.data}');
+      return response;
+    } catch (e) {
+      log('Scan barcode error: $e.toString()');
+      rethrow;
+    }
+  }
 }

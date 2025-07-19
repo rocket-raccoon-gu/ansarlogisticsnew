@@ -9,9 +9,15 @@ class UserStorageService {
   static const String _tokenKey = 'auth_token';
   static const String _roleKey = 'user_role';
   static const String _isLoggedInKey = 'is_logged_in';
+  static const String _usernameKey = 'saved_username';
+  static const String _passwordKey = 'saved_password';
 
   // Save user data to SharedPreferences
-  static Future<void> saveUserData(LoginResponseModel loginResponse) async {
+  static Future<void> saveUserData(
+    LoginResponseModel loginResponse,
+    String username,
+    String password,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
 
     // Save user data as JSON string
@@ -21,6 +27,10 @@ class UserStorageService {
     if (loginResponse.token != null) {
       await prefs.setString(_tokenKey, loginResponse.token!);
     }
+
+    // Save username and password for auto-login
+    await prefs.setString(_usernameKey, username);
+    await prefs.setString(_passwordKey, password);
 
     // Save user role
     final userRole = RoleUtils.getUserRoleFromApi(
@@ -82,6 +92,8 @@ class UserStorageService {
     await prefs.remove(_userKey);
     await prefs.remove(_tokenKey);
     await prefs.remove(_roleKey);
+    await prefs.remove(_usernameKey);
+    await prefs.remove(_passwordKey);
     await prefs.setBool(_isLoggedInKey, false);
   }
 
@@ -120,5 +132,17 @@ class UserStorageService {
         await prefs.setString(_userKey, jsonEncode(userData));
       }
     }
+  }
+
+  // Get saved username
+  static Future<String?> getSavedUsername() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_usernameKey);
+  }
+
+  // Get saved password
+  static Future<String?> getSavedPassword() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_passwordKey);
   }
 }

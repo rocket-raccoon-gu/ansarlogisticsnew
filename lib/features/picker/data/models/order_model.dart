@@ -46,12 +46,14 @@ class OrderModel {
     if (json['items'] != null && json['items'] is List) {
       for (var typeGroup in json['items']) {
         if (typeGroup is List && typeGroup.length == 2) {
-          final type = typeGroup[0];
+          final type = typeGroup[0]; // "exp" or "nol"
           final categories = typeGroup[1];
           if (categories is List) {
             for (var categoryGroup in categories) {
               if (categoryGroup is Map && categoryGroup['items'] is List) {
                 for (var itemJson in categoryGroup['items']) {
+                  // Add the delivery type to each item
+                  itemJson['delivery_type'] = type;
                   parsedItems.add(OrderItemModel.fromJson(itemJson));
                 }
               }

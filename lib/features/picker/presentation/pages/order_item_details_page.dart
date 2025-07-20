@@ -4,10 +4,16 @@ import 'package:flutter/material.dart';
 import '../../data/models/order_item_model.dart';
 import '../cubit/order_details_cubit.dart';
 import '../widgets/barcode_scanner_widget.dart';
+import '../widgets/product_found_dialog.dart';
+import '../widgets/product_not_matching_dialog.dart';
 import 'package:api_gateway/services/api_service.dart';
 import 'package:api_gateway/http/http_client.dart';
 import 'package:api_gateway/ws/websockt_client.dart';
 import '../../../../core/services/user_storage_service.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:ansarlogisticsnew/features/picker/presentation/pages/item_listing_page.dart';
+import 'package:ansarlogisticsnew/core/routes/app_router.dart';
+import '../widgets/confirmation_dialog.dart';
 
 class OrderItemDetailsPage extends StatefulWidget {
   final OrderItemModel item;
@@ -127,7 +133,7 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
             ),
             const SizedBox(height: 16),
             Text(
-              'QAR ${widget.item.price!.toStringAsFixed(2)}',
+              'QAR ${widget.item.price?.toStringAsFixed(2) ?? '0.00'}',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             if (widget.item.description != null &&
@@ -198,8 +204,22 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                         widget.item.status == OrderItemStatus.notAvailable
                             ? null
                             : () {
-                              widget.cubit.markOutOfStock(widget.item);
-                              Navigator.pop(context);
+                              showDialog(
+                                context: context,
+                                builder:
+                                    (context) => ConfirmationDialog(
+                                      title: 'Mark as Not Available',
+                                      message:
+                                          'Are you sure you want to mark "${widget.item.name}" as not available?',
+                                      confirmText: 'Mark Not Available',
+                                      confirmColor: Colors.orange,
+                                      item: widget.item,
+                                      cubit: widget.cubit,
+                                      status: 'item_not_available',
+                                      reason:
+                                          'Manually marked as not available',
+                                    ),
+                              );
                             },
                   ),
                 ),
@@ -215,8 +235,21 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                         widget.item.status == OrderItemStatus.canceled
                             ? null
                             : () {
-                              widget.cubit.markCanceled(widget.item);
-                              Navigator.pop(context);
+                              showDialog(
+                                context: context,
+                                builder:
+                                    (context) => ConfirmationDialog(
+                                      title: 'Cancel Item',
+                                      message:
+                                          'Are you sure you want to cancel "${widget.item.name}"?',
+                                      confirmText: 'Cancel Item',
+                                      confirmColor: Colors.grey,
+                                      item: widget.item,
+                                      cubit: widget.cubit,
+                                      status: 'item_canceled',
+                                      reason: 'Manually canceled',
+                                    ),
+                              );
                             },
                   ),
                 ),
@@ -230,12 +263,11 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
 
   void _openScanner(BuildContext context) {
     // Show a brief message about scanning
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Scanning barcode for: ${widget.item.name}'),
-        duration: const Duration(seconds: 2),
-        backgroundColor: Colors.blue,
-      ),
+    Fluttertoast.showToast(
+      msg: 'Scanning barcode for: ${widget.item.name}',
+      toastLength: Toast.LENGTH_SHORT,
+      gravity: ToastGravity.CENTER,
+      backgroundColor: Colors.blue,
     );
 
     Navigator.push(
@@ -269,12 +301,15 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
       final token = userData?.token;
 
       if (token == null) {
+        if (!mounted) return;
         Navigator.pop(context); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Authentication token not found'),
-            backgroundColor: Colors.red,
-          ),
+        // Use Fluttertoast instead of ScaffoldMessenger
+        Fluttertoast.showToast(
+          msg: 'Authentication token not found',
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.CENTER,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.red,
         );
         return;
       }
@@ -288,6 +323,7 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
       );
 
       // Close loading dialog
+      if (!mounted) return;
       Navigator.pop(context);
 
       // Check API response
@@ -306,12 +342,13 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
       } else {
         // Show error message from API but don't close scanner
         final errorMessage = response.data?['message'] ?? 'Failed to pick item';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
+        // Use Fluttertoast instead of ScaffoldMessenger
+        Fluttertoast.showToast(
+          msg: errorMessage,
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.CENTER,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.red,
         );
 
         // Don't close scanner - let user retry
@@ -319,15 +356,16 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
       }
     } catch (e) {
       // Close loading dialog
+      if (!mounted) return;
       Navigator.pop(context);
 
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to pick item: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
+      // Show error message using Fluttertoast
+      Fluttertoast.showToast(
+        msg: 'Failed to pick item: ${e.toString()}',
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.CENTER,
+        timeInSecForIosWeb: 1,
+        backgroundColor: Colors.red,
       );
 
       // Don't close scanner - let user retry
@@ -342,77 +380,11 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.green, size: 28),
-              SizedBox(width: 8),
-              Text('Product Found'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Product found in database with barcode:',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Barcode: ${responseData['sku'] ?? 'N/A'}',
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              ),
-              if (responseData['product_name'] != null) ...[
-                SizedBox(height: 4),
-                Text(
-                  'Product: ${responseData['product_name']}',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                ),
-              ],
-              SizedBox(height: 16),
-              Text(
-                'Do you want to pick this item?',
-                style: TextStyle(fontSize: 16),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-              },
-              child: Text('Cancel'),
-            ),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-
-                // Mark item as picked
-                widget.cubit.markPicked(widget.item);
-
-                // Show success message
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Item picked successfully: ${widget.item.name}',
-                    ),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-
-                // Navigate back to previous page
-                Navigator.pop(context);
-              },
-              icon: Icon(Icons.check),
-              label: Text('Pick Up'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
+      builder: (BuildContext dialogContext) {
+        return ProductFoundDialog(
+          responseData: responseData,
+          item: widget.item,
+          cubit: widget.cubit,
         );
       },
     );
@@ -426,77 +398,12 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.warning, color: Colors.orange, size: 28),
-              SizedBox(width: 8),
-              Text('Product Not Matching'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Product not matching. Need to replace.',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Scanned Barcode: $barcode',
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              ),
-              if (responseData['expected_barcode'] != null) ...[
-                SizedBox(height: 4),
-                Text(
-                  'Expected Barcode: ${responseData['expected_barcode']}',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                ),
-              ],
-              SizedBox(height: 16),
-              Text(
-                'The scanned barcode does not match the expected product.',
-                style: TextStyle(fontSize: 14, color: Colors.red[600]),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-              },
-              child: Text('Cancel'),
-            ),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-
-                // Mark item as not available (out of stock)
-                widget.cubit.markOutOfStock(widget.item);
-
-                // Show message
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Item marked as not available for replacement',
-                    ),
-                    backgroundColor: Colors.orange,
-                  ),
-                );
-
-                // Navigate back to previous page
-                Navigator.pop(context);
-              },
-              icon: Icon(Icons.swap_horiz),
-              label: Text('Replace'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
+      builder: (BuildContext dialogContext) {
+        return ProductNotMatchingDialog(
+          responseData: responseData,
+          barcode: barcode,
+          item: widget.item,
+          cubit: widget.cubit,
         );
       },
     );

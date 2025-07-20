@@ -6,6 +6,10 @@ import '../widgets/order_item_tile.dart';
 import '../widgets/category_item_list.dart';
 import '../cubit/order_details_cubit.dart';
 import 'order_item_details_page.dart';
+import 'package:api_gateway/services/api_service.dart';
+import 'package:api_gateway/http/http_client.dart';
+import 'package:api_gateway/ws/websockt_client.dart';
+import 'package:ansarlogisticsnew/core/routes/app_router.dart';
 
 class ItemListingPage extends StatefulWidget {
   final List<OrderItemModel> items;
@@ -133,9 +137,75 @@ class _ItemListingPageState extends State<ItemListingPage> {
         bloc: widget.cubit,
         builder: (context, state) {
           if (state is OrderDetailsLoaded) {
-            final filteredCategories = _getFilteredCategories(state.categories);
+            // Filter the cubit's categories to only include items that match the passed items' delivery types
+            final passedItemsDeliveryTypes =
+                widget.items.map((item) => item.deliveryType).toSet();
 
-            return _buildScaffold(filteredCategories);
+            final filteredCategories =
+                state.categories
+                    .map((category) {
+                      // Filter items in this category to only include those matching the passed items' delivery types
+                      final filteredItems =
+                          category.items
+                              .where(
+                                (item) => passedItemsDeliveryTypes.contains(
+                                  item.deliveryType,
+                                ),
+                              )
+                              .toList();
+
+                      return CategoryItemModel(
+                        category: category.category,
+                        items: filteredItems,
+                      );
+                    })
+                    .where((category) => category.items.isNotEmpty)
+                    .toList();
+
+            // Further filter by the selected tab (To Pick, Picked, etc.)
+            final tabFilteredCategories = _getFilteredCategories(
+              filteredCategories,
+            );
+
+            return Scaffold(
+              appBar: AppBar(title: Text(widget.title ?? 'Items')),
+              body:
+                  tabFilteredCategories.isEmpty
+                      ? Center(child: Text(_emptyText))
+                      : CategoryItemList(
+                        categories: tabFilteredCategories,
+                        cubit: widget.cubit,
+                      ),
+              bottomNavigationBar: BottomNavigationBar(
+                currentIndex: _selectedIndex,
+                onTap: (index) {
+                  setState(() {
+                    _selectedIndex = index;
+                  });
+                },
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.list_alt),
+                    label: 'To Pick',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.check_circle_outline),
+                    label: 'Picked',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.cancel_outlined),
+                    label: 'Canceled',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.remove_circle_outline),
+                    label: 'Not Available',
+                  ),
+                ],
+                selectedItemColor: Colors.blue,
+                unselectedItemColor: Colors.grey,
+                type: BottomNavigationBarType.fixed,
+              ),
+            );
           } else if (state is OrderDetailsLoading) {
             return const Scaffold(
               body: Center(child: CircularProgressIndicator()),
@@ -148,49 +218,10 @@ class _ItemListingPageState extends State<ItemListingPage> {
         },
       );
     } else {
-      // Fallback to original behavior if no cubit provided
+      // Fallback to items list if no cubit available
       final filteredItems = _getFilteredItems(widget.items);
       return _buildScaffoldWithItems(filteredItems);
     }
-  }
-
-  Widget _buildScaffold(List<CategoryItemModel> filteredCategories) {
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.title ?? 'Items')),
-      body:
-          filteredCategories.isEmpty
-              ? Center(child: Text(_emptyText))
-              : CategoryItemList(
-                categories: filteredCategories,
-                cubit: widget.cubit,
-              ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: 'To Pick'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.check_circle_outline),
-            label: 'Picked',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.cancel_outlined),
-            label: 'Canceled',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.remove_circle_outline),
-            label: 'Not Available',
-          ),
-        ],
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-      ),
-    );
   }
 
   Widget _buildScaffoldWithItems(List<OrderItemModel> filteredItems) {
@@ -208,15 +239,10 @@ class _ItemListingPageState extends State<ItemListingPage> {
                     item: item,
                     onTap: () {
                       if (widget.cubit != null) {
-                        Navigator.push(
+                        Navigator.pushNamed(
                           context,
-                          MaterialPageRoute(
-                            builder:
-                                (context) => OrderItemDetailsPage(
-                                  item: item,
-                                  cubit: widget.cubit!,
-                                ),
-                          ),
+                          AppRoutes.orderItemDetails,
+                          arguments: {'item': item, 'cubit': widget.cubit!},
                         );
                       }
                     },

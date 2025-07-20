@@ -146,10 +146,13 @@ class _DriverOrdersPageState extends State<DriverOrdersPage> {
 
   @override
   Widget build(BuildContext context) {
-    String locText =
-        _currentPosition == null
-            ? 'Not tracking yet'
-            : 'Lat:  {_currentPosition!.latitude}, Lng:  {_currentPosition!.longitude}';
+    String locText;
+    if (_currentPosition == null) {
+      locText = 'Not tracking yet';
+    } else {
+      locText =
+          'Lat: ${_currentPosition!.latitude}, Lng: ${_currentPosition!.longitude}';
+    }
     return Scaffold(
       body: Column(
         children: [

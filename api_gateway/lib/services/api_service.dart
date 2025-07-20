@@ -239,4 +239,49 @@ class ApiService {
       rethrow;
     }
   }
+
+  Future<dynamic> updateItemStatus({
+    required int itemId,
+    required String scannedSku,
+    required String status,
+    required String price,
+    required String qty,
+    required int preparationId,
+    required int isProduce,
+    String? reason,
+    required String token,
+  }) async {
+    try {
+      final dio = Dio();
+      log('Update item status: $itemId, $scannedSku, $status, $qty');
+
+      final data = {
+        'item_id': itemId,
+        'scanned_sku': scannedSku,
+        'status': status,
+        'price': price,
+        'qty': qty,
+        'preparation_id': preparationId,
+        'is_produce': isProduce,
+        if (reason != null) 'reason': reason,
+      };
+
+      final response = await dio.patch(
+        '${ApiConfig.baseUrl}picker/orders/item/status',
+        data: data,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+      log('Update item status response status: ${response.statusCode}');
+      log('Update item status response data: ${response.data}');
+      return response;
+    } catch (e) {
+      log('Update item status error: $e.toString()');
+      rethrow;
+    }
+  }
 }

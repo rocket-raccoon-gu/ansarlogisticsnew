@@ -11,11 +11,41 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
   final String orderId;
   final ApiService apiService;
 
+  // Add a cache
+  OrderDetailsModel? _cachedOrderDetails;
+
   OrderDetailsCubit({required this.orderId, required this.apiService})
     : super(OrderDetailsInitial());
 
   Future<void> loadItems() async {
-    emit(OrderDetailsLoading());
+    // If we have cached data, show it immediately
+    if (_cachedOrderDetails != null) {
+      final allItems = _cachedOrderDetails!.allItems;
+      emit(
+        OrderDetailsLoaded(
+          toPick:
+              allItems
+                  .where((item) => item.status == OrderItemStatus.toPick)
+                  .toList(),
+          picked:
+              allItems
+                  .where((item) => item.status == OrderItemStatus.picked)
+                  .toList(),
+          canceled:
+              allItems
+                  .where((item) => item.status == OrderItemStatus.canceled)
+                  .toList(),
+          notAvailable:
+              allItems
+                  .where((item) => item.status == OrderItemStatus.notAvailable)
+                  .toList(),
+          categories: _cachedOrderDetails!.categories,
+        ),
+      );
+    } else {
+      emit(OrderDetailsLoading());
+    }
+
     try {
       final userData = await UserStorageService.getUserData();
       final token = userData?.token;
@@ -29,6 +59,8 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
 
       if (response != null) {
         final orderDetails = OrderDetailsModel.fromJson(response);
+        _cachedOrderDetails = orderDetails; // cache it
+
         final allItems = orderDetails.allItems;
 
         // Categorize items by status
@@ -63,6 +95,60 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
       }
     } catch (e) {
       emit(OrderDetailsError(e.toString()));
+    }
+  }
+
+  Future<bool> updateItemStatus({
+    required OrderItemModel item,
+    required String status,
+    required String scannedSku,
+    String? reason,
+  }) async {
+    try {
+      final userData = await UserStorageService.getUserData();
+      final token = userData?.token;
+
+      if (token == null) {
+        emit(OrderDetailsError('No authentication token found'));
+        return false;
+      }
+
+      final response = await apiService.updateItemStatus(
+        itemId: int.parse(item.id),
+        scannedSku: scannedSku,
+        status: status,
+        price: (item.price ?? 0.0).toString(),
+        qty: item.quantity.toString(),
+        preparationId: int.parse(orderId),
+        isProduce:
+            0, // Default to 0 since OrderItemModel doesn't have this field
+        reason: reason,
+        token: token,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Update local item status based on API response
+        switch (status) {
+          case 'end_picking':
+            item.status = OrderItemStatus.picked;
+            break;
+          case 'item_not_available':
+            item.status = OrderItemStatus.notAvailable;
+            break;
+          case 'item_canceled':
+            item.status = OrderItemStatus.canceled;
+            break;
+        }
+
+        _updateState();
+        return true;
+      } else {
+        emit(OrderDetailsError('Failed to update item status'));
+        return false;
+      }
+    } catch (e) {
+      emit(OrderDetailsError(e.toString()));
+      return false;
     }
   }
 

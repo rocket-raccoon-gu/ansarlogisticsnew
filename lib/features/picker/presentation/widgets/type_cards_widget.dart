@@ -6,8 +6,9 @@ import '../pages/item_listing_page.dart';
 
 class TypeCardsWidget extends StatelessWidget {
   final List<OrderItemModel> allItems;
+  final OrderDetailsCubit? cubit;
 
-  const TypeCardsWidget({super.key, required this.allItems});
+  const TypeCardsWidget({super.key, required this.allItems, this.cubit});
 
   @override
   Widget build(BuildContext context) {
@@ -17,6 +18,28 @@ class TypeCardsWidget extends StatelessWidget {
         allItems.where((item) => item.deliveryType == 'nol').toList();
     final hasEXP = expItems.isNotEmpty;
     final hasNOL = nolItems.isNotEmpty;
+
+    print('TypeCardsWidget - Total items: ${allItems.length}');
+    print('TypeCardsWidget - EXP items: ${expItems.length}');
+    print('TypeCardsWidget - NOL items: ${nolItems.length}');
+
+    // Debug: Print delivery types of all items
+    for (var item in allItems) {
+      print(
+        'Item: ${item.name}, Delivery Type: "${item.deliveryType}" (length: ${item.deliveryType.length})',
+      );
+    }
+
+    // Debug: Print filtered items
+    print('=== EXP Items ===');
+    for (var item in expItems) {
+      print('EXP Item: ${item.name}, Delivery Type: "${item.deliveryType}"');
+    }
+
+    print('=== NOL Items ===');
+    for (var item in nolItems) {
+      print('NOL Item: ${item.name}, Delivery Type: "${item.deliveryType}"');
+    }
 
     if (!hasEXP && !hasNOL) {
       return const SizedBox.shrink();
@@ -32,17 +55,41 @@ class TypeCardsWidget extends StatelessWidget {
               color: Colors.orange[100],
               child: InkWell(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (_) => ItemListingPage(
-                            items: expItems,
-                            title: 'Express Items',
-                            cubit: BlocProvider.of<OrderDetailsCubit>(context),
-                          ),
-                    ),
-                  );
+                  try {
+                    // Check if context is still valid
+                    if (!context.mounted) return;
+
+                    // Use the passed cubit or try to get it from context safely
+                    OrderDetailsCubit? orderCubit = cubit;
+                    if (orderCubit == null && context.mounted) {
+                      try {
+                        orderCubit = BlocProvider.of<OrderDetailsCubit>(
+                          context,
+                        );
+                      } catch (e) {
+                        print('Could not get cubit from context: $e');
+                        return;
+                      }
+                    }
+
+                    // Double check if context is still valid
+                    if (!context.mounted) return;
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (_) => ItemListingPage(
+                              items: expItems,
+                              title: 'Express Items',
+                              cubit: orderCubit,
+                            ),
+                      ),
+                    );
+                  } catch (e) {
+                    // Handle any errors gracefully
+                    print('Error navigating to Express Items: $e');
+                  }
                 },
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -60,17 +107,41 @@ class TypeCardsWidget extends StatelessWidget {
               color: Colors.blue[100],
               child: InkWell(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (_) => ItemListingPage(
-                            items: nolItems,
-                            title: 'Normal Local Items',
-                            cubit: BlocProvider.of<OrderDetailsCubit>(context),
-                          ),
-                    ),
-                  );
+                  try {
+                    // Check if context is still valid
+                    if (!context.mounted) return;
+
+                    // Use the passed cubit or try to get it from context safely
+                    OrderDetailsCubit? orderCubit = cubit;
+                    if (orderCubit == null && context.mounted) {
+                      try {
+                        orderCubit = BlocProvider.of<OrderDetailsCubit>(
+                          context,
+                        );
+                      } catch (e) {
+                        print('Could not get cubit from context: $e');
+                        return;
+                      }
+                    }
+
+                    // Double check if context is still valid
+                    if (!context.mounted) return;
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (_) => ItemListingPage(
+                              items: nolItems,
+                              title: 'Normal Local Items',
+                              cubit: orderCubit,
+                            ),
+                      ),
+                    );
+                  } catch (e) {
+                    // Handle any errors gracefully
+                    print('Error navigating to Normal Local Items: $e');
+                  }
                 },
                 child: Padding(
                   padding: const EdgeInsets.all(24),

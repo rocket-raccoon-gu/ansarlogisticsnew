@@ -49,21 +49,43 @@ class OrderDetailsModel {
   factory OrderDetailsModel.fromJson(Map<String, dynamic> json) {
     List<CategoryItemModel> parsedCategories = [];
 
+    print('Parsing OrderDetailsModel from JSON: ${json.keys}');
+    print('Items structure: ${json['items']}');
+
     if (json['items'] != null && json['items'] is List) {
       for (var typeGroup in json['items']) {
+        print('Processing typeGroup: $typeGroup');
+
         if (typeGroup is List && typeGroup.length >= 2) {
-          final type = typeGroup[0]; // "exp" or "nol"
+          final deliveryType = typeGroup[0]; // "exp" or "nol"
           final categories = typeGroup[1];
+
+          print('Delivery type: $deliveryType');
+          print('Categories: $categories');
+
           if (categories is List) {
             for (var categoryGroup in categories) {
+              print('Processing categoryGroup: $categoryGroup');
+
               if (categoryGroup is Map) {
                 try {
-                  // Add delivery type to all items in this category
+                  // The delivery_type is already provided by the API in each item
+                  // No need to manually add it
                   if (categoryGroup['items'] is List) {
+                    print(
+                      'Found ${categoryGroup['items'].length} items in category ${categoryGroup['category']}',
+                    );
+
+                    // Debug: Print delivery types of items in this category
                     for (var itemJson in categoryGroup['items']) {
-                      itemJson['delivery_type'] = type;
+                      if (itemJson is Map) {
+                        print(
+                          'Item: ${itemJson['name']}, Delivery Type: ${itemJson['delivery_type']}',
+                        );
+                      }
                     }
                   }
+
                   parsedCategories.add(
                     CategoryItemModel.fromJson(
                       Map<String, dynamic>.from(categoryGroup),
@@ -76,12 +98,19 @@ class OrderDetailsModel {
                 }
               }
             }
+          } else {
+            print('Categories is not a list: $categories');
           }
         } else {
           print('Invalid typeGroup structure: $typeGroup');
         }
       }
     }
+
+    print('Total parsed categories: ${parsedCategories.length}');
+    print(
+      'Total items: ${parsedCategories.fold(0, (sum, cat) => sum + cat.items.length)}',
+    );
 
     return OrderDetailsModel(
       preparationId: json['preparation_id'] ?? 0,

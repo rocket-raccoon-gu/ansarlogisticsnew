@@ -1,10 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:ansarlogisticsnew/core/constants/app_strings.dart';
-
 import 'package:api_gateway/services/api_service.dart';
 import 'package:api_gateway/http/http_client.dart';
 import 'package:api_gateway/ws/websockt_client.dart';
-
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/order_model.dart';
 import '../../data/models/order_details_model.dart';
@@ -14,7 +12,6 @@ import '../widgets/order_item_tile.dart';
 import '../widgets/customer_card_widget.dart';
 import '../widgets/type_cards_widget.dart';
 import '../widgets/item_list_widget.dart';
-// import 'order_item_details_page.dart'; // To be created
 import 'order_item_details_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -56,7 +53,20 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
         body: BlocBuilder<OrderDetailsCubit, OrderDetailsState>(
           builder: (context, state) {
             if (state is OrderDetailsLoading) {
-              return const Center(child: CircularProgressIndicator());
+              // Shimmer/skeleton loader
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: 4,
+                itemBuilder:
+                    (context, index) => Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      height: 80,
+                    ),
+              );
             } else if (state is OrderDetailsError) {
               return Center(child: Text(state.message));
             } else if (state is OrderDetailsLoaded) {
@@ -70,6 +80,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                       ...state.canceled,
                       ...state.notAvailable,
                     ],
+                    cubit: BlocProvider.of<OrderDetailsCubit>(context),
                   ),
                 ],
               );

@@ -102,27 +102,22 @@ class _ConfirmationDialogState extends State<ConfirmationDialog> {
           msg:
               'Item ${widget.status == 'item_not_available' ? 'marked as not available' : 'canceled'}',
           toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.CENTER,
+          gravity: ToastGravity.BOTTOM,
           timeInSecForIosWeb: 1,
           backgroundColor: widget.confirmColor,
         );
-
-        // Refresh the cubit to update item status
-        await widget.cubit.loadItems();
-
-        // Close dialog
         if (mounted) {
-          Navigator.of(context).pop();
+          Navigator.of(context).pop(); // Close dialog
+          Navigator.of(
+            context,
+          ).pop('updated'); // Pop item details page, return to item listing
         }
-
-        // Navigate to item listing with fallback
-        _navigateToItemListingWithFallback();
       } else {
         // Show error message
         Fluttertoast.showToast(
           msg: 'Failed to update item status',
           toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.CENTER,
+          gravity: ToastGravity.BOTTOM,
           timeInSecForIosWeb: 1,
           backgroundColor: Colors.red,
         );

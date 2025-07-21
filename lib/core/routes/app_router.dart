@@ -70,6 +70,8 @@ class AppRouter {
                   items: items,
                   title: args['title'] as String? ?? 'Item Listing',
                   cubit: args['cubit'] as OrderDetailsCubit?,
+                  deliveryType: args['deliveryType'] as String?,
+                  tabIndex: args['tabIndex'] as int?,
                 ),
           );
         } else if (settings.arguments is List<OrderItemModel>) {

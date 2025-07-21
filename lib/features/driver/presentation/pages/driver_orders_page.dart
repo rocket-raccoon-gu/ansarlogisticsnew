@@ -20,6 +20,9 @@ import '../widgets/driver_order_list_item.dart';
 import 'driver_order_details_page.dart';
 import 'driver_route_page.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart';
+import 'package:api_gateway/services/api_service.dart';
+import 'package:api_gateway/http/http_client.dart';
 
 class DriverOrdersPage extends StatefulWidget {
   const DriverOrdersPage({super.key});
@@ -138,7 +141,7 @@ class _DriverOrdersPageState extends State<DriverOrdersPage> {
       } else {
         log("Failed to send location: ${response.statusCode}");
       }
-      // await ApiService(HttpClient(), WebSocketClient()).sendLocation(lat, lng);
+      await ApiService(HttpClient(), WebSocketClient()).sendLocation(lat, lng);
     } catch (e) {
       print("Failed to send location: $e");
     }

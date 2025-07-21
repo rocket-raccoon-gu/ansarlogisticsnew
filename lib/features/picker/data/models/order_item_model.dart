@@ -11,6 +11,7 @@ class OrderItemModel {
   final String? sku;
   final double? price;
   final List<String> productImages;
+  final String? isProduceRaw;
 
   OrderItemModel({
     required this.id,
@@ -23,7 +24,10 @@ class OrderItemModel {
     this.sku,
     this.price,
     required this.productImages,
+    this.isProduceRaw,
   });
+
+  bool get isProduce => isProduceRaw == '1';
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
     // Parse product images
@@ -73,6 +77,7 @@ class OrderItemModel {
               ? double.tryParse(json['price'].toString())
               : null,
       productImages: images,
+      isProduceRaw: json['is_produce']?.toString(),
     );
   }
 

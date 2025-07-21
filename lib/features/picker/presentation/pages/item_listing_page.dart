@@ -15,9 +15,17 @@ class ItemListingPage extends StatefulWidget {
   final List<OrderItemModel> items;
   final String? title;
   final OrderDetailsCubit? cubit;
+  final String? deliveryType;
+  final int? tabIndex;
 
-  const ItemListingPage({Key? key, required this.items, this.title, this.cubit})
-    : super(key: key);
+  const ItemListingPage({
+    Key? key,
+    required this.items,
+    this.title,
+    this.cubit,
+    this.deliveryType,
+    this.tabIndex,
+  }) : super(key: key);
 
   @override
   State<ItemListingPage> createState() => _ItemListingPageState();
@@ -25,36 +33,74 @@ class ItemListingPage extends StatefulWidget {
 
 class _ItemListingPageState extends State<ItemListingPage> {
   int _selectedIndex = 0;
+  String? _selectedDeliveryType;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.tabIndex != null) {
+      _selectedIndex = widget.tabIndex!;
+    }
+    if (widget.deliveryType != null) {
+      _selectedDeliveryType = widget.deliveryType;
+    }
+  }
 
   List<OrderItemModel> _getFilteredItems(List<OrderItemModel> allItems) {
+    List<OrderItemModel> filtered = allItems;
+    if (_selectedDeliveryType != null) {
+      filtered =
+          filtered
+              .where((item) => item.deliveryType == _selectedDeliveryType)
+              .toList();
+    }
     switch (_selectedIndex) {
       case 0:
-        return allItems
+        return filtered
             .where((item) => item.status == OrderItemStatus.toPick)
             .toList();
       case 1:
-        return allItems
+        return filtered
             .where((item) => item.status == OrderItemStatus.picked)
             .toList();
       case 2:
-        return allItems
+        return filtered
             .where((item) => item.status == OrderItemStatus.canceled)
             .toList();
       case 3:
-        return allItems
+        return filtered
             .where((item) => item.status == OrderItemStatus.notAvailable)
             .toList();
       default:
-        return allItems;
+        return filtered;
     }
   }
 
   List<CategoryItemModel> _getFilteredCategories(
     List<CategoryItemModel> allCategories,
   ) {
+    List<CategoryItemModel> filteredCategories = allCategories;
+    if (_selectedDeliveryType != null) {
+      filteredCategories =
+          allCategories
+              .map(
+                (category) => CategoryItemModel(
+                  category: category.category,
+                  items:
+                      category.items
+                          .where(
+                            (item) =>
+                                item.deliveryType == _selectedDeliveryType,
+                          )
+                          .toList(),
+                ),
+              )
+              .where((category) => category.items.isNotEmpty)
+              .toList();
+    }
     switch (_selectedIndex) {
       case 0:
-        return allCategories
+        return filteredCategories
             .map((category) {
               return CategoryItemModel(
                 category: category.category,
@@ -67,7 +113,7 @@ class _ItemListingPageState extends State<ItemListingPage> {
             .where((category) => category.items.isNotEmpty)
             .toList();
       case 1:
-        return allCategories
+        return filteredCategories
             .map((category) {
               return CategoryItemModel(
                 category: category.category,
@@ -80,7 +126,7 @@ class _ItemListingPageState extends State<ItemListingPage> {
             .where((category) => category.items.isNotEmpty)
             .toList();
       case 2:
-        return allCategories
+        return filteredCategories
             .map((category) {
               return CategoryItemModel(
                 category: category.category,
@@ -95,7 +141,7 @@ class _ItemListingPageState extends State<ItemListingPage> {
             .where((category) => category.items.isNotEmpty)
             .toList();
       case 3:
-        return allCategories
+        return filteredCategories
             .map((category) {
               return CategoryItemModel(
                 category: category.category,
@@ -110,7 +156,7 @@ class _ItemListingPageState extends State<ItemListingPage> {
             .where((category) => category.items.isNotEmpty)
             .toList();
       default:
-        return allCategories;
+        return filteredCategories;
     }
   }
 
@@ -237,13 +283,18 @@ class _ItemListingPageState extends State<ItemListingPage> {
                   final item = filteredItems[index];
                   return OrderItemTile(
                     item: item,
-                    onTap: () {
+                    onTap: () async {
                       if (widget.cubit != null) {
-                        Navigator.pushNamed(
+                        final result = await Navigator.pushNamed(
                           context,
                           AppRoutes.orderItemDetails,
                           arguments: {'item': item, 'cubit': widget.cubit!},
                         );
+                        if (result == 'updated') {
+                          setState(
+                            () {},
+                          ); // Refresh UI to reflect updated cubit state
+                        }
                       }
                     },
                     onItemPicked: () {

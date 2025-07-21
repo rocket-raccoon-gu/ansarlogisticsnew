@@ -265,6 +265,7 @@ class ApiService {
         'is_produce': isProduce,
         if (reason != null) 'reason': reason,
       };
+      log('Update item status data: $data');
 
       final response = await dio.patch(
         '${ApiConfig.baseUrl}picker/orders/item/status',

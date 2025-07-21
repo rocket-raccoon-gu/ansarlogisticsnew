@@ -14,6 +14,8 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:ansarlogisticsnew/features/picker/presentation/pages/item_listing_page.dart';
 import 'package:ansarlogisticsnew/core/routes/app_router.dart';
 import '../widgets/confirmation_dialog.dart';
+import '../widgets/notfound_dialog.dart';
+import 'dart:developer';
 
 class OrderItemDetailsPage extends StatefulWidget {
   final OrderItemModel item;
@@ -31,6 +33,8 @@ class OrderItemDetailsPage extends StatefulWidget {
 
 class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
   late int _quantity;
+  bool _isLoading = false;
+  bool _isProcessing = false;
 
   @override
   void initState() {
@@ -40,254 +44,471 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("Item Details")),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Product Images
-            if (widget.item.productImages.isNotEmpty)
-              Container(
-                height: 200,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: widget.item.productImages.length,
-                  itemBuilder: (context, index) {
-                    return Container(
-                      width: 200,
-                      margin: const EdgeInsets.only(right: 12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade200),
+    if (_isProcessing) {
+      return BarcodeScannerWidget(
+        title: 'Scan Barcode',
+        subtitle: 'Scan the barcode for ${widget.item.name}',
+        onBarcodeScanned: (barcode) => _handleBarcodeScanned(context, barcode),
+      );
+    } else {
+      return Stack(
+        children: [
+          Scaffold(
+            appBar: AppBar(title: Text("Item Details")),
+            body: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Product Images
+                  if (widget.item.productImages.isNotEmpty)
+                    Container(
+                      height: 200,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: widget.item.productImages.length,
+                        itemBuilder: (context, index) {
+                          return Container(
+                            width: 200,
+                            margin: const EdgeInsets.only(right: 12),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                '${ApiConfig.imageUrl}${widget.item.productImages[index]}',
+                                fit: BoxFit.cover,
+                                errorBuilder:
+                                    (context, error, stackTrace) => Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(
+                                        Icons.image_not_supported,
+                                        size: 60,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                loadingBuilder: (
+                                  context,
+                                  child,
+                                  loadingProgress,
+                                ) {
+                                  if (loadingProgress == null) return child;
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          );
+                        },
                       ),
+                    )
+                  else
+                    // Fallback to single image if no product images
+                    Center(
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: Image.network(
-                          '${ApiConfig.imageUrl}${widget.item.productImages[index]}',
+                          widget.item.imageUrl,
+                          width: 150,
+                          height: 150,
                           fit: BoxFit.cover,
                           errorBuilder:
-                              (context, error, stackTrace) => Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.image_not_supported,
-                                  size: 60,
-                                  color: Colors.grey,
-                                ),
+                              (context, error, stackTrace) => const Icon(
+                                Icons.image,
+                                size: 100,
+                                color: Colors.grey,
                               ),
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Container(
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                            );
-                          },
                         ),
                       ),
-                    );
-                  },
-                ),
-              )
-            else
-              // Fallback to single image if no product images
-              Center(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    widget.item.imageUrl,
-                    width: 150,
-                    height: 150,
-                    fit: BoxFit.cover,
-                    errorBuilder:
-                        (context, error, stackTrace) => const Icon(
-                          Icons.image,
-                          size: 100,
+                    ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'SKU: ${widget.item.sku ?? ''}',
+                    style: const TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    widget.item.name,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    widget.item.deliveryType == 'exp' ? 'Express' : 'No Limit',
+                    style: const TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'QAR ${widget.item.price?.toStringAsFixed(2) ?? '0.00'}',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (widget.item.description != null &&
+                      widget.item.description!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        widget.item.description!,
+                        style: const TextStyle(
+                          fontSize: 16,
                           color: Colors.grey,
                         ),
-                  ),
-                ),
-              ),
-            const SizedBox(height: 16),
-            Text(
-              'SKU: ${widget.item.sku ?? ''}',
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              widget.item.name,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              widget.item.deliveryType == 'exp' ? 'Express' : 'No Limit',
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'QAR ${widget.item.price?.toStringAsFixed(2) ?? '0.00'}',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            if (widget.item.description != null &&
-                widget.item.description!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  widget.item.description!,
-                  style: const TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-              ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                const Text(AppStrings.quantity, style: TextStyle(fontSize: 16)),
-                const SizedBox(width: 16),
-                IconButton(
-                  icon: const Icon(Icons.remove_circle_outline),
-                  onPressed:
-                      _quantity > 1
-                          ? () {
-                            setState(() {
-                              _quantity--;
-                            });
-                            widget.cubit.updateQuantity(widget.item, _quantity);
-                          }
-                          : null,
-                ),
-                Text('$_quantity', style: const TextStyle(fontSize: 18)),
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
-                  onPressed: () {
-                    setState(() {
-                      _quantity++;
-                    });
-                    widget.cubit.updateQuantity(widget.item, _quantity);
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-            // Scan Button (only show if item is not picked)
-            if (widget.item.status != OrderItemStatus.picked)
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.only(bottom: 16),
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.qr_code_scanner),
-                  label: const Text('Scan Barcode to Pick'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  onPressed: () => _openScanner(context),
-                ),
-              ),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.remove_circle_outline),
-                    label: const Text(AppStrings.notAvailable),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
+                      ),
                     ),
-                    onPressed:
-                        widget.item.status == OrderItemStatus.notAvailable
-                            ? null
-                            : () {
-                              showDialog(
-                                context: context,
-                                builder:
-                                    (context) => ConfirmationDialog(
-                                      title: 'Mark as Not Available',
-                                      message:
-                                          'Are you sure you want to mark "${widget.item.name}" as not available?',
-                                      confirmText: 'Mark Not Available',
-                                      confirmColor: Colors.orange,
-                                      item: widget.item,
-                                      cubit: widget.cubit,
-                                      status: 'item_not_available',
-                                      reason:
-                                          'Manually marked as not available',
-                                    ),
-                              );
-                            },
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      const Text(
+                        AppStrings.quantity,
+                        style: TextStyle(fontSize: 16),
+                      ),
+                      const SizedBox(width: 16),
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline),
+                        onPressed:
+                            _quantity > 1
+                                ? () {
+                                  setState(() {
+                                    _quantity--;
+                                  });
+                                  widget.cubit.updateQuantity(
+                                    widget.item,
+                                    _quantity,
+                                  );
+                                }
+                                : null,
+                      ),
+                      Text('$_quantity', style: const TextStyle(fontSize: 18)),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        onPressed: () {
+                          setState(() {
+                            _quantity++;
+                          });
+                          widget.cubit.updateQuantity(widget.item, _quantity);
+                        },
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.cancel_outlined),
-                    label: const Text(AppStrings.canceled),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.grey,
+                  const SizedBox(height: 32),
+                  // Scan Button (only show if item is not picked)
+                  if (widget.item.status != OrderItemStatus.picked)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.qr_code_scanner),
+                        label: const Text('Scan Barcode to Pick'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isProcessing = true;
+                          });
+                        },
+                      ),
                     ),
-                    onPressed:
-                        widget.item.status == OrderItemStatus.canceled
-                            ? null
-                            : () {
-                              showDialog(
-                                context: context,
-                                builder:
-                                    (context) => ConfirmationDialog(
-                                      title: 'Cancel Item',
-                                      message:
-                                          'Are you sure you want to cancel "${widget.item.name}"?',
-                                      confirmText: 'Cancel Item',
-                                      confirmColor: Colors.grey,
-                                      item: widget.item,
-                                      cubit: widget.cubit,
-                                      status: 'item_canceled',
-                                      reason: 'Manually canceled',
-                                    ),
-                              );
-                            },
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.remove_circle_outline),
+                          label: const Text(AppStrings.notAvailable),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                          ),
+                          onPressed:
+                              widget.item.status == OrderItemStatus.notAvailable
+                                  ? null
+                                  : () {
+                                    showDialog(
+                                      context: context,
+                                      builder:
+                                          (context) => ConfirmationDialog(
+                                            title: 'Mark as Not Available',
+                                            message:
+                                                'Are you sure you want to mark "${widget.item.name}" as not available?',
+                                            confirmText: 'Mark Not Available',
+                                            confirmColor: Colors.orange,
+                                            item: widget.item,
+                                            cubit: widget.cubit,
+                                            status: 'item_not_available',
+                                            reason:
+                                                'Manually marked as not available',
+                                          ),
+                                    );
+                                  },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.cancel_outlined),
+                          label: const Text(AppStrings.canceled),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.grey,
+                          ),
+                          onPressed:
+                              widget.item.status == OrderItemStatus.canceled
+                                  ? null
+                                  : () {
+                                    showDialog(
+                                      context: context,
+                                      builder:
+                                          (context) => ConfirmationDialog(
+                                            title: 'Cancel Item',
+                                            message:
+                                                'Are you sure you want to cancel "${widget.item.name}"?',
+                                            confirmText: 'Cancel Item',
+                                            confirmColor: Colors.grey,
+                                            item: widget.item,
+                                            cubit: widget.cubit,
+                                            status: 'item_canceled',
+                                            reason: 'Manually canceled',
+                                          ),
+                                    );
+                                  },
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ],
-        ),
-      ),
-    );
+          ),
+          if (_isLoading)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: LinearProgressIndicator(minHeight: 4),
+            ),
+        ],
+      );
+    }
   }
 
-  void _openScanner(BuildContext context) {
-    // Show a brief message about scanning
-    Fluttertoast.showToast(
-      msg: 'Scanning barcode for: ${widget.item.name}',
-      toastLength: Toast.LENGTH_SHORT,
-      gravity: ToastGravity.CENTER,
-      backgroundColor: Colors.blue,
-    );
+  // void _openScanner(BuildContext context) {
+  //   // Show a brief message about scanning
+  //   Fluttertoast.showToast(
+  //     msg: 'Scanning barcode for: ${widget.item.name}',
+  //     toastLength: Toast.LENGTH_SHORT,
+  //     gravity: ToastGravity.CENTER,
+  //     backgroundColor: Colors.blue,
+  //   );
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder:
-            (context) => BarcodeScannerWidget(
-              title: 'Scan Barcode',
-              subtitle: 'Scan the barcode for ${widget.item.name}',
-              onBarcodeScanned:
-                  (barcode) => _handleBarcodeScanned(context, barcode),
-            ),
-      ),
-    );
+  //   Navigator.push(
+  //     context,
+  //     MaterialPageRoute(
+  //       builder:
+  //           (context) => BarcodeScannerWidget(
+  //             title: 'Scan Barcode',
+  //             subtitle: 'Scan the barcode for ${widget.item.name}',
+  //             onBarcodeScanned:
+  //                 (barcode) => _handleBarcodeScanned(context, barcode),
+  //           ),
+  //     ),
+  //   );
+  // }
+
+  String getPriceFromBarcode(String code) {
+    String last = code;
+    String price = "00";
+    if (code.startsWith('00')) {
+      last = code.substring(2);
+    }
+    double parsedValue = double.parse(last) / 1000;
+    String priceString = parsedValue.toString();
+    int dotIndex = priceString.indexOf('.');
+    if (dotIndex != -1 && dotIndex < priceString.length - 2) {
+      price = priceString.substring(0, dotIndex + 3);
+    } else {
+      price = priceString;
+    }
+    return price;
   }
 
   Future<void> _handleBarcodeScanned(
     BuildContext context,
     String barcode,
   ) async {
+    if (widget.item.isProduce) {
+      final dialogContext = context;
+      String produceBarcode = barcode
+          .substring(0, 6)
+          .padRight(barcode.length, '0');
+      String price = getPriceFromBarcode(barcode.substring(barcode.length - 7));
+
+      // Close scanner page first
+      // if (dialogContext.mounted) {
+      //   Navigator.of(
+      //     dialogContext,
+      //     rootNavigator: true,
+      //   ).pop(); // Close scanner screen
+      // }
+      setState(() => _isProcessing = false);
+      setState(() => _isLoading = true);
+
+      try {
+        final userData = await UserStorageService.getUserData();
+        if (!dialogContext.mounted) {
+          setState(() => _isLoading = false);
+          return;
+        }
+        final token = userData?.token;
+        if (token == null) throw Exception('No token');
+
+        final apiService = ApiService(HttpClient(), WebSocketClient());
+        final response = await apiService.scanBarcodeAndPickItem(
+          produceBarcode,
+          token,
+          widget.item.sku ?? '',
+        );
+
+        // if (!dialogContext.mounted) {
+        //   setState(() => _isLoading = false);
+        //   // return;
+        // }
+        setState(() => _isLoading = false);
+
+        if (response.data != null && response.data['match'] == "0") {
+          // Show confirmation dialog
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (priceDialogContext) {
+              return AlertDialog(
+                title: Text('Produce Item Found'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Barcode: $produceBarcode'),
+                    SizedBox(height: 8),
+                    Text('Price: QAR $price'),
+                    SizedBox(height: 16),
+                    Text('Do you want to pick this produce item?'),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(
+                        priceDialogContext,
+                      ).pop(); // Close price dialog
+                    },
+                    child: Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      Navigator.of(priceDialogContext).pop(); // Close dialog
+
+                      if (!dialogContext.mounted) return;
+
+                      setState(() => _isLoading = true);
+                      try {
+                        final userData = await UserStorageService.getUserData();
+                        if (!dialogContext.mounted) {
+                          setState(() => _isLoading = false);
+                          return;
+                        }
+                        final token = userData?.token;
+                        if (token == null) throw Exception('No token');
+
+                        final success = await widget.cubit.updateItemStatus(
+                          item: widget.item,
+                          status: 'end_picking',
+                          scannedSku: barcode,
+                          reason: '',
+                          priceOverride: price,
+                          isProduceOverride: 1,
+                        );
+
+                        if (!dialogContext.mounted) {
+                          setState(() => _isLoading = false);
+                          return;
+                        }
+                        setState(() => _isLoading = false);
+
+                        if (success) {
+                          Fluttertoast.showToast(
+                            msg: 'Produce item picked successfully',
+                            toastLength: Toast.LENGTH_LONG,
+                            gravity: ToastGravity.BOTTOM,
+                            backgroundColor: Colors.green,
+                          );
+                          // if (dialogContext.mounted) {
+                          //   Navigator.of(dialogContext).pop('updated');
+                          // }
+
+                          if (mounted) {
+                            // Navigator.of(context).pop(); // Close dialog
+                            Navigator.of(context).pop(
+                              'updated',
+                            ); // Pop item details page, return to item listing
+                          }
+                        } else {
+                          Fluttertoast.showToast(
+                            msg: 'Failed to update produce item status',
+                            toastLength: Toast.LENGTH_SHORT,
+                            gravity: ToastGravity.BOTTOM,
+                            backgroundColor: Colors.red,
+                          );
+                        }
+                      } catch (e) {
+                        log('Error during updateItemStatus: $e');
+                        setState(() => _isLoading = false);
+                        Fluttertoast.showToast(
+                          msg: 'Error: ${e.toString()}',
+                          toastLength: Toast.LENGTH_SHORT,
+                          gravity: ToastGravity.BOTTOM,
+                          backgroundColor: Colors.red,
+                        );
+                      }
+                    },
+                    child: Text('Confirm'),
+                  ),
+                ],
+              );
+            },
+          );
+        } else {
+          Fluttertoast.showToast(
+            msg: 'Produce barcode not matching',
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.BOTTOM,
+            backgroundColor: Colors.red,
+          );
+        }
+      } catch (e) {
+        log('Error in barcode processing: $e');
+        setState(() => _isLoading = false);
+        Fluttertoast.showToast(
+          msg: 'Error: ${e.toString()}',
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.red,
+        );
+      }
+      return;
+    }
+
     try {
       // Show loading indicator
       showDialog(
@@ -301,7 +522,7 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
       final token = userData?.token;
 
       if (token == null) {
-        if (!mounted) return;
+        if (!context.mounted) return;
         Navigator.pop(context); // Close loading dialog
         // Use Fluttertoast instead of ScaffoldMessenger
         Fluttertoast.showToast(
@@ -323,7 +544,7 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
       );
 
       // Close loading dialog
-      if (!mounted) return;
+      if (!context.mounted) return;
       Navigator.pop(context);
 
       // Check API response
@@ -356,7 +577,7 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
       }
     } catch (e) {
       // Close loading dialog
-      if (!mounted) return;
+      if (!context.mounted) return;
       Navigator.pop(context);
 
       // Show error message using Fluttertoast
@@ -385,6 +606,7 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
           responseData: responseData,
           item: widget.item,
           cubit: widget.cubit,
+          parentContext: context,
         );
       },
     );
@@ -407,5 +629,11 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
         );
       },
     );
+  }
+
+  void closeAllDialogs(BuildContext context) {
+    while (Navigator.canPop(context)) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
   }
 }

@@ -103,6 +103,8 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
     required String status,
     required String scannedSku,
     String? reason,
+    String? priceOverride,
+    int? isProduceOverride,
   }) async {
     try {
       final userData = await UserStorageService.getUserData();
@@ -117,11 +119,10 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
         itemId: int.parse(item.id),
         scannedSku: scannedSku,
         status: status,
-        price: (item.price ?? 0.0).toString(),
+        price: priceOverride ?? (item.price ?? 0.0).toString(),
         qty: item.quantity.toString(),
         preparationId: int.parse(orderId),
-        isProduce:
-            0, // Default to 0 since OrderItemModel doesn't have this field
+        isProduce: isProduceOverride ?? (item.isProduce ? 1 : 0),
         reason: reason,
         token: token,
       );

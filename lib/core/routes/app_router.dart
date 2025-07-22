@@ -111,9 +111,13 @@ class AppRouter {
               ),
         );
       case AppRoutes.itemAddPage:
-        final preparationId = settings.arguments as int;
+        final preparationId = settings.arguments as Map<String, dynamic>;
         return MaterialPageRoute(
-          builder: (context) => ItemAddPage(preparationId: preparationId),
+          builder:
+              (context) => ItemAddPage(
+                preparationId: preparationId['preparationId'] as int,
+                cubit: preparationId['cubit'] as OrderDetailsCubit?,
+              ),
         );
       default:
         return MaterialPageRoute(builder: (context) => const SplashPage());

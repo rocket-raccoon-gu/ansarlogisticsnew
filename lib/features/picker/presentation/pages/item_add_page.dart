@@ -5,10 +5,12 @@ import 'package:api_gateway/config/api_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ansarlogisticsnew/features/picker/presentation/cubit/item_add_page_cubit.dart';
+import 'package:ansarlogisticsnew/features/picker/presentation/cubit/order_details_cubit.dart';
 
 class ItemAddPage extends StatefulWidget {
   final int preparationId;
-  const ItemAddPage({super.key, required this.preparationId});
+  final OrderDetailsCubit? cubit;
+  ItemAddPage({super.key, required this.preparationId, this.cubit});
 
   @override
   State<ItemAddPage> createState() => _ItemAddPageState();

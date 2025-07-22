@@ -222,7 +222,7 @@ class _ItemListingPageState extends State<ItemListingPage> {
                         preparationId: widget.preparationId,
                       ),
               floatingActionButton: FloatingActionButton.extended(
-                onPressed: _showAddItemSheet,
+                onPressed: () => _showAddItemSheet(widget.cubit!),
                 icon: const Icon(Icons.add),
                 label: const Text('Add Item'),
                 backgroundColor: Colors.blue,
@@ -301,7 +301,7 @@ class _ItemListingPageState extends State<ItemListingPage> {
                 },
               ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddItemSheet,
+        onPressed: () => _showAddItemSheet(widget.cubit!),
         icon: const Icon(Icons.add),
         label: const Text('Add Item'),
         backgroundColor: Colors.blue,
@@ -335,7 +335,7 @@ class _ItemListingPageState extends State<ItemListingPage> {
     );
   }
 
-  void _showAddItemSheet() {
+  void _showAddItemSheet(OrderDetailsCubit cubit) {
     // showModalBottomSheet(
     //   context: context,
     //   isScrollControlled: true,
@@ -460,7 +460,7 @@ class _ItemListingPageState extends State<ItemListingPage> {
     Navigator.pushNamed(
       context,
       '/item_add_page',
-      arguments: widget.preparationId,
+      arguments: {'preparationId': widget.preparationId, 'cubit': widget.cubit},
     );
   }
 

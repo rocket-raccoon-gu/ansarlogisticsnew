@@ -106,12 +106,7 @@ class OrderItemTile extends StatelessWidget {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Icon(
-                          Icons.confirmation_number,
-                          size: 15,
-                          color: Colors.grey[600],
-                        ),
-                        const SizedBox(width: 4),
+                        
                         Text(
                           'SKU: ',
                           style: TextStyle(
@@ -132,7 +127,6 @@ class OrderItemTile extends StatelessWidget {
                     const SizedBox(height: 3),
                     Row(
                       children: [
-                        const SizedBox(width: 4),
                         Text(
                           'Price: ',
                           style: TextStyle(
@@ -180,22 +174,30 @@ class OrderItemTile extends StatelessWidget {
                 ),
               ),
               // Status badge at the end
-              Container(
-                margin: const EdgeInsets.only(left: 10),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: getStatusColor(item.status.toString().split('.').last),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  getStatusText(item.status.toString().split('.').last),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+              Flexible(
+                flex: 0,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: 90),
+                  child: Container(
+                    margin: const EdgeInsets.only(left: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: getStatusColor(item.status.toString().split('.').last),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      getStatusText(item.status.toString().split('.').last),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
                 ),
               ),

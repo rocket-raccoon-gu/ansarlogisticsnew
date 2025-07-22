@@ -34,12 +34,42 @@ class _ItemReplacementPageState extends State<ItemReplacementPage> {
     'Item Replacement From Customer Suggestion',
   ];
 
+  late TextEditingController _manualBarcodeController;
+
+  @override
+  void initState() {
+    super.initState();
+    _manualBarcodeController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _manualBarcodeController.dispose();
+    super.dispose();
+  }
+
   String getFullImageUrl(String? path) {
     if (path == null || path.isEmpty) return '';
     if (path.startsWith('http')) return path;
     const baseUrl = ApiConfig.imageUrl;
     log('getFullImageUrl: $baseUrl$path');
     return '$baseUrl$path';
+  }
+
+  void _handleManualBarcodeSubmit(BuildContext context) async {
+    final barcode = _manualBarcodeController.text.trim();
+    if (barcode.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a barcode.')),
+      );
+      return;
+    }
+    setState(() {
+      _replacementBarcode = barcode;
+    });
+    context.read<ItemReplacementCubit>().getProductBySku(barcode);
+    // Unfocus the text field to dismiss the keyboard
+    FocusScope.of(context).unfocus();
   }
 
   @override
@@ -245,6 +275,44 @@ class _ItemReplacementPageState extends State<ItemReplacementPage> {
                                         ),
                                       ],
                                     ),
+                                    const SizedBox(height: 10),
+                                    // Manual barcode entry
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: TextField(
+                                              controller: _manualBarcodeController,
+                                              decoration: const InputDecoration(
+                                                labelText: 'Enter Barcode',
+                                                border: InputBorder.none,
+                                              ),
+                                              style: const TextStyle(fontSize: 16),
+                                              onSubmitted: (_) => _handleManualBarcodeSubmit(context),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          ElevatedButton(
+                                            onPressed: () => _handleManualBarcodeSubmit(context),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.blue,
+                                              foregroundColor: Colors.white,
+                                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            child: const Text('Submit'),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
                                     if (state is ItemReplacementLoaded) ...[
                                       Divider(height: 32),
                                       Row(

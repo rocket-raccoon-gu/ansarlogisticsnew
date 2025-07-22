@@ -70,7 +70,7 @@ class _ItemAddPageState extends State<ItemAddPage> {
               );
             } else if (state is ItemAddPageSuccess) {
               Navigator.pop(context);
-              Navigator.pop(context, 'updated');
+              Navigator.pop(context, 'added');
               // ScaffoldMessenger.of(context).showSnackBar(
               //   const SnackBar(content: Text('Item added successfully')),
               // );

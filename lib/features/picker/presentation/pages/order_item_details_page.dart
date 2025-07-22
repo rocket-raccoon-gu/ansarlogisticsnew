@@ -37,11 +37,19 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
   late int _quantity;
   bool _isLoading = false;
   bool _isProcessing = false;
+  late TextEditingController _manualBarcodeController;
 
   @override
   void initState() {
     super.initState();
     _quantity = widget.item.quantity;
+    _manualBarcodeController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _manualBarcodeController.dispose();
+    super.dispose();
   }
 
   @override
@@ -59,241 +67,338 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
             appBar: AppBar(title: Text("Item Details")),
             body: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Product Images
-                  if (widget.item.productImages.isNotEmpty)
-                    Container(
-                      height: 200,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: widget.item.productImages.length,
-                        itemBuilder: (context, index) {
-                          return Container(
-                            width: 200,
-                            margin: const EdgeInsets.only(right: 12),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.network(
-                                '${ApiConfig.imageUrl}${widget.item.productImages[index]}',
-                                fit: BoxFit.cover,
-                                errorBuilder:
-                                    (context, error, stackTrace) => Container(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Product Info Card
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Product Images
+                            if (widget.item.productImages.isNotEmpty)
+                              SizedBox(
+                                height: 180,
+                                child: ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: widget.item.productImages.length,
+                                  itemBuilder: (context, index) {
+                                    return Container(
+                                      width: 180,
+                                      margin: const EdgeInsets.only(right: 12),
                                       decoration: BoxDecoration(
-                                        color: Colors.grey.shade100,
                                         borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.grey.shade200),
                                       ),
-                                      child: const Icon(
-                                        Icons.image_not_supported,
-                                        size: 60,
-                                        color: Colors.grey,
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.network(
+                                          '${ApiConfig.imageUrl}${widget.item.productImages[index]}',
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) => Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey.shade100,
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: const Icon(
+                                              Icons.image_not_supported,
+                                              size: 60,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                          loadingBuilder: (context, child, loadingProgress) {
+                                            if (loadingProgress == null) return child;
+                                            return Container(
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey.shade100,
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              child: const Center(
+                                                child: CircularProgressIndicator(),
+                                              ),
+                                            );
+                                          },
+                                        ),
                                       ),
+                                    );
+                                  },
+                                ),
+                              )
+                            else
+                              Center(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(
+                                    widget.item.imageUrl,
+                                    width: 120,
+                                    height: 120,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => const Icon(
+                                      Icons.image,
+                                      size: 80,
+                                      color: Colors.grey,
                                     ),
-                                loadingBuilder: (
-                                  context,
-                                  child,
-                                  loadingProgress,
-                                ) {
-                                  if (loadingProgress == null) return child;
-                                  return Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade100,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: const Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                  );
-                                },
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 16),
+                            Text(
+                              widget.item.name,
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          );
-                        },
-                      ),
-                    )
-                  else
-                    // Fallback to single image if no product images
-                    Center(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          widget.item.imageUrl,
-                          width: 150,
-                          height: 150,
-                          fit: BoxFit.cover,
-                          errorBuilder:
-                              (context, error, stackTrace) => const Icon(
-                                Icons.image,
-                                size: 100,
-                                color: Colors.grey,
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Chip(
+                                  label: Text(
+                                    widget.item.deliveryType == 'exp' ? 'Express' : 'No Limit',
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                  backgroundColor: Colors.blue.shade50,
+                                  labelStyle: const TextStyle(color: Colors.blue),
+                                ),
+                                const SizedBox(width: 8),
+                                Chip(
+                                  label: Text('SKU: ${widget.item.sku ?? '-'}'),
+                                  backgroundColor: Colors.grey.shade100,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'QAR ${widget.item.price?.toStringAsFixed(2) ?? '0.00'}',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.green,
                               ),
+                            ),
+                            if (widget.item.description != null && widget.item.description!.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: Text(
+                                  widget.item.description!,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                const Text(
+                                  AppStrings.quantity,
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                                const SizedBox(width: 16),
+                                IconButton(
+                                  icon: const Icon(Icons.remove_circle_outline),
+                                  onPressed: _quantity > 1
+                                      ? () {
+                                          setState(() {
+                                            _quantity--;
+                                          });
+                                          widget.cubit.updateQuantity(
+                                            widget.item,
+                                            _quantity,
+                                          );
+                                        }
+                                      : null,
+                                ),
+                                Text('$_quantity', style: const TextStyle(fontSize: 18)),
+                                IconButton(
+                                  icon: const Icon(Icons.add_circle_outline),
+                                  onPressed: () {
+                                    setState(() {
+                                      _quantity++;
+                                    });
+                                    widget.cubit.updateQuantity(widget.item, _quantity);
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'SKU: ${widget.item.sku ?? ''}',
-                    style: const TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    widget.item.name,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    widget.item.deliveryType == 'exp' ? 'Express' : 'No Limit',
-                    style: const TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'QAR ${widget.item.price?.toStringAsFixed(2) ?? '0.00'}',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (widget.item.description != null &&
-                      widget.item.description!.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        widget.item.description!,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey,
-                        ),
+                    const SizedBox(height: 20),
+                    Divider(height: 1, thickness: 1, color: Color(0xFFE0E0E0)),
+                    const SizedBox(height: 20),
+                    // Section: Pick Item
+                    Text(
+                      'Pick Item',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade700,
                       ),
                     ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      const Text(
-                        AppStrings.quantity,
-                        style: TextStyle(fontSize: 16),
-                      ),
-                      const SizedBox(width: 16),
-                      IconButton(
-                        icon: const Icon(Icons.remove_circle_outline),
-                        onPressed:
-                            _quantity > 1
-                                ? () {
-                                  setState(() {
-                                    _quantity--;
-                                  });
-                                  widget.cubit.updateQuantity(
-                                    widget.item,
-                                    _quantity,
-                                  );
-                                }
-                                : null,
-                      ),
-                      Text('$_quantity', style: const TextStyle(fontSize: 18)),
-                      IconButton(
-                        icon: const Icon(Icons.add_circle_outline),
-                        onPressed: () {
-                          setState(() {
-                            _quantity++;
-                          });
-                          widget.cubit.updateQuantity(widget.item, _quantity);
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 32),
-                  // Scan Button (only show if item is not picked)
-                  if (widget.item.status != OrderItemStatus.picked)
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.qr_code_scanner),
-                        label: const Text('Scan Barcode to Pick'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _isProcessing = true;
-                          });
-                        },
-                      ),
-                    ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.remove_circle_outline),
-                          label: const Text(AppStrings.notAvailable),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
+                    const SizedBox(height: 12),
+                    if (widget.item.status != OrderItemStatus.picked)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  icon: const Icon(Icons.qr_code_scanner),
+                                  label: const Text('Scan Barcode to Pick'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _isProcessing = true;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
-                          onPressed:
-                              widget.item.status == OrderItemStatus.notAvailable
-                                  ? null
-                                  : () {
+                          const SizedBox(height: 16),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    enabled: widget.item.status != OrderItemStatus.picked && !_isLoading,
+                                    controller: _manualBarcodeController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Enter Barcode',
+                                      border: InputBorder.none,
+                                    ),
+                                    style: const TextStyle(fontSize: 16),
+                                    onSubmitted: (value) => _handleManualBarcodeSubmit(),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                ElevatedButton(
+                                  onPressed: (widget.item.status == OrderItemStatus.picked || _isLoading)
+                                      ? null
+                                      : _handleManualBarcodeSubmit,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blue,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child: const Text('Submit'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    const SizedBox(height: 24),
+                    Divider(height: 1, thickness: 1, color: Color(0xFFE0E0E0)),
+                    const SizedBox(height: 20),
+                    // Section: Other Actions
+                    Text(
+                      'Other Actions',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.remove_circle_outline),
+                            label: const Text(AppStrings.notAvailable),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.red,
+                              side: const BorderSide(color: Colors.red),
+                              textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            onPressed: widget.item.status == OrderItemStatus.notAvailable
+                                ? null
+                                : () {
                                     showDialog(
                                       context: context,
-                                      builder:
-                                          (context) => ConfirmationDialog(
-                                            title: 'Mark as Not Available',
-                                            message:
-                                                'Are you sure you want to mark "${widget.item.name}" as not available?',
-                                            confirmText: 'Mark Not Available',
-                                            confirmColor: Colors.orange,
-                                            item: widget.item,
-                                            cubit: widget.cubit,
-                                            status: 'item_not_available',
-                                            reason:
-                                                'Manually marked as not available',
-                                          ),
+                                      builder: (context) => ConfirmationDialog(
+                                        title: 'Mark as Not Available',
+                                        message: 'Are you sure you want to mark "${widget.item.name}" as not available?',
+                                        confirmText: 'Mark Not Available',
+                                        confirmColor: Colors.orange,
+                                        item: widget.item,
+                                        cubit: widget.cubit,
+                                        status: 'item_not_available',
+                                        reason: 'Manually marked as not available',
+                                      ),
                                     );
                                   },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.cancel_outlined),
-                          label: const Text(AppStrings.canceled),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.grey,
                           ),
-                          onPressed:
-                              widget.item.status == OrderItemStatus.canceled
-                                  ? null
-                                  : () {
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.cancel_outlined),
+                            label: const Text(AppStrings.canceled),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.grey,
+                              side: const BorderSide(color: Colors.grey),
+                              textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            onPressed: widget.item.status == OrderItemStatus.canceled
+                                ? null
+                                : () {
                                     showDialog(
                                       context: context,
-                                      builder:
-                                          (context) => ConfirmationDialog(
-                                            title: 'Cancel Item',
-                                            message:
-                                                'Are you sure you want to cancel "${widget.item.name}"?',
-                                            confirmText: 'Cancel Item',
-                                            confirmColor: Colors.grey,
-                                            item: widget.item,
-                                            cubit: widget.cubit,
-                                            status: 'item_canceled',
-                                            reason: 'Manually canceled',
-                                          ),
+                                      builder: (context) => ConfirmationDialog(
+                                        title: 'Cancel Item',
+                                        message: 'Are you sure you want to cancel "${widget.item.name}"?',
+                                        confirmText: 'Cancel Item',
+                                        confirmColor: Colors.grey,
+                                        item: widget.item,
+                                        cubit: widget.cubit,
+                                        status: 'item_canceled',
+                                        reason: 'Manually canceled',
+                                      ),
                                     );
                                   },
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             ),
           ),
@@ -602,6 +707,22 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
       // Don't close scanner - let user retry
       // The scanner will automatically resume after 1 second due to the debounce mechanism
     }
+  }
+
+  void _handleManualBarcodeSubmit() async {
+    final barcode = _manualBarcodeController.text.trim();
+    if (barcode.isEmpty) {
+      Fluttertoast.showToast(
+        msg: 'Please enter a barcode',
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.CENTER,
+        backgroundColor: Colors.red,
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
+    await _handleBarcodeScanned(context, barcode);
+    setState(() => _isLoading = false);
   }
 
   void _showProductFoundDialog(

@@ -25,41 +25,49 @@ class OrderItemTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Product Image
               Container(
-                width: 80,
-                height: 80,
+                width: 70,
+                height: 70,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: Colors.grey.shade200, width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.08),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                   child: Image.network(
                     item.productImages.isNotEmpty
                         ? '${ApiConfig.imageUrl}${item.productImages.first}'
                         : item.imageUrl,
-                    width: 80,
-                    height: 80,
+                    width: 70,
+                    height: 70,
                     fit: BoxFit.cover,
                     errorBuilder:
                         (context, error, stackTrace) => Container(
                           decoration: BoxDecoration(
                             color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Icon(
                             Icons.image_not_supported,
-                            size: 40,
+                            size: 36,
                             color: Colors.grey,
                           ),
                         ),
@@ -68,7 +76,7 @@ class OrderItemTile extends StatelessWidget {
                       return Container(
                         decoration: BoxDecoration(
                           color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Center(
                           child: CircularProgressIndicator(strokeWidth: 2),
@@ -78,74 +86,119 @@ class OrderItemTile extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 18),
               // Product Details
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       item.name,
                       style: const TextStyle(
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                         fontSize: 16,
+                        color: Colors.black87,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'SKU: ${item.sku}',
-                      style: const TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Quantity: ${item.quantity}',
-                      style: const TextStyle(fontSize: 14, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: getStatusColor(
-                          item.status.toString().split('.').last,
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.confirmation_number,
+                          size: 15,
+                          color: Colors.grey[600],
                         ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        getStatusText(item.status.toString().split('.').last),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                        const SizedBox(width: 4),
+                        Text(
+                          'SKU: ',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[700],
+                          ),
                         ),
-                      ),
+                        Text(
+                          item.sku ?? '-',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[800],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        const SizedBox(width: 4),
+                        Text(
+                          'Price: ',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        Text(
+                          item.price?.toStringAsFixed(2) ?? '-',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[800],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.inventory_2,
+                          size: 15,
+                          color: Colors.grey[600],
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Qty: ',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        Text(
+                          '${item.quantity}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[800],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              // Scan Button (only show if item is not picked)
-              if (item.status != OrderItemStatus.picked)
-                Column(
-                  children: [
-                    IconButton(
-                      onPressed: () => _openScanner(context),
-                      icon: const Icon(
-                        Icons.qr_code_scanner,
-                        color: Colors.blue,
-                        size: 28,
-                      ),
-                      tooltip: 'Scan Barcode',
-                    ),
-                    const Text(
-                      'Scan',
-                      style: TextStyle(fontSize: 12, color: Colors.blue),
-                    ),
-                  ],
+              // Status badge at the end
+              Container(
+                margin: const EdgeInsets.only(left: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
                 ),
+                decoration: BoxDecoration(
+                  color: getStatusColor(item.status.toString().split('.').last),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  getStatusText(item.status.toString().split('.').last),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ],
           ),
         ),

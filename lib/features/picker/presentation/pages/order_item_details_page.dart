@@ -20,11 +20,13 @@ import 'dart:developer';
 class OrderItemDetailsPage extends StatefulWidget {
   final OrderItemModel item;
   final OrderDetailsCubit cubit;
+  final int preparationId;
 
   const OrderItemDetailsPage({
     super.key,
     required this.item,
     required this.cubit,
+    required this.preparationId,
   });
 
   @override
@@ -511,11 +513,12 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
 
     try {
       // Show loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
+      // showDialog(
+      //   context: context,
+      //   barrierDismissible: false,
+      //   builder: (context) => const Center(child: CircularProgressIndicator()),
+      // );
+      setState(() => _isLoading = true);
 
       // Get user token
       final userData = await UserStorageService.getUserData();
@@ -523,7 +526,8 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
 
       if (token == null) {
         if (!context.mounted) return;
-        Navigator.pop(context); // Close loading dialog
+        // Navigator.pop(context); // Close loading dialog
+        setState(() => _isLoading = false);
         // Use Fluttertoast instead of ScaffoldMessenger
         Fluttertoast.showToast(
           msg: 'Authentication token not found',
@@ -545,21 +549,27 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
 
       // Close loading dialog
       if (!context.mounted) return;
-      Navigator.pop(context);
+      // Navigator.pop(context);
 
       // Check API response
       if (response.data != null && response.data['match'] == "0") {
         // Close scanner on success
-        Navigator.pop(context);
-
+        // Navigator.pop(context);
+        setState(() => _isProcessing = false);
         // Show product found dialog with pickup button
-        _showProductFoundDialog(context, response.data);
+        _showProductFoundDialog(context, response.data, widget.preparationId);
       } else if (response.data != null && response.data['match'] == "1") {
         // Close scanner
-        Navigator.pop(context);
+        // Navigator.pop(context);
+        setState(() => _isProcessing = false);
 
         // Show product not matching dialog with replace button
-        _showProductNotMatchingDialog(context, response.data, barcode);
+        _showProductNotMatchingDialog(
+          context,
+          response.data,
+          barcode,
+          widget.preparationId,
+        );
       } else {
         // Show error message from API but don't close scanner
         final errorMessage = response.data?['message'] ?? 'Failed to pick item';
@@ -597,6 +607,7 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
   void _showProductFoundDialog(
     BuildContext context,
     Map<String, dynamic> responseData,
+    int preparationId,
   ) {
     showDialog(
       context: context,
@@ -607,6 +618,12 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
           item: widget.item,
           cubit: widget.cubit,
           parentContext: context,
+          onCancel: () {
+            setState(() => _isLoading = false);
+          },
+          onSuccess: () {
+            setState(() => _isLoading = false);
+          },
         );
       },
     );
@@ -616,6 +633,7 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
     BuildContext context,
     Map<String, dynamic> responseData,
     String barcode,
+    int preparationId,
   ) {
     showDialog(
       context: context,
@@ -626,6 +644,13 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
           barcode: barcode,
           item: widget.item,
           cubit: widget.cubit,
+          preparationId: preparationId,
+          onCancel: () {
+            setState(() => _isLoading = false);
+          },
+          onSuccess: () {
+            setState(() => _isLoading = false);
+          },
         );
       },
     );

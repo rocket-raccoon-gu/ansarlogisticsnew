@@ -7,8 +7,14 @@ import '../pages/item_listing_page.dart';
 class TypeCardsWidget extends StatelessWidget {
   final List<OrderItemModel> allItems;
   final OrderDetailsCubit? cubit;
+  final int preparationId;
 
-  const TypeCardsWidget({super.key, required this.allItems, this.cubit});
+  const TypeCardsWidget({
+    super.key,
+    required this.allItems,
+    this.cubit,
+    required this.preparationId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -83,6 +89,7 @@ class TypeCardsWidget extends StatelessWidget {
                               items: expItems,
                               title: 'Express Items',
                               cubit: orderCubit,
+                              preparationId: preparationId,
                             ),
                       ),
                     );
@@ -135,6 +142,7 @@ class TypeCardsWidget extends StatelessWidget {
                               items: nolItems,
                               title: 'Normal Local Items',
                               cubit: orderCubit,
+                              preparationId: preparationId,
                             ),
                       ),
                     );

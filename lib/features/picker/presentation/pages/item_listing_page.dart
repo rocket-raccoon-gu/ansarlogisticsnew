@@ -6,10 +6,6 @@ import '../widgets/order_item_tile.dart';
 import '../widgets/category_item_list.dart';
 import '../cubit/order_details_cubit.dart';
 import 'order_item_details_page.dart';
-import 'package:api_gateway/services/api_service.dart';
-import 'package:api_gateway/http/http_client.dart';
-import 'package:api_gateway/ws/websockt_client.dart';
-import 'package:ansarlogisticsnew/core/routes/app_router.dart';
 
 class ItemListingPage extends StatefulWidget {
   final List<OrderItemModel> items;
@@ -17,6 +13,7 @@ class ItemListingPage extends StatefulWidget {
   final OrderDetailsCubit? cubit;
   final String? deliveryType;
   final int? tabIndex;
+  final int preparationId;
 
   const ItemListingPage({
     Key? key,
@@ -25,6 +22,7 @@ class ItemListingPage extends StatefulWidget {
     this.cubit,
     this.deliveryType,
     this.tabIndex,
+    required this.preparationId,
   }) : super(key: key);
 
   @override
@@ -221,7 +219,14 @@ class _ItemListingPageState extends State<ItemListingPage> {
                       : CategoryItemList(
                         categories: tabFilteredCategories,
                         cubit: widget.cubit,
+                        preparationId: widget.preparationId,
                       ),
+              floatingActionButton: FloatingActionButton.extended(
+                onPressed: _showAddItemSheet,
+                icon: const Icon(Icons.add),
+                label: const Text('Add Item'),
+                backgroundColor: Colors.blue,
+              ),
               bottomNavigationBar: BottomNavigationBar(
                 currentIndex: _selectedIndex,
                 onTap: (index) {
@@ -281,31 +286,26 @@ class _ItemListingPageState extends State<ItemListingPage> {
                 itemCount: filteredItems.length,
                 itemBuilder: (context, index) {
                   final item = filteredItems[index];
+                  final int prepId =
+                      widget.cubit!.orderId is int
+                          ? widget.cubit!.orderId as int
+                          : int.tryParse(widget.cubit!.orderId.toString()) ?? 0;
                   return OrderItemTile(
                     item: item,
-                    onTap: () async {
+                    onTap: () {
                       if (widget.cubit != null) {
-                        final result = await Navigator.pushNamed(
-                          context,
-                          AppRoutes.orderItemDetails,
-                          arguments: {'item': item, 'cubit': widget.cubit!},
-                        );
-                        if (result == 'updated') {
-                          setState(
-                            () {},
-                          ); // Refresh UI to reflect updated cubit state
-                        }
-                      }
-                    },
-                    onItemPicked: () {
-                      // Refresh the cubit when an item is picked
-                      if (widget.cubit != null) {
-                        widget.cubit!.loadItems();
+                        _handleOrderItemTap(context, item, prepId);
                       }
                     },
                   );
                 },
               ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAddItemSheet,
+        icon: const Icon(Icons.add),
+        label: const Text('Add Item'),
+        backgroundColor: Colors.blue,
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
@@ -333,5 +333,160 @@ class _ItemListingPageState extends State<ItemListingPage> {
         type: BottomNavigationBarType.fixed,
       ),
     );
+  }
+
+  void _showAddItemSheet() {
+    // showModalBottomSheet(
+    //   context: context,
+    //   isScrollControlled: true,
+    //   shape: const RoundedRectangleBorder(
+    //     borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+    //   ),
+    //   builder: (context) {
+    //     final _formKey = GlobalKey<FormState>();
+    //     String name = '';
+    //     String sku = '';
+    //     String price = '';
+    //     String quantity = '';
+    //     return Padding(
+    //       padding: EdgeInsets.only(
+    //         left: 20,
+    //         right: 20,
+    //         top: 24,
+    //         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+    //       ),
+    //       child: Form(
+    //         key: _formKey,
+    //         child: Column(
+    //           mainAxisSize: MainAxisSize.min,
+    //           crossAxisAlignment: CrossAxisAlignment.start,
+    //           children: [
+    //             Center(
+    //               child: Container(
+    //                 width: 40,
+    //                 height: 4,
+    //                 margin: const EdgeInsets.only(bottom: 16),
+    //                 decoration: BoxDecoration(
+    //                   color: Colors.grey[300],
+    //                   borderRadius: BorderRadius.circular(2),
+    //                 ),
+    //               ),
+    //             ),
+    //             const Text(
+    //               'Add New Item',
+    //               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+    //             ),
+    //             const SizedBox(height: 18),
+    //             TextFormField(
+    //               decoration: const InputDecoration(
+    //                 labelText: 'Name',
+    //                 border: OutlineInputBorder(),
+    //               ),
+    //               validator:
+    //                   (v) =>
+    //                       v == null || v.trim().isEmpty ? 'Enter name' : null,
+    //               onChanged: (v) => name = v,
+    //             ),
+    //             const SizedBox(height: 12),
+    //             TextFormField(
+    //               decoration: const InputDecoration(
+    //                 labelText: 'SKU',
+    //                 border: OutlineInputBorder(),
+    //               ),
+    //               validator:
+    //                   (v) => v == null || v.trim().isEmpty ? 'Enter SKU' : null,
+    //               onChanged: (v) => sku = v,
+    //             ),
+    //             const SizedBox(height: 12),
+    //             TextFormField(
+    //               decoration: const InputDecoration(
+    //                 labelText: 'Price',
+    //                 border: OutlineInputBorder(),
+    //               ),
+    //               keyboardType: TextInputType.numberWithOptions(decimal: true),
+    //               validator:
+    //                   (v) =>
+    //                       v == null || v.trim().isEmpty ? 'Enter price' : null,
+    //               onChanged: (v) => price = v,
+    //             ),
+    //             const SizedBox(height: 12),
+    //             TextFormField(
+    //               decoration: const InputDecoration(
+    //                 labelText: 'Quantity',
+    //                 border: OutlineInputBorder(),
+    //               ),
+    //               keyboardType: TextInputType.number,
+    //               validator:
+    //                   (v) =>
+    //                       v == null || v.trim().isEmpty
+    //                           ? 'Enter quantity'
+    //                           : null,
+    //               onChanged: (v) => quantity = v,
+    //             ),
+    //             const SizedBox(height: 20),
+    //             SizedBox(
+    //               width: double.infinity,
+    //               child: ElevatedButton(
+    //                 style: ElevatedButton.styleFrom(
+    //                   backgroundColor: Colors.blue,
+    //                   foregroundColor: Colors.white,
+    //                   padding: const EdgeInsets.symmetric(vertical: 14),
+    //                   textStyle: const TextStyle(
+    //                     fontSize: 16,
+    //                     fontWeight: FontWeight.bold,
+    //                   ),
+    //                 ),
+    //                 onPressed: () {
+    //                   if (_formKey.currentState!.validate()) {
+    //                     // TODO: Add logic to actually add the item to the list or backend
+    //                     Navigator.pop(context);
+    //                     ScaffoldMessenger.of(context).showSnackBar(
+    //                       const SnackBar(
+    //                         content: Text('Item added (demo only).'),
+    //                       ),
+    //                     );
+    //                   }
+    //                 },
+    //                 child: const Text('Add Item'),
+    //               ),
+    //             ),
+    //           ],
+    //         ),
+    //       );
+    //     },
+    //   ),
+
+    // );
+    Navigator.pushNamed(
+      context,
+      '/item_add_page',
+      arguments: widget.preparationId,
+    );
+  }
+
+  void _handleOrderItemTap(
+    BuildContext context,
+    OrderItemModel item,
+    int prepId,
+  ) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => OrderItemDetailsPage(
+              item: item,
+              cubit: widget.cubit!,
+              preparationId: prepId,
+            ),
+      ),
+    );
+    if (result == 'updated' || result == 'added') {
+      widget.cubit!.loadItems();
+      setState(() {
+        if (result == 'added') {
+          _selectedIndex = 1; // Switch to Picked tab
+        }
+      });
+    }
   }
 }

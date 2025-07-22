@@ -81,6 +81,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                       ...state.notAvailable,
                     ],
                     cubit: BlocProvider.of<OrderDetailsCubit>(context),
+                    preparationId: int.parse(widget.order.preparationId),
                   ),
                 ],
               );

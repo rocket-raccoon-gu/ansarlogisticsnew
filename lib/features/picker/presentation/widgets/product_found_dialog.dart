@@ -10,6 +10,7 @@ class ProductFoundDialog extends StatefulWidget {
   final OrderDetailsCubit cubit;
   final VoidCallback? onSuccess;
   final BuildContext parentContext;
+  final VoidCallback? onCancel;
 
   const ProductFoundDialog({
     Key? key,
@@ -18,6 +19,7 @@ class ProductFoundDialog extends StatefulWidget {
     required this.cubit,
     required this.parentContext,
     this.onSuccess,
+    this.onCancel,
   }) : super(key: key);
 
   @override
@@ -88,6 +90,7 @@ class _ProductFoundDialogState extends State<ProductFoundDialog> {
                         isProcessing
                             ? null
                             : () {
+                              widget.onCancel?.call();
                               Navigator.of(context).pop(); // Close dialog
                             },
                     child: Text('Cancel'),

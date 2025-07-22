@@ -8,6 +8,7 @@ import '../../features/picker/data/models/order_item_model.dart';
 import '../../features/picker/presentation/cubit/order_details_cubit.dart';
 import '../services/user_storage_service.dart';
 import '../pages/splash_page.dart';
+import '../../features/picker/presentation/pages/item_add_page.dart';
 import '../../features/picker/presentation/pages/order_item_details_page.dart';
 
 class AppRoutes {
@@ -19,6 +20,7 @@ class AppRoutes {
   static const String home = '/home';
   static const String itemListing = '/item-listing';
   static const String orderItemDetails = '/order-item-details';
+  static const String itemAddPage = '/item_add_page';
 }
 
 class AppRouter {
@@ -72,6 +74,7 @@ class AppRouter {
                   cubit: args['cubit'] as OrderDetailsCubit?,
                   deliveryType: args['deliveryType'] as String?,
                   tabIndex: args['tabIndex'] as int?,
+                  preparationId: settings.arguments as int,
                 ),
           );
         } else if (settings.arguments is List<OrderItemModel>) {
@@ -82,6 +85,7 @@ class AppRouter {
                   items: settings.arguments as List<OrderItemModel>,
                   title: 'Item Listing',
                   cubit: null,
+                  preparationId: settings.arguments as int,
                 ),
           );
         } else {
@@ -92,6 +96,7 @@ class AppRouter {
                   items: [],
                   title: 'Item Listing',
                   cubit: null,
+                  preparationId: settings.arguments as int,
                 ),
           );
         }
@@ -102,7 +107,13 @@ class AppRouter {
               (context) => OrderItemDetailsPage(
                 item: args['item'] as OrderItemModel,
                 cubit: args['cubit'] as OrderDetailsCubit,
+                preparationId: args['preparationId'] as int,
               ),
+        );
+      case AppRoutes.itemAddPage:
+        final preparationId = settings.arguments as int;
+        return MaterialPageRoute(
+          builder: (context) => ItemAddPage(preparationId: preparationId),
         );
       default:
         return MaterialPageRoute(builder: (context) => const SplashPage());

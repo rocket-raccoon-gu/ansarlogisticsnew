@@ -240,6 +240,27 @@ class ApiService {
     }
   }
 
+  Future<dynamic> getProductBySku(String sku, String token) async {
+    try {
+      final response = await _httpClient.post(
+        '${ApiConfig.baseUrl}picker/orders/check-sku',
+        data: {'sku': sku},
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+      log('Get product by sku response status: ${response.statusCode}');
+      log('Get product by sku response data: ${response.data}');
+      return response;
+    } catch (e) {
+      log('Get product by sku error: $e.toString()');
+      rethrow;
+    }
+  }
+
   Future<dynamic> updateItemStatus({
     required int itemId,
     required String scannedSku,
@@ -250,6 +271,8 @@ class ApiService {
     required int isProduce,
     String? reason,
     required String token,
+    String? productName,
+    int? productId,
   }) async {
     try {
       final dio = Dio();
@@ -263,6 +286,8 @@ class ApiService {
         'qty': qty,
         'preparation_id': preparationId,
         'is_produce': isProduce,
+        'productId': productId ?? 0,
+        'name': productName ?? '',
         if (reason != null) 'reason': reason,
       };
       log('Update item status data: $data');

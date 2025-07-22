@@ -4,6 +4,7 @@ import '../../data/models/order_item_model.dart';
 import '../cubit/order_details_cubit.dart';
 import '../pages/item_listing_page.dart';
 import 'package:ansarlogisticsnew/core/routes/app_router.dart';
+import '../pages/item_replacement_page.dart';
 
 class ProductNotMatchingDialog extends StatelessWidget {
   final Map<String, dynamic> responseData;
@@ -11,7 +12,8 @@ class ProductNotMatchingDialog extends StatelessWidget {
   final OrderItemModel item;
   final OrderDetailsCubit cubit;
   final VoidCallback? onSuccess;
-
+  final void Function()? onCancel;
+  final int preparationId;
   const ProductNotMatchingDialog({
     Key? key,
     required this.responseData,
@@ -19,6 +21,8 @@ class ProductNotMatchingDialog extends StatelessWidget {
     required this.item,
     required this.cubit,
     this.onSuccess,
+    this.onCancel,
+    required this.preparationId,
   }) : super(key: key);
 
   @override
@@ -87,7 +91,8 @@ class ProductNotMatchingDialog extends StatelessWidget {
                           isProcessing
                               ? null
                               : () {
-                                Navigator.of(context).pop(); // Close dialog
+                                onCancel?.call();
+                                Navigator.of(context).pop();
                               },
                       child: Text('Cancel'),
                     ),
@@ -99,55 +104,66 @@ class ProductNotMatchingDialog extends StatelessWidget {
                                 setState(() {
                                   isProcessing = true;
                                 });
-                                try {
-                                  final success = await cubit.updateItemStatus(
-                                    item: item,
-                                    status: 'item_not_available',
-                                    scannedSku: barcode,
-                                    reason:
-                                        'Product not matching - replacement needed',
-                                  );
-                                  if (success) {
-                                    Fluttertoast.showToast(
-                                      msg:
-                                          'Item marked as not available for replacement',
-                                      toastLength: Toast.LENGTH_SHORT,
-                                      gravity: ToastGravity.BOTTOM,
-                                      timeInSecForIosWeb: 1,
-                                      backgroundColor: Colors.orange,
-                                    );
-                                    if (context.mounted) {
-                                      Navigator.of(
-                                        context,
-                                      ).pop(); // Close dialog
-                                      Navigator.of(context).pop(
-                                        'updated',
-                                      ); // Pop item details page, return to item listing
-                                    }
-                                  } else {
-                                    Fluttertoast.showToast(
-                                      msg: 'Failed to update item status',
-                                      toastLength: Toast.LENGTH_SHORT,
-                                      gravity: ToastGravity.BOTTOM,
-                                      timeInSecForIosWeb: 1,
-                                      backgroundColor: Colors.red,
-                                    );
-                                    setState(() {
-                                      isProcessing = false;
-                                    });
-                                  }
-                                } catch (e) {
-                                  Fluttertoast.showToast(
-                                    msg: 'Error: ${e.toString()}',
-                                    toastLength: Toast.LENGTH_SHORT,
-                                    gravity: ToastGravity.BOTTOM,
-                                    timeInSecForIosWeb: 1,
-                                    backgroundColor: Colors.red,
-                                  );
-                                  setState(() {
-                                    isProcessing = false;
-                                  });
-                                }
+                                // try {
+                                //   final success = await cubit.updateItemStatus(
+                                //     item: item,
+                                //     status: 'item_not_available',
+                                //     scannedSku: barcode,
+                                //     reason:
+                                //         'Product not matching - replacement needed',
+                                //   );
+                                //   if (success) {
+                                //     Fluttertoast.showToast(
+                                //       msg:
+                                //           'Item marked as not available for replacement',
+                                //       toastLength: Toast.LENGTH_SHORT,
+                                //       gravity: ToastGravity.BOTTOM,
+                                //       timeInSecForIosWeb: 1,
+                                //       backgroundColor: Colors.orange,
+                                //     );
+                                if (context.mounted) {
+                                  Navigator.of(context).pop();
+                                } // Close dialog
+                                //       Navigator.of(context).pop(
+                                //         'updated',
+                                //       ); // Pop item details page, return to item listing
+                                //     }
+                                //   } else {
+                                //     Fluttertoast.showToast(
+                                //       msg: 'Failed to update item status',
+                                //       toastLength: Toast.LENGTH_SHORT,
+                                //       gravity: ToastGravity.BOTTOM,
+                                //       timeInSecForIosWeb: 1,
+                                //       backgroundColor: Colors.red,
+                                //     );
+                                //     setState(() {
+                                //       isProcessing = false;
+                                //     });
+                                //   }
+                                // } catch (e) {
+                                //   Fluttertoast.showToast(
+                                //     msg: 'Error: ${e.toString()}',
+                                //     toastLength: Toast.LENGTH_SHORT,
+                                //     gravity: ToastGravity.BOTTOM,
+                                //     timeInSecForIosWeb: 1,
+                                //     backgroundColor: Colors.red,
+                                //   );
+                                //   setState(() {
+                                //     isProcessing = false;
+                                //   });
+                                // }
+                                onSuccess?.call();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => ItemReplacementPage(
+                                          item: item,
+                                          barcode: barcode,
+                                          preparationId: preparationId,
+                                        ),
+                                  ),
+                                );
                               },
                       icon:
                           isProcessing

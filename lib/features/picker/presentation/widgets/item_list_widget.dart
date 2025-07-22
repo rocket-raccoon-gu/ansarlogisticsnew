@@ -8,11 +8,12 @@ import '../pages/order_item_details_page.dart';
 class ItemListWidget extends StatelessWidget {
   final List<OrderItemModel> items;
   final String emptyText;
-
+  final int preparationId;
   const ItemListWidget({
     super.key,
     required this.items,
     required this.emptyText,
+    required this.preparationId,
   });
 
   @override
@@ -32,7 +33,12 @@ class ItemListWidget extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => OrderItemDetailsPage(item: item, cubit: cubit),
+                builder:
+                    (_) => OrderItemDetailsPage(
+                      item: item,
+                      cubit: cubit,
+                      preparationId: preparationId,
+                    ),
               ),
             );
           },

@@ -4,7 +4,10 @@ abstract class OrderDetailsState {}
 
 class OrderDetailsInitial extends OrderDetailsState {}
 
-class OrderDetailsLoading extends OrderDetailsState {}
+class OrderDetailsLoading extends OrderDetailsState {
+  final int preparationId;
+  OrderDetailsLoading({required this.preparationId});
+}
 
 class OrderDetailsLoaded extends OrderDetailsState {
   final List<OrderItemModel> toPick;

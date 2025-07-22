@@ -43,7 +43,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
         ),
       );
     } else {
-      emit(OrderDetailsLoading());
+      emit(OrderDetailsLoading(preparationId: int.parse(orderId)));
     }
 
     try {
@@ -211,5 +211,10 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
         ),
       );
     }
+  }
+
+  Future<void> reloadItemsFromApi() async {
+    _cachedOrderDetails = null;
+    await loadItems();
   }
 }

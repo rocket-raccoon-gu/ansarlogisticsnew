@@ -8,9 +8,14 @@ import 'package:ansarlogisticsnew/core/constants/app_colors.dart';
 class CategoryItemList extends StatefulWidget {
   final List<CategoryItemModel> categories;
   final OrderDetailsCubit? cubit;
+  final int preparationId;
 
-  const CategoryItemList({Key? key, required this.categories, this.cubit})
-    : super(key: key);
+  const CategoryItemList({
+    Key? key,
+    required this.categories,
+    this.cubit,
+    required this.preparationId,
+  }) : super(key: key);
 
   @override
   State<CategoryItemList> createState() => _CategoryItemListState();
@@ -123,6 +128,7 @@ class _CategoryItemListState extends State<CategoryItemList> {
                                       (context) => OrderItemDetailsPage(
                                         item: item,
                                         cubit: widget.cubit!,
+                                        preparationId: widget.preparationId,
                                       ),
                                 ),
                               );

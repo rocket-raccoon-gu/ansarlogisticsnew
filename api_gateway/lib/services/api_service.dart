@@ -190,13 +190,16 @@ class ApiService {
   Future<dynamic> updateOrderStatus(
     String status,
     int preparationId,
-    String token,
-  ) async {
+    String token, {
+    String? orderNumber,
+  }) async {
     try {
       final dio = Dio();
+      final data = {'status': status, 'preparation_id': preparationId};
+      if (orderNumber != null) data['order_number'] = orderNumber;
       final response = await dio.patch(
         '${ApiConfig.baseUrl}picker/orders/status',
-        data: {'status': status, 'preparation_id': preparationId},
+        data: data,
         options: Options(
           headers: {
             'Content-Type': 'application/json',
@@ -273,6 +276,7 @@ class ApiService {
     required String token,
     String? productName,
     int? productId,
+    required String orderNumber,
   }) async {
     try {
       final dio = Dio();
@@ -280,6 +284,7 @@ class ApiService {
 
       final data = {
         'item_id': itemId,
+        'order_number': orderNumber,
         'scanned_sku': scannedSku,
         'status': status,
         'price': price,
@@ -307,6 +312,24 @@ class ApiService {
       return response;
     } catch (e) {
       log('Update item status error: $e.toString()');
+      rethrow;
+    }
+  }
+
+  Future<Response> getDriverOrders(String token) async {
+    try {
+      final response = await _httpClient.get(
+        '${ApiConfig.baseUrl}driver/orders',
+        queryParameters: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      log('Driver Orders response status: ${response.statusCode}');
+      log('Driver Orders response data: ${response.data}');
+      return response;
+    } catch (e) {
+      log('Driver Orders error: ${e.toString()}');
       rethrow;
     }
   }

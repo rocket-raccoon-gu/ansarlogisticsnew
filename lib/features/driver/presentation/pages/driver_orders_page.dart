@@ -193,56 +193,7 @@ class _DriverOrdersPageState extends State<DriverOrdersPage> {
               );
             },
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.route),
-                label: const Text('View My Route'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  textStyle: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                onPressed: () async {
-                  // Get current location
-                  Position? position;
-                  try {
-                    position = await Geolocator.getCurrentPosition(
-                      desiredAccuracy: LocationAccuracy.high,
-                    );
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Could not get current location.'),
-                      ),
-                    );
-                    return;
-                  }
-                  if (position == null) return;
-                  final cubit = getIt<DriverOrdersPageCubit>();
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (_) => DriverRoutePage(
-                            orders: cubit.orders,
-                            driverLocation: LatLng(
-                              position!.latitude,
-                              position.longitude,
-                            ),
-                          ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
+          // Move BlocProvider up to wrap both the button and the list
           Expanded(
             child: BlocProvider(
               create: (context) => getIt<DriverOrdersPageCubit>(),
@@ -250,30 +201,100 @@ class _DriverOrdersPageState extends State<DriverOrdersPage> {
                 builder: (context, state) {
                   if (state is DriverOrdersPageLoaded) {
                     final orders = state.orders;
-                    if (orders.isEmpty) {
-                      return const Center(child: Text('No orders available.'));
-                    }
-                    return ListView.builder(
-                      itemCount: orders.length,
-                      itemBuilder: (context, index) {
-                        final order = orders[index];
-                        return DriverOrderListItem(
-                          order: order,
-                          onDirectionTap:
-                              order.customerZone != null
-                                  ? () => _openMaps(order.customerZone)
-                                  : null,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder:
-                                    (_) => DriverOrderDetailsPage(order: order),
+                    return Column(
+                      children: [
+                        if (orders.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.route),
+                                label: const Text('View My Route'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  textStyle: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                onPressed: () async {
+                                  // Get current location
+                                  Position? position;
+                                  try {
+                                    position =
+                                        await Geolocator.getCurrentPosition(
+                                          desiredAccuracy:
+                                              LocationAccuracy.high,
+                                        );
+                                  } catch (e) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Could not get current location.',
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  if (position == null) return;
+                                  final cubit = getIt<DriverOrdersPageCubit>();
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (_) => DriverRoutePage(
+                                            orders: cubit.orders,
+                                            driverLocation: LatLng(
+                                              position!.latitude,
+                                              position.longitude,
+                                            ),
+                                          ),
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        );
-                      },
+                            ),
+                          ),
+                        if (orders.isEmpty)
+                          const Expanded(
+                            child: Center(child: Text('No orders available.')),
+                          )
+                        else
+                          Expanded(
+                            child: ListView.builder(
+                              itemCount: orders.length,
+                              itemBuilder: (context, index) {
+                                final order = orders[index];
+                                return DriverOrderListItem(
+                                  order: order,
+                                  onDirectionTap:
+                                      order.customerZone != null
+                                          ? () => _openMaps(order.customerZone)
+                                          : null,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder:
+                                            (_) => DriverOrderDetailsPage(
+                                              order: order,
+                                            ),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                      ],
                     );
                   }
                   return const Center(child: CircularProgressIndicator());

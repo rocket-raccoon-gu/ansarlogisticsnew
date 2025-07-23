@@ -23,6 +23,7 @@ class ItemAddPageCubit extends Cubit<ItemAddPageState> {
     int isProduce,
     int productId,
     String productName,
+    String orderNumber,
   ) async {
     try {
       emit(ItemAddPageLoading());
@@ -40,6 +41,7 @@ class ItemAddPageCubit extends Cubit<ItemAddPageState> {
         token: token!,
         productId: productId,
         productName: productName,
+        orderNumber: orderNumber,
       );
       if (response.statusCode == 200) {
         emit(ItemAddPageSuccess());

@@ -6,17 +6,24 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/order_item_model.dart';
 import '../cubit/item_replacement_page_cubit.dart';
 import '../widgets/barcode_scanner_widget.dart';
+import '../cubit/order_details_cubit.dart';
+import 'order_details_page.dart';
+import '../../data/models/order_model.dart';
 
 class ItemReplacementPage extends StatefulWidget {
   final OrderItemModel item;
   final String? barcode;
   final int preparationId;
+  final OrderDetailsCubit orderDetailsCubit;
+  final OrderModel order;
 
   const ItemReplacementPage({
     Key? key,
     required this.item,
     this.barcode,
     required this.preparationId,
+    required this.orderDetailsCubit,
+    required this.order,
   }) : super(key: key);
 
   @override
@@ -59,9 +66,9 @@ class _ItemReplacementPageState extends State<ItemReplacementPage> {
   void _handleManualBarcodeSubmit(BuildContext context) async {
     final barcode = _manualBarcodeController.text.trim();
     if (barcode.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a barcode.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please enter a barcode.')));
       return;
     }
     setState(() {
@@ -79,14 +86,13 @@ class _ItemReplacementPageState extends State<ItemReplacementPage> {
       child: BlocListener<ItemReplacementCubit, ItemReplacementState>(
         listener: (context, state) {
           if (state is ItemReplacementSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Item replaced successfully!')),
+            // Navigate to OrderDetailsPage and reload items
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => OrderDetailsPage(order: widget.order),
+              ),
             );
-            // Pop twice to get back to the item listing page
-            Navigator.of(context).pop(); // Pop ItemReplacementPage
-            Navigator.of(
-              context,
-            ).pop('updated'); // Pop OrderItemDetailsPage with result
+            widget.orderDetailsCubit.reloadItemsFromApi();
           }
           if (state is ItemReplacementError) {
             ScaffoldMessenger.of(
@@ -282,29 +288,48 @@ class _ItemReplacementPageState extends State<ItemReplacementPage> {
                                         color: Colors.grey.shade100,
                                         borderRadius: BorderRadius.circular(10),
                                       ),
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 10,
+                                      ),
                                       child: Row(
                                         children: [
                                           Expanded(
                                             child: TextField(
-                                              controller: _manualBarcodeController,
+                                              controller:
+                                                  _manualBarcodeController,
                                               decoration: const InputDecoration(
                                                 labelText: 'Enter Barcode',
                                                 border: InputBorder.none,
                                               ),
-                                              style: const TextStyle(fontSize: 16),
-                                              onSubmitted: (_) => _handleManualBarcodeSubmit(context),
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                              ),
+                                              onSubmitted:
+                                                  (_) =>
+                                                      _handleManualBarcodeSubmit(
+                                                        context,
+                                                      ),
                                             ),
                                           ),
                                           const SizedBox(width: 8),
                                           ElevatedButton(
-                                            onPressed: () => _handleManualBarcodeSubmit(context),
+                                            onPressed:
+                                                () =>
+                                                    _handleManualBarcodeSubmit(
+                                                      context,
+                                                    ),
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor: Colors.blue,
                                               foregroundColor: Colors.white,
-                                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 18,
+                                                    vertical: 14,
+                                                  ),
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(8),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
                                               ),
                                             ),
                                             child: const Text('Submit'),
@@ -525,14 +550,27 @@ class _ItemReplacementPageState extends State<ItemReplacementPage> {
                                                     int.parse(widget.item.id),
                                                     _replacementBarcode ?? '',
                                                     _selectedReason ?? '',
-                                                    widget.item.price
+                                                    state
+                                                        .selectedReplacement
+                                                        .regularPrice
                                                         .toString(),
                                                     _replacementQuantity
                                                         .toString(),
                                                     widget.preparationId,
-                                                    widget.item.isProduce
+                                                    state
+                                                                .selectedReplacement
+                                                                .isProduce ==
+                                                            '1'
                                                         ? 1
                                                         : 0,
+                                                    widget
+                                                            .item
+                                                            .subgroupIdentifier ??
+                                                        '',
+                                                    state
+                                                        .selectedReplacement
+                                                        .skuName,
+                                                    widget.orderDetailsCubit,
                                                   );
                                             },
                                     child: const Text('Confirm Replacement'),

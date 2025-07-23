@@ -5,6 +5,7 @@ import '../cubit/order_details_cubit.dart';
 import '../pages/item_listing_page.dart';
 import 'package:ansarlogisticsnew/core/routes/app_router.dart';
 import '../pages/item_replacement_page.dart';
+import '../../data/models/order_model.dart';
 
 class ProductNotMatchingDialog extends StatelessWidget {
   final Map<String, dynamic> responseData;
@@ -14,6 +15,7 @@ class ProductNotMatchingDialog extends StatelessWidget {
   final VoidCallback? onSuccess;
   final void Function()? onCancel;
   final int preparationId;
+  final OrderModel order;
   const ProductNotMatchingDialog({
     Key? key,
     required this.responseData,
@@ -23,6 +25,7 @@ class ProductNotMatchingDialog extends StatelessWidget {
     this.onSuccess,
     this.onCancel,
     required this.preparationId,
+    required this.order,
   }) : super(key: key);
 
   @override
@@ -153,7 +156,7 @@ class ProductNotMatchingDialog extends StatelessWidget {
                                 //   });
                                 // }
                                 onSuccess?.call();
-                                Navigator.push(
+                                final result = await Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder:
@@ -161,9 +164,16 @@ class ProductNotMatchingDialog extends StatelessWidget {
                                           item: item,
                                           barcode: barcode,
                                           preparationId: preparationId,
+                                          orderDetailsCubit: cubit,
+                                          order: order,
                                         ),
                                   ),
                                 );
+                                if (context.mounted &&
+                                    (result == 'updated' ||
+                                        result == 'replaced')) {
+                                  Navigator.of(context).pop('replaced');
+                                }
                               },
                       icon:
                           isProcessing

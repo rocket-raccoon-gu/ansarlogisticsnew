@@ -10,6 +10,7 @@ import '../services/user_storage_service.dart';
 import '../pages/splash_page.dart';
 import '../../features/picker/presentation/pages/item_add_page.dart';
 import '../../features/picker/presentation/pages/order_item_details_page.dart';
+import '../../features/picker/data/models/order_model.dart';
 
 class AppRoutes {
   static const String splash = '/';
@@ -74,29 +75,37 @@ class AppRouter {
                   cubit: args['cubit'] as OrderDetailsCubit?,
                   deliveryType: args['deliveryType'] as String?,
                   tabIndex: args['tabIndex'] as int?,
-                  preparationId: settings.arguments as int,
+                  preparationId: args['preparationId'] as int? ?? 0,
+                  orderNumber: args['orderNumber'] as String? ?? '',
+                  order: args['order'] as OrderModel,
                 ),
           );
         } else if (settings.arguments is List<OrderItemModel>) {
           // Handle direct list of items (for backward compatibility)
+          final args = settings.arguments as Map<String, dynamic>;
           return MaterialPageRoute(
             builder:
                 (context) => ItemListingPage(
                   items: settings.arguments as List<OrderItemModel>,
                   title: 'Item Listing',
                   cubit: null,
-                  preparationId: settings.arguments as int,
+                  preparationId: 0,
+                  orderNumber: '',
+                  order: args['order'] as OrderModel,
                 ),
           );
         } else {
           // Fallback for invalid arguments
+          final args = settings.arguments as Map<String, dynamic>;
           return MaterialPageRoute(
             builder:
                 (context) => ItemListingPage(
                   items: [],
                   title: 'Item Listing',
                   cubit: null,
-                  preparationId: settings.arguments as int,
+                  preparationId: 0,
+                  orderNumber: '',
+                  order: args['order'] as OrderModel,
                 ),
           );
         }
@@ -108,6 +117,7 @@ class AppRouter {
                 item: args['item'] as OrderItemModel,
                 cubit: args['cubit'] as OrderDetailsCubit,
                 preparationId: args['preparationId'] as int,
+                order: args['order'] as OrderModel,
               ),
         );
       case AppRoutes.itemAddPage:
@@ -117,6 +127,7 @@ class AppRouter {
               (context) => ItemAddPage(
                 preparationId: preparationId['preparationId'] as int,
                 cubit: preparationId['cubit'] as OrderDetailsCubit?,
+                orderNumber: preparationId['orderNumber'] as String,
               ),
         );
       default:

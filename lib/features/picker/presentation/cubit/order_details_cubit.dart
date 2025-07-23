@@ -37,7 +37,9 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
                   .toList(),
           notAvailable:
               allItems
-                  .where((item) => item.status == OrderItemStatus.notAvailable)
+                  .where(
+                    (item) => item.status == OrderItemStatus.itemNotAvailable,
+                  )
                   .toList(),
           categories: _cachedOrderDetails!.categories,
         ),
@@ -78,7 +80,9 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
                 .toList();
         final notAvailable =
             allItems
-                .where((item) => item.status == OrderItemStatus.notAvailable)
+                .where(
+                  (item) => item.status == OrderItemStatus.itemNotAvailable,
+                )
                 .toList();
 
         emit(
@@ -125,6 +129,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
         isProduce: isProduceOverride ?? (item.isProduce ? 1 : 0),
         reason: reason,
         token: token,
+        orderNumber: item.subgroupIdentifier ?? '',
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -134,14 +139,17 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
             item.status = OrderItemStatus.picked;
             break;
           case 'item_not_available':
-            item.status = OrderItemStatus.notAvailable;
+            item.status = OrderItemStatus.itemNotAvailable;
             break;
           case 'item_canceled':
             item.status = OrderItemStatus.canceled;
             break;
+          case 'holded':
+            item.status = OrderItemStatus.holded;
+            break;
         }
 
-        _updateState();
+        updateState();
         return true;
       } else {
         emit(OrderDetailsError('Failed to update item status'));
@@ -155,25 +163,48 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
 
   void markPicked(OrderItemModel item) {
     item.status = OrderItemStatus.picked;
-    _updateState();
+    updateState();
   }
 
   void markOutOfStock(OrderItemModel item) {
-    item.status = OrderItemStatus.notAvailable;
-    _updateState();
+    item.status = OrderItemStatus.itemNotAvailable;
+    updateState();
   }
 
   void markCanceled(OrderItemModel item) {
     item.status = OrderItemStatus.canceled;
-    _updateState();
+    updateState();
   }
 
   void updateQuantity(OrderItemModel item, int newQuantity) {
     item.quantity = newQuantity;
-    _updateState();
+    updateState();
   }
 
-  void _updateState() {
+  void updateItemStatusByBarcode({
+    String? notAvailableBarcode,
+    String? pickedBarcode,
+  }) {
+    final currentState = state;
+    if (currentState is OrderDetailsLoaded) {
+      for (final item in [
+        ...currentState.toPick,
+        ...currentState.picked,
+        ...currentState.canceled,
+        ...currentState.notAvailable,
+      ]) {
+        if (notAvailableBarcode != null && item.sku == notAvailableBarcode) {
+          item.status = OrderItemStatus.itemNotAvailable;
+        }
+        if (pickedBarcode != null && item.sku == pickedBarcode) {
+          item.status = OrderItemStatus.picked;
+        }
+      }
+      updateState();
+    }
+  }
+
+  void updateState() {
     final currentState = state;
     if (currentState is OrderDetailsLoaded) {
       // Re-categorize items based on their current status
@@ -198,7 +229,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
               .toList();
       final notAvailable =
           allItems
-              .where((item) => item.status == OrderItemStatus.notAvailable)
+              .where((item) => item.status == OrderItemStatus.itemNotAvailable)
               .toList();
 
       emit(
@@ -216,5 +247,58 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
   Future<void> reloadItemsFromApi() async {
     _cachedOrderDetails = null;
     await loadItems();
+  }
+
+  Future<void> cancelOrder({required String orderNumber}) async {
+    try {
+      final userData = await UserStorageService.getUserData();
+      final token = userData?.token;
+
+      if (token == null) {
+        emit(OrderDetailsError('No authentication token found'));
+        return;
+      }
+
+      final response = await apiService.updateOrderStatus(
+        'cancel_request',
+        int.parse(orderId),
+        token,
+        orderNumber: orderNumber,
+      );
+      if (response.statusCode == 200) {
+        emit(OrderDetailsError('Order canceled successfully'));
+      } else {
+        emit(OrderDetailsError('Failed to cancel order'));
+      }
+    } catch (e) {
+      emit(OrderDetailsError(e.toString()));
+    }
+  }
+
+  Future<void> endPicking({required String orderNumber}) async {
+    try {
+      final userData = await UserStorageService.getUserData();
+      final token = userData?.token;
+
+      if (token == null) {
+        emit(OrderDetailsError('No authentication token found'));
+        return;
+      }
+
+      final response = await apiService.updateOrderStatus(
+        'end_pick',
+        int.parse(orderId),
+        token,
+        orderNumber: orderNumber,
+      );
+
+      if (response.statusCode == 200) {
+        emit(OrderDetailsError('Picking ended successfully'));
+      } else {
+        emit(OrderDetailsError('Failed to end picking'));
+      }
+    } catch (e) {
+      emit(OrderDetailsError(e.toString()));
+    }
   }
 }

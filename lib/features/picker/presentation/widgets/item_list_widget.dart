@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/order_item_model.dart';
+import '../../data/models/order_model.dart';
 import '../cubit/order_details_cubit.dart';
 import 'order_item_tile.dart';
 import '../pages/order_item_details_page.dart';
@@ -9,11 +10,13 @@ class ItemListWidget extends StatelessWidget {
   final List<OrderItemModel> items;
   final String emptyText;
   final int preparationId;
+  final OrderModel order;
   const ItemListWidget({
     super.key,
     required this.items,
     required this.emptyText,
     required this.preparationId,
+    required this.order,
   });
 
   @override
@@ -38,6 +41,7 @@ class ItemListWidget extends StatelessWidget {
                       item: item,
                       cubit: cubit,
                       preparationId: preparationId,
+                      order: order,
                     ),
               ),
             );

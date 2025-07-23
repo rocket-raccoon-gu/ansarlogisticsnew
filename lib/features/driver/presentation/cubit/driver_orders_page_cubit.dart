@@ -18,48 +18,40 @@ class DriverOrdersPageCubit extends Cubit<DriverOrdersPageState> {
     loadOrders();
   }
 
-  List<OrderModel> orders = [
-    OrderModel(
-      preparationId: 'DORD001',
-      status: 'pending',
-      deliveryFrom: DateTime.now().add(const Duration(days: 1)),
-      customerFirstname: 'Driver Customer 1',
-      customerZone: '123 Main St, City',
-      phone: '1234567890',
-      itemCount: 1,
-      branchCode: 'BR001',
-      customerId: 1,
-      customerEmail: 'driver1@example.com',
-      createdAt: DateTime.now(),
-      pickerId: 1,
-      items: [],
-    ),
-    OrderModel(
-      preparationId: 'DORD002',
-      status: 'completed',
-      deliveryFrom: DateTime.now().subtract(const Duration(days: 1)),
-      customerFirstname: 'Driver Customer 2',
-      customerZone: '456 Elm St, City',
-      phone: '1234567890',
-      itemCount: 1,
-      branchCode: 'BR001',
-      customerId: 1,
-      customerEmail: 'driver1@example.com',
-      createdAt: DateTime.now(),
-      pickerId: 1,
-      items: [],
-    ),
-  ];
+  List<OrderModel> orders = [];
 
-  void loadOrders() {
-    emit(DriverOrdersPageLoaded(orders: orders));
+  void loadOrders() async {
+    emit(DriverOrdersPageLoading());
+    try {
+      final user = await UserStorageService.getUserData();
+      final token = user?.token;
+      if (token != null) {
+        final response = await _apiService.getDriverOrders(token);
+        if (response.statusCode == 200 &&
+            response.data != null &&
+            response.data['success'] == true) {
+          final List<OrderModel> fetchedOrders =
+              (response.data['data'] as List)
+                  .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
+                  .toList();
+          orders = fetchedOrders;
+          emit(DriverOrdersPageLoaded(orders: orders));
+        } else {
+          emit(DriverOrdersPageLoaded(orders: []));
+        }
+      } else {
+        emit(DriverOrdersPageLoaded(orders: []));
+      }
+    } catch (e) {
+      emit(DriverOrdersPageLoaded(orders: []));
+    }
   }
 
   updateData() {
     UserStorageService.getUserData().then((value) {
       final token = value?.token;
       if (token != null) {
-        _apiService.getOrders(token).then((value) {
+        _apiService.getDriverOrders(token).then((value) {
           emit(
             DriverOrdersPageLoaded(
               orders: value.data,

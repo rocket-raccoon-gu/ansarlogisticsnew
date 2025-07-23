@@ -16,6 +16,7 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   bool _showSplash = true;
+  bool _navigated = false; // <-- add this
 
   void _onSplashComplete() {
     setState(() {
@@ -28,6 +29,7 @@ class _LoginPageState extends State<LoginPage> {
     await FirebaseService.requestNotificationPermissions();
     // Navigate to home
     if (mounted) {
+      setState(() => _navigated = true); // <-- set flag
       Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
     }
   }
@@ -50,6 +52,10 @@ class _LoginPageState extends State<LoginPage> {
           create: (context) => getIt<AuthCubit>(),
           child: BlocConsumer<AuthCubit, AuthState>(
             builder: (context, state) {
+              if (_navigated) {
+                // Show a loading indicator while navigating
+                return const Center(child: CircularProgressIndicator());
+              }
               if (state is AuthLoading) {
                 return Center(
                   child: Column(
@@ -94,6 +100,7 @@ class _LoginPageState extends State<LoginPage> {
             },
             listener: (context, state) async {
               if (state is AuthSuccess) {
+                setState(() => _navigated = true); // <-- set flag here as well
                 await _handleLoginSuccess();
               } else if (state is AuthFailure) {
                 ScaffoldMessenger.of(context).showSnackBar(

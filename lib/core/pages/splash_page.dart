@@ -17,6 +17,8 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> {
+  bool _navigated = false;
+
   @override
   void initState() {
     super.initState();
@@ -28,6 +30,7 @@ class _SplashPageState extends State<SplashPage> {
     await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
+    if (_navigated) return;
 
     final isLoggedIn = await UserStorageService.isLoggedIn();
 
@@ -41,11 +44,17 @@ class _SplashPageState extends State<SplashPage> {
         await _performAutoLogin(savedUsername, savedPassword);
       } else {
         // No saved credentials, go to login
-        Navigator.pushReplacementNamed(context, AppRoutes.login);
+        if (!_navigated) {
+          _navigated = true;
+          Navigator.pushReplacementNamed(context, AppRoutes.login);
+        }
       }
     } else {
       // User is not logged in, navigate to login
-      Navigator.pushReplacementNamed(context, AppRoutes.login);
+      if (!_navigated) {
+        _navigated = true;
+        Navigator.pushReplacementNamed(context, AppRoutes.login);
+      }
     }
   }
 
@@ -56,11 +65,12 @@ class _SplashPageState extends State<SplashPage> {
 
       // Listen to auth state changes
       authCubit.stream.listen((state) {
+        if (_navigated) return;
         if (state is AuthSuccess) {
-          // Auto-login successful, navigate to home
+          _navigated = true;
           Navigator.pushReplacementNamed(context, AppRoutes.home);
         } else if (state is AuthFailure) {
-          // Auto-login failed, go to login page
+          _navigated = true;
           Navigator.pushReplacementNamed(context, AppRoutes.login);
         }
       });
@@ -73,8 +83,10 @@ class _SplashPageState extends State<SplashPage> {
 
       await authCubit.login(loginRequest);
     } catch (e) {
-      // Auto-login failed, go to login page
-      Navigator.pushReplacementNamed(context, AppRoutes.login);
+      if (!_navigated) {
+        _navigated = true;
+        Navigator.pushReplacementNamed(context, AppRoutes.login);
+      }
     }
   }
 

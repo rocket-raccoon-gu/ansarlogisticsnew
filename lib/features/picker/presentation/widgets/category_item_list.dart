@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/models/order_details_model.dart';
+import '../../data/models/order_model.dart';
 import '../widgets/order_item_tile.dart';
 import '../cubit/order_details_cubit.dart';
 import '../pages/order_item_details_page.dart';
@@ -9,12 +10,14 @@ class CategoryItemList extends StatefulWidget {
   final List<CategoryItemModel> categories;
   final OrderDetailsCubit? cubit;
   final int preparationId;
+  final OrderModel order;
 
   const CategoryItemList({
     Key? key,
     required this.categories,
     this.cubit,
     required this.preparationId,
+    required this.order,
   }) : super(key: key);
 
   @override
@@ -129,6 +132,7 @@ class _CategoryItemListState extends State<CategoryItemList> {
                                         item: item,
                                         cubit: widget.cubit!,
                                         preparationId: widget.preparationId,
+                                        order: widget.order,
                                       ),
                                 ),
                               );

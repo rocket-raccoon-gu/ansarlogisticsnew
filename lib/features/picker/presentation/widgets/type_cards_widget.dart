@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/order_item_model.dart';
+import '../../data/models/order_model.dart';
 import '../cubit/order_details_cubit.dart';
 import '../pages/item_listing_page.dart';
 
@@ -8,12 +9,14 @@ class TypeCardsWidget extends StatelessWidget {
   final List<OrderItemModel> allItems;
   final OrderDetailsCubit? cubit;
   final int preparationId;
+  final OrderModel order;
 
   const TypeCardsWidget({
     super.key,
     required this.allItems,
     this.cubit,
     required this.preparationId,
+    required this.order,
   });
 
   @override
@@ -90,6 +93,9 @@ class TypeCardsWidget extends StatelessWidget {
                               title: 'Express Items',
                               cubit: orderCubit,
                               preparationId: preparationId,
+                              orderNumber:
+                                  expItems.last.subgroupIdentifier ?? '',
+                              order: order,
                             ),
                       ),
                     );
@@ -100,11 +106,61 @@ class TypeCardsWidget extends StatelessWidget {
                 },
                 child: Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Center(
-                    child: Text(
-                      'EXP (Express)',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                  child: Column(
+                    children: [
+                      // Picked/Total and Progress Bar for Express
+                      Builder(
+                        builder: (context) {
+                          final picked =
+                              expItems
+                                  .where(
+                                    (item) =>
+                                        item.status == OrderItemStatus.picked,
+                                  )
+                                  .length;
+                          final total = expItems.length;
+                          final progress = total > 0 ? picked / total : 0.0;
+                          return Column(
+                            children: [
+                              SizedBox(
+                                height: 56,
+                                width: 56,
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    CircularProgressIndicator(
+                                      value: progress,
+                                      strokeWidth: 6,
+                                      backgroundColor: Colors.orange[200],
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.deepOrange,
+                                      ),
+                                    ),
+                                    Center(
+                                      child: Text(
+                                        '$picked/$total',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: Colors.deepOrange,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                            ],
+                          );
+                        },
+                      ),
+                      Center(
+                        child: Text(
+                          'EXP (Express)',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -143,6 +199,9 @@ class TypeCardsWidget extends StatelessWidget {
                               title: 'Normal Local Items',
                               cubit: orderCubit,
                               preparationId: preparationId,
+                              orderNumber:
+                                  nolItems.last.subgroupIdentifier ?? '',
+                              order: order,
                             ),
                       ),
                     );
@@ -153,11 +212,61 @@ class TypeCardsWidget extends StatelessWidget {
                 },
                 child: Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Center(
-                    child: Text(
-                      'NOL (Normal Local)',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                  child: Column(
+                    children: [
+                      // Picked/Total and Progress Bar for NOL
+                      Builder(
+                        builder: (context) {
+                          final picked =
+                              nolItems
+                                  .where(
+                                    (item) =>
+                                        item.status == OrderItemStatus.picked,
+                                  )
+                                  .length;
+                          final total = nolItems.length;
+                          final progress = total > 0 ? picked / total : 0.0;
+                          return Column(
+                            children: [
+                              SizedBox(
+                                height: 56,
+                                width: 56,
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    CircularProgressIndicator(
+                                      value: progress,
+                                      strokeWidth: 6,
+                                      backgroundColor: Colors.blue[200],
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.blue[900]!,
+                                      ),
+                                    ),
+                                    Center(
+                                      child: Text(
+                                        '$picked/$total',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: Colors.blue[900],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: 16),
+                            ],
+                          );
+                        },
+                      ),
+                      Center(
+                        child: Text(
+                          'NOL (Normal Local)',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

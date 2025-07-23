@@ -10,7 +10,13 @@ import 'package:ansarlogisticsnew/features/picker/presentation/cubit/order_detai
 class ItemAddPage extends StatefulWidget {
   final int preparationId;
   final OrderDetailsCubit? cubit;
-  ItemAddPage({super.key, required this.preparationId, this.cubit});
+  final String orderNumber;
+  ItemAddPage({
+    super.key,
+    required this.preparationId,
+    this.cubit,
+    required this.orderNumber,
+  });
 
   @override
   State<ItemAddPage> createState() => _ItemAddPageState();
@@ -390,7 +396,9 @@ class _ItemAddPageState extends State<ItemAddPage> {
                                 Expanded(
                                   child: ElevatedButton(
                                     onPressed: () {
-                                      _barcodeFocusNode.requestFocus();
+                                      FocusScope.of(context).unfocus();
+                                      _barcodeFocusNode.unfocus();
+                                      log('orderNumber: ${widget.orderNumber}');
 
                                       if (state is ItemAddPageLoaded) {
                                         _replacementBarcode = state.product.sku;
@@ -408,6 +416,7 @@ class _ItemAddPageState extends State<ItemAddPage> {
                                                   : 0,
                                               state.product.productId,
                                               state.product.skuName ?? '',
+                                              widget.orderNumber,
                                             );
                                       } else {
                                         _replacementBarcode =

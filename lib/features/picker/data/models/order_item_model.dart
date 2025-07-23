@@ -1,4 +1,4 @@
-enum OrderItemStatus { toPick, picked, canceled, notAvailable }
+enum OrderItemStatus { toPick, picked, holded, canceled, itemNotAvailable }
 
 class OrderItemModel {
   final String id;
@@ -12,6 +12,7 @@ class OrderItemModel {
   final double? price;
   final List<String> productImages;
   final String? isProduceRaw;
+  final String? subgroupIdentifier;
 
   OrderItemModel({
     required this.id,
@@ -25,6 +26,7 @@ class OrderItemModel {
     this.price,
     required this.productImages,
     this.isProduceRaw,
+    this.subgroupIdentifier,
   });
 
   bool get isProduce => isProduceRaw == '1';
@@ -51,7 +53,11 @@ class OrderItemModel {
         status = OrderItemStatus.picked;
         break;
       case 'item_not_available':
-        status = OrderItemStatus.notAvailable;
+        status = OrderItemStatus.itemNotAvailable;
+        break;
+      case 'holded':
+      case 'on_hold':
+        status = OrderItemStatus.holded;
         break;
       case 'canceled':
         status = OrderItemStatus.canceled;
@@ -78,6 +84,7 @@ class OrderItemModel {
               : null,
       productImages: images,
       isProduceRaw: json['is_produce']?.toString(),
+      subgroupIdentifier: json['subgroup_identifier']?.toString(),
     );
   }
 
@@ -93,6 +100,7 @@ class OrderItemModel {
       'sku': sku,
       'price': price,
       'product_images': productImages.join(','),
+      'subgroup_identifier': subgroupIdentifier,
     };
   }
 }

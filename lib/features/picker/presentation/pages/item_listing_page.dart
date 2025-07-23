@@ -1,11 +1,17 @@
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/order_item_model.dart';
 import '../../data/models/order_details_model.dart';
+import '../../data/models/order_model.dart';
 import '../widgets/order_item_tile.dart';
 import '../widgets/category_item_list.dart';
 import '../cubit/order_details_cubit.dart';
 import 'order_item_details_page.dart';
+import 'package:ansarlogisticsnew/core/services/user_storage_service.dart';
+import 'order_details_page.dart';
+import 'picker_orders_page.dart';
+import '../cubit/picker_orders_cubit.dart';
 
 class ItemListingPage extends StatefulWidget {
   final List<OrderItemModel> items;
@@ -14,6 +20,8 @@ class ItemListingPage extends StatefulWidget {
   final String? deliveryType;
   final int? tabIndex;
   final int preparationId;
+  final String orderNumber;
+  final OrderModel order;
 
   const ItemListingPage({
     Key? key,
@@ -23,6 +31,8 @@ class ItemListingPage extends StatefulWidget {
     this.deliveryType,
     this.tabIndex,
     required this.preparationId,
+    required this.orderNumber,
+    required this.order,
   }) : super(key: key);
 
   @override
@@ -63,11 +73,11 @@ class _ItemListingPageState extends State<ItemListingPage> {
             .toList();
       case 2:
         return filtered
-            .where((item) => item.status == OrderItemStatus.canceled)
+            .where((item) => item.status == OrderItemStatus.holded)
             .toList();
       case 3:
         return filtered
-            .where((item) => item.status == OrderItemStatus.notAvailable)
+            .where((item) => item.status == OrderItemStatus.itemNotAvailable)
             .toList();
       default:
         return filtered;
@@ -130,9 +140,7 @@ class _ItemListingPageState extends State<ItemListingPage> {
                 category: category.category,
                 items:
                     category.items
-                        .where(
-                          (item) => item.status == OrderItemStatus.canceled,
-                        )
+                        .where((item) => item.status == OrderItemStatus.holded)
                         .toList(),
               );
             })
@@ -146,7 +154,8 @@ class _ItemListingPageState extends State<ItemListingPage> {
                 items:
                     category.items
                         .where(
-                          (item) => item.status == OrderItemStatus.notAvailable,
+                          (item) =>
+                              item.status == OrderItemStatus.itemNotAvailable,
                         )
                         .toList(),
               );
@@ -165,7 +174,7 @@ class _ItemListingPageState extends State<ItemListingPage> {
       case 1:
         return 'No picked items';
       case 2:
-        return 'No canceled items';
+        return 'No on hold items';
       case 3:
         return 'No unavailable items';
       default:
@@ -212,7 +221,94 @@ class _ItemListingPageState extends State<ItemListingPage> {
             );
 
             return Scaffold(
-              appBar: AppBar(title: Text(widget.title ?? 'Items')),
+              appBar: AppBar(
+                title: Text(widget.title ?? 'Items'),
+                actions: [
+                  TextButton.icon(
+                    icon: Icon(Icons.cancel_schedule_send, color: Colors.red),
+                    label: Text(
+                      'Cancel Request',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    onPressed: () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder:
+                            (context) => AlertDialog(
+                              title: Text('Cancel Request'),
+                              content: Text(
+                                'Are you sure you want to send a cancel request for this order?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(context, false);
+                                    // Navigator.pop(context);
+                                    log(widget.orderNumber);
+                                  },
+                                  child: Text('No'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: Text('Yes'),
+                                ),
+                              ],
+                            ),
+                      );
+                      if (confirmed == true) {
+                        try {
+                          await widget.cubit!.cancelOrder(
+                            orderNumber: widget.orderNumber,
+                          );
+                          if (mounted) {
+                            // Show toast
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Cancel request sent successfully.',
+                                ),
+                              ),
+                            );
+                            // Navigate to OrderDetailsPage and on pop, go to PickerOrdersPage
+                            Navigator.of(context)
+                                .push(
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => OrderDetailsPage(
+                                          order: widget.order,
+                                        ),
+                                  ),
+                                )
+                                .then((_) {
+                                  Navigator.of(context).pushAndRemoveUntil(
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) => BlocProvider(
+                                            create: (_) => PickerOrdersCubit(),
+                                            child: PickerOrdersPage(),
+                                          ),
+                                    ),
+                                    (route) => false,
+                                  );
+                                });
+                          }
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error: ${e.toString()}')),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ],
+              ),
               body:
                   tabFilteredCategories.isEmpty
                       ? Center(child: Text(_emptyText))
@@ -220,9 +316,11 @@ class _ItemListingPageState extends State<ItemListingPage> {
                         categories: tabFilteredCategories,
                         cubit: widget.cubit,
                         preparationId: widget.preparationId,
+                        order: widget.order,
                       ),
               floatingActionButton: FloatingActionButton.extended(
-                onPressed: () => _showAddItemSheet(widget.cubit!),
+                onPressed:
+                    () => _showAddItemSheet(widget.cubit!, widget.orderNumber),
                 icon: const Icon(Icons.add),
                 label: const Text('Add Item'),
                 backgroundColor: Colors.blue,
@@ -244,8 +342,8 @@ class _ItemListingPageState extends State<ItemListingPage> {
                     label: 'Picked',
                   ),
                   BottomNavigationBarItem(
-                    icon: Icon(Icons.cancel_outlined),
-                    label: 'Canceled',
+                    icon: Icon(Icons.pause_circle_outline),
+                    label: 'On Hold',
                   ),
                   BottomNavigationBarItem(
                     icon: Icon(Icons.remove_circle_outline),
@@ -301,7 +399,7 @@ class _ItemListingPageState extends State<ItemListingPage> {
                 },
               ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddItemSheet(widget.cubit!),
+        onPressed: () => _showAddItemSheet(widget.cubit!, widget.orderNumber),
         icon: const Icon(Icons.add),
         label: const Text('Add Item'),
         backgroundColor: Colors.blue,
@@ -320,8 +418,8 @@ class _ItemListingPageState extends State<ItemListingPage> {
             label: 'Picked',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.cancel_outlined),
-            label: 'Canceled',
+            icon: Icon(Icons.pause_circle_outline),
+            label: 'On Hold',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.remove_circle_outline),
@@ -335,133 +433,25 @@ class _ItemListingPageState extends State<ItemListingPage> {
     );
   }
 
-  void _showAddItemSheet(OrderDetailsCubit cubit) {
-    // showModalBottomSheet(
-    //   context: context,
-    //   isScrollControlled: true,
-    //   shape: const RoundedRectangleBorder(
-    //     borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-    //   ),
-    //   builder: (context) {
-    //     final _formKey = GlobalKey<FormState>();
-    //     String name = '';
-    //     String sku = '';
-    //     String price = '';
-    //     String quantity = '';
-    //     return Padding(
-    //       padding: EdgeInsets.only(
-    //         left: 20,
-    //         right: 20,
-    //         top: 24,
-    //         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-    //       ),
-    //       child: Form(
-    //         key: _formKey,
-    //         child: Column(
-    //           mainAxisSize: MainAxisSize.min,
-    //           crossAxisAlignment: CrossAxisAlignment.start,
-    //           children: [
-    //             Center(
-    //               child: Container(
-    //                 width: 40,
-    //                 height: 4,
-    //                 margin: const EdgeInsets.only(bottom: 16),
-    //                 decoration: BoxDecoration(
-    //                   color: Colors.grey[300],
-    //                   borderRadius: BorderRadius.circular(2),
-    //                 ),
-    //               ),
-    //             ),
-    //             const Text(
-    //               'Add New Item',
-    //               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-    //             ),
-    //             const SizedBox(height: 18),
-    //             TextFormField(
-    //               decoration: const InputDecoration(
-    //                 labelText: 'Name',
-    //                 border: OutlineInputBorder(),
-    //               ),
-    //               validator:
-    //                   (v) =>
-    //                       v == null || v.trim().isEmpty ? 'Enter name' : null,
-    //               onChanged: (v) => name = v,
-    //             ),
-    //             const SizedBox(height: 12),
-    //             TextFormField(
-    //               decoration: const InputDecoration(
-    //                 labelText: 'SKU',
-    //                 border: OutlineInputBorder(),
-    //               ),
-    //               validator:
-    //                   (v) => v == null || v.trim().isEmpty ? 'Enter SKU' : null,
-    //               onChanged: (v) => sku = v,
-    //             ),
-    //             const SizedBox(height: 12),
-    //             TextFormField(
-    //               decoration: const InputDecoration(
-    //                 labelText: 'Price',
-    //                 border: OutlineInputBorder(),
-    //               ),
-    //               keyboardType: TextInputType.numberWithOptions(decimal: true),
-    //               validator:
-    //                   (v) =>
-    //                       v == null || v.trim().isEmpty ? 'Enter price' : null,
-    //               onChanged: (v) => price = v,
-    //             ),
-    //             const SizedBox(height: 12),
-    //             TextFormField(
-    //               decoration: const InputDecoration(
-    //                 labelText: 'Quantity',
-    //                 border: OutlineInputBorder(),
-    //               ),
-    //               keyboardType: TextInputType.number,
-    //               validator:
-    //                   (v) =>
-    //                       v == null || v.trim().isEmpty
-    //                           ? 'Enter quantity'
-    //                           : null,
-    //               onChanged: (v) => quantity = v,
-    //             ),
-    //             const SizedBox(height: 20),
-    //             SizedBox(
-    //               width: double.infinity,
-    //               child: ElevatedButton(
-    //                 style: ElevatedButton.styleFrom(
-    //                   backgroundColor: Colors.blue,
-    //                   foregroundColor: Colors.white,
-    //                   padding: const EdgeInsets.symmetric(vertical: 14),
-    //                   textStyle: const TextStyle(
-    //                     fontSize: 16,
-    //                     fontWeight: FontWeight.bold,
-    //                   ),
-    //                 ),
-    //                 onPressed: () {
-    //                   if (_formKey.currentState!.validate()) {
-    //                     // TODO: Add logic to actually add the item to the list or backend
-    //                     Navigator.pop(context);
-    //                     ScaffoldMessenger.of(context).showSnackBar(
-    //                       const SnackBar(
-    //                         content: Text('Item added (demo only).'),
-    //                       ),
-    //                     );
-    //                   }
-    //                 },
-    //                 child: const Text('Add Item'),
-    //               ),
-    //             ),
-    //           ],
-    //         ),
-    //       );
-    //     },
-    //   ),
-
-    // );
-    Navigator.pushNamed(
+  Future<void> _showAddItemSheet(
+    OrderDetailsCubit cubit,
+    String orderNumber,
+  ) async {
+    final result = await Navigator.pushNamed(
       context,
       '/item_add_page',
-      arguments: {'preparationId': widget.preparationId, 'cubit': widget.cubit},
+      arguments: {
+        'preparationId': widget.preparationId,
+        'cubit': widget.cubit,
+        'orderNumber': orderNumber,
+      },
     );
+    if (result == 'added') {
+      widget.cubit?.loadItems();
+      setState(() {
+        _selectedIndex = 1; // Switch to Picked tab
+      });
+    }
   }
 
   void _handleOrderItemTap(
@@ -477,14 +467,21 @@ class _ItemListingPageState extends State<ItemListingPage> {
               item: item,
               cubit: widget.cubit!,
               preparationId: prepId,
+              order: widget.order, // <-- pass the order here
             ),
       ),
     );
-    if (result == 'updated' || result == 'added') {
-      widget.cubit!.loadItems();
+    if (result == 'updated' ||
+        result == 'added' ||
+        result == 'replaced' ||
+        result == 'holded') {
+      await widget.cubit!.reloadItemsFromApi();
       setState(() {
-        if (result == 'added') {
+        if (result == 'added' || result == 'replaced') {
           _selectedIndex = 1; // Switch to Picked tab
+        }
+        if (result == 'holded') {
+          _selectedIndex = 2; // Switch to On Hold tab
         }
       });
     }

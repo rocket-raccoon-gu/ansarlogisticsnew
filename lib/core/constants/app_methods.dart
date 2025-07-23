@@ -29,6 +29,8 @@ Color getStatusColor(String status) {
       return AppColors.startDelivery;
     case 'end_delivery':
       return AppColors.endDelivery;
+    case 'itemnotavailable':
+      return const Color.fromARGB(255, 243, 18, 18);
     default:
       return AppColors.notAvailable;
   }
@@ -62,6 +64,8 @@ String getStatusText(String status) {
       return 'Start Delivery';
     case 'end_delivery':
       return 'End Delivery';
+    case 'itemnotavailable':
+      return 'Out of Stock';
     default:
       return status;
   }

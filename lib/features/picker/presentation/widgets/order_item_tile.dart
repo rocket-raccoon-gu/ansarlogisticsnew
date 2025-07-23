@@ -106,7 +106,6 @@ class OrderItemTile extends StatelessWidget {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        
                         Text(
                           'SKU: ',
                           style: TextStyle(
@@ -177,15 +176,17 @@ class OrderItemTile extends StatelessWidget {
               Flexible(
                 flex: 0,
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: 90),
+                  constraints: BoxConstraints(maxWidth: 150),
                   child: Container(
                     margin: const EdgeInsets.only(left: 10),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
+                      horizontal: 10,
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: getStatusColor(item.status.toString().split('.').last),
+                      color: getStatusColor(
+                        item.status.toString().split('.').last,
+                      ),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(

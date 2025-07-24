@@ -3,7 +3,7 @@ import 'package:equatable/equatable.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:api_gateway/services/api_service.dart';
-import '../../../picker/data/models/order_model.dart';
+import '../../data/models/driver_order_model.dart';
 import '../../../../core/services/user_storage_service.dart';
 
 part 'driver_orders_page_state.dart';
@@ -18,7 +18,7 @@ class DriverOrdersPageCubit extends Cubit<DriverOrdersPageState> {
     loadOrders();
   }
 
-  List<OrderModel> orders = [];
+  List<DriverOrderModel> orders = [];
 
   void loadOrders() async {
     emit(DriverOrdersPageLoading());
@@ -29,10 +29,13 @@ class DriverOrdersPageCubit extends Cubit<DriverOrdersPageState> {
         final response = await _apiService.getDriverOrders(token);
         if (response.statusCode == 200 &&
             response.data != null &&
-            response.data['success'] == true) {
-          final List<OrderModel> fetchedOrders =
+            (response.data['success'] == true ||
+                response.data['success'] == null)) {
+          final List<DriverOrderModel> fetchedOrders =
               (response.data['data'] as List)
-                  .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
+                  .map(
+                    (e) => DriverOrderModel.fromJson(e as Map<String, dynamic>),
+                  )
                   .toList();
           orders = fetchedOrders;
           emit(DriverOrdersPageLoaded(orders: orders));
@@ -51,10 +54,16 @@ class DriverOrdersPageCubit extends Cubit<DriverOrdersPageState> {
     UserStorageService.getUserData().then((value) {
       final token = value?.token;
       if (token != null) {
-        _apiService.getDriverOrders(token).then((value) {
+        _apiService.getDriverOrders(token).then((response) {
+          final List<DriverOrderModel> fetchedOrders =
+              (response.data['data'] as List)
+                  .map(
+                    (e) => DriverOrderModel.fromJson(e as Map<String, dynamic>),
+                  )
+                  .toList();
           emit(
             DriverOrdersPageLoaded(
-              orders: value.data,
+              orders: fetchedOrders,
               position: Position(
                 latitude: 0,
                 longitude: 0,

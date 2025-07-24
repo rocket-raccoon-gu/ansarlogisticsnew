@@ -1,9 +1,9 @@
 import 'package:ansarlogisticsnew/core/constants/app_methods.dart';
 import 'package:flutter/material.dart';
-import '../../../picker/data/models/order_model.dart';
+import '../../data/models/driver_order_model.dart';
 
 class DriverOrderListItem extends StatelessWidget {
-  final OrderModel order;
+  final DriverOrderModel order;
   final VoidCallback? onDirectionTap;
   final VoidCallback? onTap;
 
@@ -32,7 +32,7 @@ class DriverOrderListItem extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      'Order #${order.preparationId}',
+                      'Order #${order.id}',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -45,11 +45,11 @@ class DriverOrderListItem extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: getStatusColor(order.status),
+                      color: getStatusColor(order.driverStatus),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      getStatusText(order.status),
+                      getStatusText(order.driverStatus),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -60,45 +60,40 @@ class DriverOrderListItem extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              if (order.customerZone != null && order.customerZone!.isNotEmpty)
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              if (order.dropoff.zone.isNotEmpty)
+                Column(
                   children: [
-                    const Icon(Icons.location_on, size: 16, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        order.customerZone!,
-                        style: const TextStyle(
-                          fontSize: 14,
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on,
+                          size: 16,
                           color: Colors.grey,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(order.dropoff.zone)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(order.dropoff.street)),
+                      ],
                     ),
                   ],
                 ),
-              if (order.customerFirstname != null &&
-                  order.customerFirstname!.isNotEmpty)
+              if (order.customer.name.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.person, size: 16, color: Colors.grey),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          order.customerFirstname!,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+                  padding: const EdgeInsets.only(top: 4.0),
+                  child: Text(
+                    'Customer: ${order.customer.name}',
+                    style: const TextStyle(fontSize: 14, color: Colors.black54),
                   ),
                 ),
               Align(

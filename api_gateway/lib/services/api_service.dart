@@ -333,4 +333,22 @@ class ApiService {
       rethrow;
     }
   }
+
+  Future<Response> getDriverOrderDetails(String orderId, String token) async {
+    try {
+      final response = await _httpClient.get(
+        '${ApiConfig.baseUrl}driver/orders/$orderId',
+        queryParameters: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      log('Driver Order Details response status:  {response.statusCode}');
+      log('Driver Order Details response data:  {response.data}');
+      return response;
+    } catch (e) {
+      log('Driver Order Details error:  {e.toString()}');
+      rethrow;
+    }
+  }
 }

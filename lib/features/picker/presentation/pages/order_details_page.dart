@@ -19,6 +19,7 @@ import 'package:ansarlogisticsnew/features/picker/presentation/pages/item_listin
 import 'package:ansarlogisticsnew/features/picker/presentation/pages/picker_orders_page.dart';
 import 'package:ansarlogisticsnew/core/services/user_storage_service.dart';
 import '../cubit/picker_orders_cubit.dart';
+import 'package:ansarlogisticsnew/features/navigation/presentation/pages/main_navigation_page.dart';
 
 class OrderDetailsPage extends StatefulWidget {
   final OrderModel order;
@@ -210,7 +211,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                                             (context) => BlocProvider(
                                               create:
                                                   (_) => PickerOrdersCubit(),
-                                              child: PickerOrdersPage(),
+                                              child: const MainNavigationPage(),
                                             ),
                                       ),
                                       (route) => false,
@@ -319,7 +320,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                                       builder:
                                           (context) => BlocProvider(
                                             create: (_) => PickerOrdersCubit(),
-                                            child: PickerOrdersPage(),
+                                            child: const MainNavigationPage(),
                                           ),
                                     ),
                                     (route) => false,

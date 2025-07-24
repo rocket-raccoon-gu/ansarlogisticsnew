@@ -183,7 +183,7 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                                   label: Text(
                                     widget.item.deliveryType == 'exp'
                                         ? 'Express'
-                                        : 'No Limit',
+                                        : 'Normal Local',
                                     style: const TextStyle(fontSize: 13),
                                   ),
                                   backgroundColor: Colors.blue.shade50,
@@ -268,16 +268,38 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                     Divider(height: 1, thickness: 1, color: Color(0xFFE0E0E0)),
                     const SizedBox(height: 20),
                     // Section: Pick Item
-                    Text(
-                      'Pick Item',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue.shade700,
+                    if (widget.item.status == OrderItemStatus.picked)
+                      Text(
+                        'Picked Item',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade700,
+                        ),
                       ),
-                    ),
+                    if (widget.item.status == OrderItemStatus.itemNotAvailable)
+                      Text(
+                        'Item Not Available',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red.shade700,
+                        ),
+                      ),
+                    if (widget.item.status == OrderItemStatus.holded)
+                      Text(
+                        'Holded Item',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.amber.shade700,
+                        ),
+                      ),
                     const SizedBox(height: 12),
-                    if (widget.item.status != OrderItemStatus.picked)
+                    if (widget.item.status != OrderItemStatus.picked &&
+                        widget.item.status !=
+                            OrderItemStatus.itemNotAvailable &&
+                        widget.item.status != OrderItemStatus.holded)
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

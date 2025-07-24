@@ -12,7 +12,7 @@ class DriverOrdersPageInitial extends DriverOrdersPageState {}
 class DriverOrdersPageLoading extends DriverOrdersPageState {}
 
 class DriverOrdersPageLoaded extends DriverOrdersPageState {
-  final List<OrderModel> orders;
+  final List<DriverOrderModel> orders;
   final Position? position;
 
   const DriverOrdersPageLoaded({required this.orders, this.position});

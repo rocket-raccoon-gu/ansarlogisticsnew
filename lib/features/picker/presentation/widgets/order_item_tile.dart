@@ -178,7 +178,7 @@ class OrderItemTile extends StatelessWidget {
                 child: ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: 150),
                   child: Container(
-                    margin: const EdgeInsets.only(left: 10),
+                    margin: const EdgeInsets.only(left: 5),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 6,

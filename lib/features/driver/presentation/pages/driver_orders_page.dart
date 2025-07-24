@@ -10,17 +10,16 @@ import 'package:http/http.dart' as http;
 import 'package:fluttertoast/fluttertoast.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import 'package:api_gateway/ws/websockt_client.dart';
-import 'package:api_gateway/config/api_config.dart';
 import 'dart:convert';
 import '../../../../core/services/driver_location_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injector.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../data/models/driver_order_model.dart';
 import '../widgets/driver_order_list_item.dart';
 import 'driver_order_details_page.dart';
 import 'driver_route_page.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:http/http.dart';
 import 'package:api_gateway/services/api_service.dart';
 import 'package:api_gateway/http/http_client.dart';
 
@@ -128,7 +127,7 @@ class _DriverOrdersPageState extends State<DriverOrdersPage> {
         ),
         headers: {
           'Content-Type': 'application/json;charset=UTF-8',
-          'Authorization': 'Bearer ${token}',
+          'Authorization': 'Bearer  token}',
         },
         body: jsonEncode({
           'user_id': user?.user?.id,
@@ -139,9 +138,22 @@ class _DriverOrdersPageState extends State<DriverOrdersPage> {
       if (response.statusCode == 200) {
         log("Location sent successfully");
       } else {
-        log("Failed to send location: ${response.statusCode}");
+        log("Failed to send location:  {response.statusCode}");
       }
-      await ApiService(HttpClient(), WebSocketClient()).sendLocation(lat, lng);
+      // Use the persistent WebSocketClient instance for sending location
+      if (_wsClient.isConnected) {
+        _wsClient.send(
+          jsonEncode({
+            'user_id': user?.user?.id,
+            'lat': lat.toString(),
+            'long': lng.toString(),
+          }),
+        );
+      } else {
+        // Optionally, handle reconnection logic or log an error
+        log("WebSocket is not connected");
+      }
+      // Do NOT create a new WebSocketClient or call .connect() here!
     } catch (e) {
       print("Failed to send location: $e");
     }
@@ -156,51 +168,64 @@ class _DriverOrdersPageState extends State<DriverOrdersPage> {
       locText =
           'Lat: ${_currentPosition!.latitude}, Lng: ${_currentPosition!.longitude}';
     }
-    return Scaffold(
-      body: Column(
-        children: [
-          FutureBuilder<String?>(
-            future: UserStorageService.getUserName(),
-            builder: (context, snapshot) {
-              final username = snapshot.data ?? '';
-              return CustomAppBar(
-                title: 'Hi, $username',
-                trailing: StreamBuilder<LocationTrackingStatus>(
-                  stream: statusStream,
-                  builder: (context, snapshot) {
-                    final status = snapshot.data ?? LocationTrackingStatus.idle;
-                    return ElevatedButton(
-                      onPressed:
-                          status == LocationTrackingStatus.tracking
-                              ? null
-                              : status == LocationTrackingStatus.loading
-                              ? () {
-                                Fluttertoast.showToast(
-                                  msg: 'Your location is being fetched',
-                                  toastLength: Toast.LENGTH_SHORT,
-                                  gravity: ToastGravity.CENTER,
-                                  timeInSecForIosWeb: 1,
-                                  backgroundColor: Colors.orange,
-                                  textColor: Colors.white,
-                                  fontSize: 16.0,
-                                );
-                              }
-                              : _startForegroundTask,
-                      child: Text('Start Tracking'),
-                    );
-                  },
-                ),
-              );
-            },
-          ),
-          // Move BlocProvider up to wrap both the button and the list
-          Expanded(
-            child: BlocProvider(
-              create: (context) => getIt<DriverOrdersPageCubit>(),
+    return BlocProvider(
+      create: (context) => getIt<DriverOrdersPageCubit>(),
+      child: Scaffold(
+        body: Column(
+          children: [
+            FutureBuilder<String?>(
+              future: UserStorageService.getUserName(),
+              builder: (context, snapshot) {
+                final username = snapshot.data ?? '';
+                return CustomAppBar(
+                  title: 'Hi, $username',
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.refresh),
+                        onPressed: () {
+                          // Refresh driver orders
+                          final cubit = context.read<DriverOrdersPageCubit>();
+                          cubit.loadOrders();
+                        },
+                      ),
+                      StreamBuilder<LocationTrackingStatus>(
+                        stream: statusStream,
+                        builder: (context, snapshot) {
+                          final status =
+                              snapshot.data ?? LocationTrackingStatus.idle;
+                          return ElevatedButton(
+                            onPressed:
+                                status == LocationTrackingStatus.tracking
+                                    ? null
+                                    : status == LocationTrackingStatus.loading
+                                    ? () {
+                                      Fluttertoast.showToast(
+                                        msg: 'Your location is being fetched',
+                                        toastLength: Toast.LENGTH_SHORT,
+                                        gravity: ToastGravity.CENTER,
+                                        timeInSecForIosWeb: 1,
+                                        backgroundColor: Colors.orange,
+                                        textColor: Colors.white,
+                                        fontSize: 16.0,
+                                      );
+                                    }
+                                    : _startForegroundTask,
+                            child: Text('Start Tracking'),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            Expanded(
               child: BlocBuilder<DriverOrdersPageCubit, DriverOrdersPageState>(
                 builder: (context, state) {
                   if (state is DriverOrdersPageLoaded) {
-                    final orders = state.orders;
+                    final List<DriverOrderModel> orders = state.orders;
                     return Column(
                       children: [
                         if (orders.isNotEmpty)
@@ -264,34 +289,56 @@ class _DriverOrdersPageState extends State<DriverOrdersPage> {
                             ),
                           ),
                         if (orders.isEmpty)
-                          const Expanded(
-                            child: Center(child: Text('No orders available.')),
+                          Expanded(
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text('No orders available.'),
+                                  ElevatedButton.icon(
+                                    onPressed: () {},
+                                    icon: const Icon(Icons.refresh),
+                                    label: const Text('Refresh'),
+                                  ),
+                                ],
+                              ),
+                            ),
                           )
                         else
                           Expanded(
-                            child: ListView.builder(
-                              itemCount: orders.length,
-                              itemBuilder: (context, index) {
-                                final order = orders[index];
-                                return DriverOrderListItem(
-                                  order: order,
-                                  onDirectionTap:
-                                      order.customerZone != null
-                                          ? () => _openMaps(order.customerZone)
-                                          : null,
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder:
-                                            (_) => DriverOrderDetailsPage(
-                                              order: order,
-                                            ),
-                                      ),
-                                    );
-                                  },
-                                );
+                            child: RefreshIndicator(
+                              onRefresh: () async {
+                                final cubit =
+                                    context.read<DriverOrdersPageCubit>();
+                                cubit.loadOrders();
                               },
+                              child: ListView.builder(
+                                itemCount: orders.length,
+                                itemBuilder: (context, index) {
+                                  final order = orders[index];
+                                  return DriverOrderListItem(
+                                    order: order,
+                                    onDirectionTap:
+                                        order.dropoff.zone.isNotEmpty
+                                            ? () => _openMaps(
+                                              order.dropoff.latitude,
+                                              order.dropoff.longitude,
+                                            )
+                                            : null,
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (_) => DriverOrderDetailsPage(
+                                                order: order,
+                                              ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
                             ),
                           ),
                       ],
@@ -301,14 +348,14 @@ class _DriverOrdersPageState extends State<DriverOrdersPage> {
                 },
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  void _openMaps(String address) async {
-    final encoded = Uri.encodeComponent(address);
+  void _openMaps(String lat, String lng) async {
+    final encoded = Uri.encodeComponent('$lat,$lng');
     final url = 'https://www.google.com/maps/search/?api=1&query=$encoded';
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);

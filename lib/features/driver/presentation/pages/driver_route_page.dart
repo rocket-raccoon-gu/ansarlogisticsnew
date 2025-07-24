@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../../../picker/data/models/order_model.dart';
+import '../../data/models/driver_order_model.dart';
 import '../cubit/driver_route_cubit.dart';
 import '../cubit/driver_route_state.dart';
 
 class DriverRoutePage extends StatelessWidget {
-  final List<OrderModel> orders;
+  final List<DriverOrderModel> orders;
   final LatLng driverLocation;
   const DriverRoutePage({
     super.key,

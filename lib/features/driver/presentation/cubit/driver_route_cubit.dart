@@ -8,21 +8,33 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import '../../../../core/config/app_config.dart';
-import '../../../picker/data/models/order_model.dart';
+import '../../data/models/driver_order_model.dart';
 import 'driver_route_state.dart';
 
 class DriverRouteCubit extends Cubit<DriverRouteState> {
   DriverRouteCubit() : super(DriverRouteLoading());
 
-  Future<void> loadRoute(List<OrderModel> orders, LatLng driverLocation) async {
+  Future<void> loadRoute(
+    List<DriverOrderModel> orders,
+    LatLng driverLocation,
+  ) async {
     emit(DriverRouteLoading());
     try {
       // Collect waypoints: driver location + all order locations
       final waypoints = <LatLng>[driverLocation];
       for (final order in orders) {
-        if (order.customerZone != null && order.customerZone!.isNotEmpty) {
-          waypoints.add(LatLng(25.163422, 51.426304));
-        }
+        waypoints.add(
+          LatLng(
+            double.parse(order.pickup.latitude),
+            double.parse(order.pickup.longitude),
+          ),
+        );
+        waypoints.add(
+          LatLng(
+            double.parse(order.dropoff.latitude),
+            double.parse(order.dropoff.longitude),
+          ),
+        );
       }
       if (waypoints.length < 2) {
         emit(const DriverRouteError('Not enough locations to show route.'));

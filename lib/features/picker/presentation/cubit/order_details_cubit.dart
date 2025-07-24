@@ -286,7 +286,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
       }
 
       final response = await apiService.updateOrderStatus(
-        'end_pick',
+        'end_picking',
         int.parse(orderId),
         token,
         orderNumber: orderNumber,

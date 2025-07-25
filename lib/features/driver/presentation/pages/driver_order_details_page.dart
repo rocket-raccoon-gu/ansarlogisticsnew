@@ -6,6 +6,9 @@ import '../../data/models/driver_order_model.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/driver_order_details_cubit.dart';
 import '../../../../core/services/user_storage_service.dart';
+import 'package:ansarlogisticsnew/features/navigation/presentation/pages/main_navigation_page.dart';
+import 'package:ansarlogisticsnew/features/navigation/presentation/cubit/bottom_navigation_cubit.dart';
+import 'package:ansarlogisticsnew/core/di/injector.dart';
 
 class DriverOrderDetailsPage extends StatefulWidget {
   final DriverOrderModel order;
@@ -63,6 +66,21 @@ class _DriverOrderDetailsPageState extends State<DriverOrderDetailsPage> {
         appBar: AppBar(title: Text('Order #${widget.order.id}')),
         body: BlocBuilder<DriverOrderDetailsCubit, DriverOrderDetailsState>(
           builder: (context, state) {
+            if (state is DriverOrderOnTheWaySuccess) {
+              // Navigate to main navigation and select driver orders tab
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const MainNavigationPage()),
+                  (route) => false,
+                );
+                // Set the role to driver so the correct dashboard is shown
+                Future.delayed(Duration(milliseconds: 100), () {
+                  final cubit = getIt<BottomNavigationCubit>();
+                  cubit.changeRole(UserRole.driver);
+                });
+              });
+              return const Center(child: CircularProgressIndicator());
+            }
             if (state is DriverOrderDetailsLoading || _token == null) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -322,6 +340,10 @@ class _DriverOrderDetailsPageState extends State<DriverOrderDetailsPage> {
             padding: const EdgeInsets.all(16.0),
             child: GestureDetector(
               onHorizontalDragEnd: (details) {
+                _cubit.updateOrderStatusDriver(
+                  _token!,
+                  widget.order.id,
+                );
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Order marked as On the Way!')),
                 );
@@ -335,7 +357,7 @@ class _DriverOrderDetailsPageState extends State<DriverOrderDetailsPage> {
                 ),
                 alignment: Alignment.center,
                 child: const Text(
-                  'Swipe to mark as On the Way',
+                  'Mark as On the Way',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,

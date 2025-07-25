@@ -14,7 +14,7 @@ Color getStatusColor(String status) {
     case 'assigned':
       return AppColors.toPick;
     case 'ontheway':
-      return AppColors.toPick;
+      return AppColors.onTheWay;
     case 'delivered':
       return AppColors.picked;
     case 'assigned_picker':
@@ -56,6 +56,8 @@ String getStatusText(String status) {
       return 'Assigned Picker';
     case 'assigned_driver':
       return 'Assigned Driver';
+    case 'on_the_way':
+      return 'On the Way';
     case 'start_picking':
       return 'Start Picking';
     case 'end_picking':

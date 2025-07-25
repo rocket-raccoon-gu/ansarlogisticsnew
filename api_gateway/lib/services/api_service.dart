@@ -216,6 +216,29 @@ class ApiService {
     }
   }
 
+  Future<dynamic> updateOrderStatusDriver(
+       String token, String preparationId) async {
+    try {
+      log('Mark order as on the way: $token, $preparationId');
+      final dio = Dio();
+    final response = await dio.patch(
+      '${ApiConfig.baseUrl}driver/orders/status/$preparationId',
+      data: {'status': 'on_the_way'},
+      options: Options(
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ),
+    );
+    log('Mark order as on the way response status: ${response.statusCode}');
+    log('Mark order as on the way response data: ${response.data}');
+    return response;
+    } catch (e) {
+      log('Mark order as on the way error: $e.toString()');
+      rethrow;
+    }
+  }
   Future<dynamic> scanBarcodeAndPickItem(
     String sku,
     String token,

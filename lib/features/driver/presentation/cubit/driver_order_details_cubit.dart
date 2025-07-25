@@ -24,4 +24,14 @@ class DriverOrderDetailsCubit extends Cubit<DriverOrderDetailsState> {
       emit(DriverOrderDetailsError(e.toString()));
     }
   }
+
+  Future<void> updateOrderStatusDriver( String token, String preparationId) async {
+    emit(DriverOrderDetailsLoading());
+    try {
+      await _apiService.updateOrderStatusDriver(token, preparationId);
+      emit(DriverOrderOnTheWaySuccess());
+    } catch (e) {
+      emit(DriverOrderDetailsError(e.toString()));
+    }
+  }
 }

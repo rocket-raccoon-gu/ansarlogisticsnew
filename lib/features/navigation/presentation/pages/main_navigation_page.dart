@@ -10,6 +10,7 @@ import '../../../driver/presentation/pages/driver_report_page.dart';
 import '../../../driver/presentation/pages/driver_bloc_wrapper.dart';
 import '../../../products/presentation/pages/products_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
+import '../../../picker/presentation/cubit/picker_orders_cubit.dart';
 
 class MainNavigationPage extends StatelessWidget {
   const MainNavigationPage({super.key});
@@ -50,7 +51,10 @@ class _MainNavigationView extends StatelessWidget {
     switch (currentIndex) {
       case 0:
         return role == UserRole.picker
-            ? const PickerOrdersPage()
+            ? BlocProvider(
+                create: (context) => getIt<PickerOrdersCubit>(),
+                child: const PickerOrdersPage(),
+              )
             : DriverBlocWrapper(child: const DriverOrdersPage());
       case 1:
         return role == UserRole.picker
@@ -62,7 +66,10 @@ class _MainNavigationView extends StatelessWidget {
         return const ProfilePage();
       default:
         return role == UserRole.picker
-            ? const PickerOrdersPage()
+            ? BlocProvider(
+                create: (context) => getIt<PickerOrdersCubit>(),
+                child: const PickerOrdersPage(),
+              )
             : DriverBlocWrapper(child: const DriverOrdersPage());
     }
   }

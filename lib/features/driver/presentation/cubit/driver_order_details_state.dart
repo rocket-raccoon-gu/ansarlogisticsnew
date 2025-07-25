@@ -23,3 +23,5 @@ class DriverOrderDetailsError extends DriverOrderDetailsState {
   @override
   List<Object?> get props => [message];
 }
+
+class DriverOrderOnTheWaySuccess extends DriverOrderDetailsState {}

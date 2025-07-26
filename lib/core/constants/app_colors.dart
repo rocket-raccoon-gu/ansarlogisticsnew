@@ -16,5 +16,5 @@ class AppColors {
   static const endPicking = Color(0xFF3B7CF3);
   static const startDelivery = Color(0xFF3B7CF3);
   static const endDelivery = Color(0xFF3B7CF3);
-  static const onTheWay = Color(0xFF000000);
+  static const onTheWay = Color.fromARGB(255, 2, 196, 245);
 }

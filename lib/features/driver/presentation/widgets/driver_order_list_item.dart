@@ -1,18 +1,13 @@
 import 'package:ansarlogisticsnew/core/constants/app_methods.dart';
 import 'package:flutter/material.dart';
 import '../../data/models/driver_order_model.dart';
+import 'direction_options_dialog.dart';
 
 class DriverOrderListItem extends StatelessWidget {
   final DriverOrderModel order;
-  final VoidCallback? onDirectionTap;
   final VoidCallback? onTap;
 
-  const DriverOrderListItem({
-    super.key,
-    required this.order,
-    this.onDirectionTap,
-    this.onTap,
-  });
+  const DriverOrderListItem({super.key, required this.order, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +108,20 @@ class DriverOrderListItem extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  onPressed: onDirectionTap,
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder:
+                          (context) => DirectionOptionsDialog(
+                            destinationLat: order.dropoff.latitude,
+                            destinationLong: order.dropoff.longitude,
+                            destinationName:
+                                order.dropoff.zone.isNotEmpty
+                                    ? order.dropoff.zone
+                                    : order.dropoff.street,
+                          ),
+                    );
+                  },
                 ),
               ),
             ],

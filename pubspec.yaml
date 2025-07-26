@@ -65,6 +65,8 @@ dependencies:
   flutter_polyline_points: any
   flutter_slidable: any
   mobile_scanner: any
+  image_picker: any
+  flutter_image_compress: any
   
   # Local Notifications - temporarily disabled due to Android compatibility issues
   # flutter_local_notifications: ^15.1.3

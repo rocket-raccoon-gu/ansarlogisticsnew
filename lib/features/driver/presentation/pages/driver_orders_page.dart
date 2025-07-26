@@ -318,13 +318,6 @@ class _DriverOrdersPageState extends State<DriverOrdersPage> {
                                   final order = orders[index];
                                   return DriverOrderListItem(
                                     order: order,
-                                    onDirectionTap:
-                                        order.dropoff.zone.isNotEmpty
-                                            ? () => _openMaps(
-                                              order.dropoff.latitude,
-                                              order.dropoff.longitude,
-                                            )
-                                            : null,
                                     onTap: () {
                                       Navigator.push(
                                         context,
@@ -352,13 +345,5 @@ class _DriverOrdersPageState extends State<DriverOrdersPage> {
         ),
       ),
     );
-  }
-
-  void _openMaps(String lat, String lng) async {
-    final encoded = Uri.encodeComponent('$lat,$lng');
-    final url = 'https://www.google.com/maps/search/?api=1&query=$encoded';
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    }
   }
 }

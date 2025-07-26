@@ -6,9 +6,9 @@ import '../../data/models/driver_order_model.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/driver_order_details_cubit.dart';
 import '../../../../core/services/user_storage_service.dart';
-import 'package:ansarlogisticsnew/features/navigation/presentation/pages/main_navigation_page.dart';
+import 'package:ansarlogisticsnew/features/navigation/presentation/pages/role_based_navigation_page.dart';
 import 'package:ansarlogisticsnew/features/navigation/presentation/cubit/bottom_navigation_cubit.dart';
-import 'package:ansarlogisticsnew/core/di/injector.dart';
+import 'bill_upload_page.dart';
 
 class DriverOrderDetailsPage extends StatefulWidget {
   final DriverOrderModel order;
@@ -69,23 +69,67 @@ class _DriverOrderDetailsPageState extends State<DriverOrderDetailsPage> {
             if (state is DriverOrderOnTheWaySuccess) {
               // Navigate to main navigation and select driver orders tab
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const MainNavigationPage()),
-                  (route) => false,
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Order marked as ${state.orderStatus}!'),
+                  ),
                 );
-                // Set the role to driver so the correct dashboard is shown
-                Future.delayed(Duration(milliseconds: 100), () {
-                  final cubit = getIt<BottomNavigationCubit>();
-                  cubit.changeRole(UserRole.driver);
+                // Small delay to ensure state is properly updated
+                Future.delayed(const Duration(milliseconds: 500), () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder:
+                          (_) => const RoleBasedNavigationPage(
+                            userRole: UserRole.driver,
+                          ),
+                    ),
+                    (route) => false,
+                  );
                 });
               });
               return const Center(child: CircularProgressIndicator());
             }
             if (state is DriverOrderDetailsLoading || _token == null) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Updating order status...'),
+                  ],
+                ),
+              );
             }
             if (state is DriverOrderDetailsError) {
-              return Center(child: Text('Error: ${state.message}'));
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 48,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Error: ${state.message}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        // Retry the operation
+                        if (_token != null) {
+                          _cubit.fetchOrderDetails(widget.order.id, _token!);
+                        }
+                      },
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              );
             }
             if (state is DriverOrderDetailsLoaded) {
               final details = state.details.data;
@@ -157,6 +201,39 @@ class _DriverOrderDetailsPageState extends State<DriverOrderDetailsPage> {
                                   ),
                                 ],
                               ),
+                              // Show delivered status if order is delivered
+                              if (widget.order.driverStatus == 'delivered') ...[
+                                const SizedBox(height: 12),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.green.shade200,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.check_circle,
+                                        color: Colors.green.shade700,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Order Delivered Successfully',
+                                        style: TextStyle(
+                                          color: Colors.green.shade700,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                               const SizedBox(height: 12),
                               Divider(),
                               Row(
@@ -249,43 +326,43 @@ class _DriverOrderDetailsPageState extends State<DriverOrderDetailsPage> {
                                 ],
                               ),
                               const SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  OutlinedButton.icon(
-                                    icon: const Icon(
-                                      Icons.phone_disabled,
-                                      color: Colors.red,
-                                    ),
-                                    label: const Text(
-                                      'Customer Not Answering',
-                                      style: TextStyle(color: Colors.red),
-                                    ),
-                                    style: OutlinedButton.styleFrom(
-                                      side: const BorderSide(color: Colors.red),
-                                      foregroundColor: Colors.red,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 10,
+                              // Only show Customer Not Answering button if order is not delivered
+                              if (widget.order.driverStatus != 'delivered')
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    OutlinedButton.icon(
+                                      icon: const Icon(
+                                        Icons.phone_disabled,
+                                        color: Colors.red,
                                       ),
-                                      textStyle: const TextStyle(
-                                        fontWeight: FontWeight.bold,
+                                      label: const Text(
+                                        'Customer Not Answering',
+                                        style: TextStyle(color: Colors.red),
                                       ),
-                                    ),
-                                    onPressed: () {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Marked as customer not answering.',
-                                          ),
+                                      style: OutlinedButton.styleFrom(
+                                        side: const BorderSide(
+                                          color: Colors.red,
                                         ),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
+                                        foregroundColor: Colors.red,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 10,
+                                        ),
+                                        textStyle: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      onPressed: () {
+                                        _cubit.updateOrderStatusDriver(
+                                          _token!,
+                                          widget.order.id,
+                                          'customer_not_answering',
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
                             ],
                           ),
                         ),
@@ -338,33 +415,109 @@ class _DriverOrderDetailsPageState extends State<DriverOrderDetailsPage> {
         bottomNavigationBar: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: GestureDetector(
-              onHorizontalDragEnd: (details) {
-                _cubit.updateOrderStatusDriver(
-                  _token!,
-                  widget.order.id,
-                );
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Order marked as On the Way!')),
-                );
+            child: BlocBuilder<
+              DriverOrderDetailsCubit,
+              DriverOrderDetailsState
+            >(
+              builder: (context, state) {
+                final isLoading = state is DriverOrderDetailsLoading;
+                final isOnTheWay = widget.order.driverStatus == 'on_the_way';
+                final isDelivered = widget.order.driverStatus == 'delivered';
+
+                // Don't show any bottom navigation bar if order is delivered
+                if (isDelivered) {
+                  return const SizedBox.shrink();
+                }
+
+                if (isOnTheWay) {
+                  // Show Upload Bill button when order is on the way
+                  return SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BillUploadPage(order: widget.order),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.upload_file),
+                      label: const Text(
+                        'Upload Bill',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
+                  );
+                } else {
+                  // Show Mark as On the Way button for other statuses
+                  return GestureDetector(
+                    onHorizontalDragEnd: (details) {
+                      if (!isLoading) {
+                        _cubit.updateOrderStatusDriver(
+                          _token!,
+                          widget.order.id,
+                          'on_the_way',
+                        );
+                      }
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: isLoading ? Colors.grey : Colors.blue,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      alignment: Alignment.center,
+                      child:
+                          isLoading
+                              ? const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(width: 12),
+                                  Text(
+                                    'Updating...',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              )
+                              : const Text(
+                                'Mark as On the Way',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                    ),
+                  );
+                }
               },
-              child: Container(
-                width: double.infinity,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Colors.blue,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                alignment: Alignment.center,
-                child: const Text(
-                  'Mark as On the Way',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
             ),
           ),
         ),

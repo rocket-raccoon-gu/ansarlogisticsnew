@@ -24,4 +24,9 @@ class DriverOrderDetailsError extends DriverOrderDetailsState {
   List<Object?> get props => [message];
 }
 
-class DriverOrderOnTheWaySuccess extends DriverOrderDetailsState {}
+class DriverOrderOnTheWaySuccess extends DriverOrderDetailsState {
+  final String orderStatus;
+  const DriverOrderOnTheWaySuccess(this.orderStatus);
+  @override
+  List<Object?> get props => [orderStatus];
+}

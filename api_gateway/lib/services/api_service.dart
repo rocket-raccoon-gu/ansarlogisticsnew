@@ -1,10 +1,11 @@
 import 'dart:developer';
-
+import 'dart:io';
 import 'package:api_gateway/http/http_client.dart';
 import 'package:api_gateway/ws/websockt_client.dart';
 import 'package:dio/dio.dart';
 import 'dart:convert';
 import '../config/api_config.dart';
+import 'package:http_parser/http_parser.dart';
 
 class ApiService {
   final HttpClient _httpClient;
@@ -217,28 +218,77 @@ class ApiService {
   }
 
   Future<dynamic> updateOrderStatusDriver(
-       String token, String preparationId) async {
+    String token,
+    String preparationId,
+    String orderStatus,
+  ) async {
     try {
-      log('Mark order as on the way: $token, $preparationId');
+      log('Mark order as $orderStatus: $token, $preparationId');
       final dio = Dio();
-    final response = await dio.patch(
-      '${ApiConfig.baseUrl}driver/orders/status/$preparationId',
-      data: {'status': 'on_the_way'},
-      options: Options(
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      ),
-    );
-    log('Mark order as on the way response status: ${response.statusCode}');
-    log('Mark order as on the way response data: ${response.data}');
-    return response;
+      final response = await dio.patch(
+        '${ApiConfig.baseUrl}driver/orders/status/$preparationId',
+        data: {'status': orderStatus},
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          sendTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+      );
+      log('Mark order as $orderStatus response status: ${response.statusCode}');
+      log('Mark order as $orderStatus response data: ${response.data}');
+      return response;
     } catch (e) {
-      log('Mark order as on the way error: $e.toString()');
+      log('Mark order as $orderStatus error: $e.toString()');
       rethrow;
     }
   }
+
+  Future<dynamic> uploadBill(
+    String orderId,
+    File imageFile,
+    String token,
+    double latitude,
+    double longitude,
+  ) async {
+    try {
+      log('Uploading bill for order: $orderId');
+      final dio = Dio();
+
+      // Create form data
+      final formData = FormData.fromMap({
+        'bill': await MultipartFile.fromFile(
+          imageFile.path,
+          filename:
+              'bill_${orderId}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          contentType: MediaType.parse('image/jpeg'),
+        ),
+        'status': 'complete',
+        'latitude': latitude,
+        'longitude': longitude,
+      });
+
+      final response = await dio.put(
+        '${ApiConfig.baseUrl}driver/orders/status/$orderId',
+        data: formData,
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          sendTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 60),
+        ),
+      );
+
+      log('Upload bill response status: ${response.statusCode}');
+      log('Upload bill response data: ${response.data}');
+      return response;
+    } catch (e) {
+      log('Upload bill error: $e.toString()');
+      rethrow;
+    }
+  }
+
   Future<dynamic> scanBarcodeAndPickItem(
     String sku,
     String token,

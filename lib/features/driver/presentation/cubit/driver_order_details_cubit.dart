@@ -25,12 +25,32 @@ class DriverOrderDetailsCubit extends Cubit<DriverOrderDetailsState> {
     }
   }
 
-  Future<void> updateOrderStatusDriver( String token, String preparationId) async {
+  Future<void> updateOrderStatusDriver(
+    String token,
+    String preparationId,
+    String orderStatus,
+  ) async {
     emit(DriverOrderDetailsLoading());
+    final startTime = DateTime.now();
     try {
-      await _apiService.updateOrderStatusDriver(token, preparationId);
-      emit(DriverOrderOnTheWaySuccess());
+      print('Starting API call for order status update...');
+      // Add timeout to prevent hanging
+      await _apiService
+          .updateOrderStatusDriver(token, preparationId, orderStatus)
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception('Request timed out. Please try again.');
+            },
+          );
+      final endTime = DateTime.now();
+      final duration = endTime.difference(startTime);
+      print('API call completed in ${duration.inMilliseconds}ms');
+      emit(DriverOrderOnTheWaySuccess(orderStatus));
     } catch (e) {
+      final endTime = DateTime.now();
+      final duration = endTime.difference(startTime);
+      print('API call failed after ${duration.inMilliseconds}ms: $e');
       emit(DriverOrderDetailsError(e.toString()));
     }
   }

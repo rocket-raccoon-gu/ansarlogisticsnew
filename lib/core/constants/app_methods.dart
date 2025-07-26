@@ -13,7 +13,7 @@ Color getStatusColor(String status) {
       return AppColors.canceled;
     case 'assigned':
       return AppColors.toPick;
-    case 'ontheway':
+    case 'on_the_way':
       return AppColors.onTheWay;
     case 'delivered':
       return AppColors.picked;
@@ -30,6 +30,8 @@ Color getStatusColor(String status) {
     case 'end_delivery':
       return AppColors.endDelivery;
     case 'itemnotavailable':
+      return const Color.fromARGB(255, 243, 18, 18);
+    case 'customer_not_answering':
       return const Color.fromARGB(255, 243, 18, 18);
     default:
       return AppColors.notAvailable;
@@ -48,7 +50,7 @@ String getStatusText(String status) {
       return 'Canceled';
     case 'assigned':
       return 'Assigned';
-    case 'ontheway':
+    case 'on_the_way':
       return 'On the Way';
     case 'delivered':
       return 'Delivered';
@@ -68,6 +70,8 @@ String getStatusText(String status) {
       return 'End Delivery';
     case 'itemnotavailable':
       return 'Out of Stock';
+    case 'customer_not_answering':
+      return 'Customer Not Answer';
     default:
       return status;
   }

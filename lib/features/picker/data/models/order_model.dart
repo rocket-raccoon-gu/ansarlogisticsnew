@@ -3,6 +3,7 @@ import 'order_item_model.dart';
 
 class OrderModel {
   final String preparationId;
+  final String? preparationLabel;
   final int itemCount;
   final String branchCode;
   final int customerId;
@@ -22,6 +23,7 @@ class OrderModel {
 
   OrderModel({
     required this.preparationId,
+    this.preparationLabel,
     required this.itemCount,
     required this.branchCode,
     required this.customerId,
@@ -64,6 +66,7 @@ class OrderModel {
     }
     return OrderModel(
       preparationId: json['preparation_id']?.toString() ?? '',
+      preparationLabel: json['preparation_label']?.toString(),
       itemCount:
           json['item_count'] is int
               ? json['item_count']
@@ -107,6 +110,7 @@ class OrderModel {
   Map<String, dynamic> toJson() {
     return {
       'preparation_id': preparationId,
+      'preparation_label': preparationLabel,
       'item_count': itemCount,
       'branch_code': branchCode,
       'customer_id': customerId,

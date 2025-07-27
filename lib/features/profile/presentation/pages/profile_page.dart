@@ -1,12 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../cubit/profile_cubit.dart';
 import '../../../../core/services/user_storage_service.dart';
+import '../../../../core/services/driver_location_service.dart';
+import '../../../../core/services/shared_websocket_service.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
+
+  // Clean up all services before logout
+  Future<void> _cleanupServices() async {
+    try {
+      // Stop location tracking
+      final locationService = DriverLocationService();
+      await locationService.stopTracking();
+
+      // Disconnect WebSocket
+      final webSocketService = SharedWebSocketService();
+      webSocketService.disconnect();
+
+      // Stop foreground task if running
+      try {
+        await FlutterForegroundTask.stopService();
+      } catch (e) {
+        // Ignore errors if service is not running
+      }
+
+      print('✅ All services cleaned up successfully');
+    } catch (e) {
+      print('⚠️ Error cleaning up services: $e');
+      // Don't throw error, continue with logout
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -167,11 +195,52 @@ class ProfilePage extends StatelessWidget {
                     elevation: 0,
                   ),
                   onPressed: () async {
-                    await UserStorageService.clearUserData();
-                    if (context.mounted) {
-                      Navigator.of(
-                        context,
-                      ).pushNamedAndRemoveUntil('/login', (route) => false);
+                    // Show loading dialog
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (BuildContext context) {
+                        return const AlertDialog(
+                          content: Row(
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(width: 16),
+                              Text('Logging out...'),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+
+                    try {
+                      // Clean up services
+                      await _cleanupServices();
+
+                      // Clear all SharedPreferences data
+                      await UserStorageService.clearUserData();
+
+                      if (context.mounted) {
+                        // Close loading dialog
+                        Navigator.of(context).pop();
+
+                        // Navigate to login
+                        Navigator.of(
+                          context,
+                        ).pushNamedAndRemoveUntil('/login', (route) => false);
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        // Close loading dialog
+                        Navigator.of(context).pop();
+
+                        // Show error
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Logout failed: ${e.toString()}'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
                     }
                   },
                 ),
@@ -195,7 +264,7 @@ class TileCardWidget extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         final user = state.user;
-        final isOnDuty = user.availabilityStatus == "1";
+        final isOnDuty = state.isOnline;
         return Container(
           margin: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
           padding: const EdgeInsets.all(16),

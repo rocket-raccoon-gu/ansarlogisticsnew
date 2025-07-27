@@ -6,7 +6,8 @@ class ProfileLoading extends ProfileState {}
 
 class ProfileLoaded extends ProfileState {
   final dynamic user; // Use your User model type if available
-  ProfileLoaded({required this.user});
+  final bool isOnline; // Track online/offline status from WebSocket
+  ProfileLoaded({required this.user, this.isOnline = true});
 }
 
 class ProfileError extends ProfileState {

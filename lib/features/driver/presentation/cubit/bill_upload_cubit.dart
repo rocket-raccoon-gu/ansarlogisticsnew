@@ -114,7 +114,7 @@ class BillUploadCubit extends Cubit<BillUploadState> {
   Future<void> markAsDelivered(String orderId, String token) async {
     emit(BillUploadLoading());
     try {
-      await _apiService.updateOrderStatusDriver(token, orderId, 'delivered');
+      await _apiService.updateOrderStatusDriver(token, orderId, 'complete');
       emit(BillUploadDelivered());
     } catch (e) {
       emit(BillUploadError('Failed to mark as delivered: ${e.toString()}'));

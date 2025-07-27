@@ -48,6 +48,9 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget>
       // Force cleanup of any existing camera resources
       await _forceCleanupCameraResources();
 
+      // Check if camera is available before creating controller
+      await _checkCameraAvailability();
+
       // Create new controller with error handling
       controller = MobileScannerController(
         autoStart: false, // Disable auto start to prevent conflicts
@@ -64,11 +67,11 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget>
           _isInitialized = true;
         });
 
-        // Start the scanner after initialization with delay
+        // Start the scanner after initialization with longer delay
         if (_hasPermission && !_isStarting) {
           await Future.delayed(
-            const Duration(milliseconds: 1000),
-          ); // Increased delay
+            const Duration(seconds: 2),
+          ); // Increased delay to ensure camera is ready
           if (mounted && controller != null) {
             if (mounted) {
               setState(() {
@@ -110,17 +113,92 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget>
     }
   }
 
+  // Check if camera is available before initializing
+  Future<void> _checkCameraAvailability() async {
+    try {
+      // Wait a bit to ensure camera resources are freed
+      await Future.delayed(const Duration(seconds: 1));
+
+      // Try to create a temporary controller to test camera availability
+      final tempController = MobileScannerController(
+        autoStart: false,
+        facing: CameraFacing.back,
+      );
+
+      // If we can create the controller, camera is available
+      await tempController.dispose();
+
+      print('Camera availability check passed');
+    } catch (e) {
+      print('Camera availability check failed: $e');
+      // Wait longer before retrying
+      await Future.delayed(const Duration(seconds: 3));
+      throw Exception('Camera not available: $e');
+    }
+  }
+
+  // Show troubleshooting dialog
+  void _showTroubleshootingDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.help_outline, color: Colors.blue),
+              SizedBox(width: 8),
+              Text('Troubleshooting Tips'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'If camera is not working, try these steps:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 12),
+              Text('1. Close other apps that might be using the camera'),
+              Text('2. Restart your device'),
+              Text('3. Check camera permissions in device settings'),
+              Text('4. Try using manual barcode entry instead'),
+              SizedBox(height: 12),
+              Text(
+                'You can always use manual entry by typing the barcode number.',
+                style: TextStyle(
+                  fontStyle: FontStyle.italic,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // Force cleanup of camera resources
   Future<void> _forceCleanupCameraResources() async {
     try {
+      print('Starting camera resource cleanup...');
+
       // Dispose existing controller if any
       if (controller != null) {
         try {
+          print('Stopping existing controller...');
           await controller!.stop();
         } catch (e) {
           print('Error stopping controller during cleanup: $e');
         }
         try {
+          print('Disposing existing controller...');
           controller!.dispose();
         } catch (e) {
           print('Error disposing controller during cleanup: $e');
@@ -129,10 +207,12 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget>
       }
 
       // Force garbage collection to free camera resources
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 1000));
 
       // Additional delay to ensure camera resources are freed
-      await Future.delayed(const Duration(milliseconds: 1000));
+      await Future.delayed(const Duration(milliseconds: 2000));
+
+      print('Camera resource cleanup completed');
     } catch (e) {
       print('Error during camera resource cleanup: $e');
     }
@@ -148,7 +228,7 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget>
     await _forceCleanupCameraResources();
 
     // Wait longer before reinitializing to ensure camera is fully released
-    await Future.delayed(const Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 5));
 
     if (mounted) {
       // Try to reinitialize with a fresh start
@@ -252,6 +332,24 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget>
 
     if (mounted) {
       // Reinitialize with fresh resources
+      await _initializeScanner();
+    }
+  }
+
+  // Handle device connection lost error
+  Future<void> _handleDeviceConnectionLost() async {
+    if (!mounted) return;
+
+    print('Handling device connection lost error...');
+
+    // Force complete cleanup with longer delays
+    await _forceCleanupCameraResources();
+
+    // Wait longer for device to stabilize
+    await Future.delayed(const Duration(seconds: 6));
+
+    if (mounted) {
+      // Try to reinitialize with fresh resources
       await _initializeScanner();
     }
   }
@@ -499,15 +597,40 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget>
               ),
               const SizedBox(height: 8),
               const Text(
-                'Failed to initialize camera. Please try again.',
+                'Failed to initialize camera. This might be due to:\n• Camera being used by another app\n• Device restart required\n• Permission issues',
                 style: TextStyle(fontSize: 16, color: Colors.grey),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: _initializeScanner,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Retry'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _initializeScanner,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry'),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      // Navigate back to allow manual entry
+                      Navigator.of(context).pop();
+                    },
+                    icon: const Icon(Icons.keyboard),
+                    label: const Text('Manual Entry'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  // Show troubleshooting tips
+                  _showTroubleshootingDialog(context);
+                },
+                child: const Text('Troubleshooting Tips'),
               ),
             ],
           ),
@@ -610,6 +733,21 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget>
                     }
                   },
                   errorBuilder: (context, error) {
+                    // Handle specific camera errors
+                    if (error.errorDetails?.message?.contains(
+                              'STATUS_NOT_AVAILABLE',
+                            ) ==
+                            true ||
+                        error.errorDetails?.message?.contains(
+                              'Lost connection',
+                            ) ==
+                            true) {
+                      // Handle camera not available or connection lost
+                      Future.delayed(Duration(milliseconds: 100), () {
+                        _handleDeviceConnectionLost();
+                      });
+                    }
+
                     return Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -633,17 +771,44 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget>
                             ),
                             textAlign: TextAlign.center,
                           ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Attempting to recover automatically...',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue,
+                              fontStyle: FontStyle.italic,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                           const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              try {
-                                controller?.start();
-                              } catch (e) {
-                                print('Error restarting scanner: $e');
-                              }
-                            },
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Retry'),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  try {
+                                    controller?.start();
+                                  } catch (e) {
+                                    print('Error restarting scanner: $e');
+                                  }
+                                },
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Retry'),
+                              ),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  // Navigate back to allow manual entry
+                                  Navigator.of(context).pop();
+                                },
+                                icon: const Icon(Icons.keyboard),
+                                label: const Text('Manual Entry'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

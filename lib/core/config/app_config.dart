@@ -4,5 +4,5 @@ class AppConfig {
   static const String defaultLanguage = 'en';
 
   static const int timeoutDurationSeconds = 15;
-  static const googleMapApiKey = 'AIzaSyDeFN4A3eenCTIUYvCI7dViF-N-V5X8RgA';
+  static const google_api_key = "AIzaSyDeFN4A3eenCTIUYvCI7dViF-N-V5X8RgA";
 }

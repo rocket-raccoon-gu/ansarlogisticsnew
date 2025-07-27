@@ -21,6 +21,16 @@ class OrderItemTile extends StatelessWidget {
     this.onItemPicked,
   });
 
+  // Helper method to get the correct display price
+  String _getDisplayPrice(OrderItemModel item) {
+    // Check if finalPrice is available and not zero
+    if (item.finalPrice != null && item.finalPrice! > 0) {
+      return item.finalPrice!.toStringAsFixed(2);
+    }
+    // Fall back to price if finalPrice is null or zero
+    return item.price?.toStringAsFixed(2) ?? '0.00';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -133,12 +143,70 @@ class OrderItemTile extends StatelessWidget {
                             color: Colors.grey[700],
                           ),
                         ),
-                        Text(
-                          item.price?.toStringAsFixed(2) ?? '-',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[800],
-                            fontWeight: FontWeight.w500,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                item.isProduce
+                                    ? Colors.green[50]
+                                    : Colors.grey[50],
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color:
+                                  item.isProduce
+                                      ? Colors.green[200]!
+                                      : Colors.grey[300]!,
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'QAR ${_getDisplayPrice(item)}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color:
+                                          item.isProduce
+                                              ? Colors.green[700]
+                                              : Colors.grey[800],
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (item.isProduce) ...[
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      Icons.local_offer,
+                                      size: 12,
+                                      color: Colors.green[600],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              // Show price difference if finalPrice is different from price
+                              if (item.isProduce &&
+                                  item.finalPrice != null &&
+                                  item.price != null &&
+                                  item.finalPrice! > 0 &&
+                                  item.finalPrice != item.price) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Base: QAR ${item.price!.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[600],
+                                    decoration: TextDecoration.lineThrough,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       ],

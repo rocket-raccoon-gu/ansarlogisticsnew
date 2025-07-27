@@ -483,6 +483,32 @@ class _ItemListingPageState extends State<ItemListingPage> {
           _selectedIndex = 2; // Switch to On Hold tab
         }
       });
+
+      // Show success message for price updates
+      if (result == 'updated') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Item updated successfully! Price changes are reflected in the picked items.',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 }

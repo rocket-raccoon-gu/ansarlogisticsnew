@@ -33,6 +33,8 @@ Color getStatusColor(String status) {
       return const Color.fromARGB(255, 243, 18, 18);
     case 'customer_not_answering':
       return const Color.fromARGB(255, 243, 18, 18);
+    case 'complete':
+      return AppColors.picked;
     default:
       return AppColors.notAvailable;
   }
@@ -72,6 +74,8 @@ String getStatusText(String status) {
       return 'Out of Stock';
     case 'customer_not_answering':
       return 'Customer Not Answer';
+    case 'complete':
+      return 'Delivered';
     default:
       return status;
   }

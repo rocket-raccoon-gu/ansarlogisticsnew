@@ -31,6 +31,7 @@ class CategoryItemModel {
 
 class OrderDetailsModel {
   final int preparationId;
+  final String preparationLabel;
   final int? parentPreparationId;
   final String status;
   final DateTime createdAt;
@@ -39,6 +40,7 @@ class OrderDetailsModel {
 
   OrderDetailsModel({
     required this.preparationId,
+    required this.preparationLabel,
     this.parentPreparationId,
     required this.status,
     required this.createdAt,
@@ -114,6 +116,7 @@ class OrderDetailsModel {
 
     return OrderDetailsModel(
       preparationId: json['preparation_id'] ?? 0,
+      preparationLabel: json['preparation_label'] ?? '',
       parentPreparationId: json['parent_preparation_id'],
       status: json['status'] ?? '',
       createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
@@ -134,6 +137,7 @@ class OrderDetailsModel {
   Map<String, dynamic> toJson() {
     return {
       'preparation_id': preparationId,
+      'preparation_label': preparationLabel,
       'parent_preparation_id': parentPreparationId,
       'status': status,
       'created_at': createdAt.toIso8601String(),

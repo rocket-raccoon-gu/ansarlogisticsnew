@@ -6,8 +6,13 @@ import 'package:ansarlogisticsnew/core/constants/app_strings.dart';
 
 class CustomerCardWidget extends StatelessWidget {
   final OrderModel order;
+  final String? preparationLabel;
 
-  const CustomerCardWidget({super.key, required this.order});
+  const CustomerCardWidget({
+    super.key,
+    required this.order,
+    this.preparationLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -29,10 +34,34 @@ class CustomerCardWidget extends StatelessWidget {
                 children: [
                   if (order.customerFirstname != null)
                     Text(
-                      order.customerFirstname!,
+                      order.customerFirstname,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
+                      ),
+                    ),
+                  if (preparationLabel != null)
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: Colors.blue.shade200,
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        'Label: $preparationLabel',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   if (order.phone != null)
@@ -51,7 +80,7 @@ class CustomerCardWidget extends StatelessWidget {
             if (order.phone != null)
               IconButton(
                 icon: const Icon(Icons.call, color: Colors.green),
-                onPressed: () => _launchPhone(order.phone!),
+                onPressed: () => _launchPhone(order.phone),
                 tooltip: AppStrings.call,
               ),
             if (order.phone != null)

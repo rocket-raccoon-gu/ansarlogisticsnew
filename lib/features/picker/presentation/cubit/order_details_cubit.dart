@@ -42,6 +42,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
                   )
                   .toList(),
           categories: _cachedOrderDetails!.categories,
+          preparationLabel: _cachedOrderDetails!.preparationLabel,
         ),
       );
     } else {
@@ -92,6 +93,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
             canceled: canceled,
             notAvailable: notAvailable,
             categories: orderDetails.categories,
+            preparationLabel: orderDetails.preparationLabel,
           ),
         );
       } else {
@@ -149,6 +151,29 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
             break;
         }
 
+        // Update item price and produce status if provided
+        if (priceOverride != null || isProduceOverride != null) {
+          final newPrice =
+              priceOverride != null ? double.tryParse(priceOverride) : null;
+          final newIsProduceRaw =
+              isProduceOverride != null ? isProduceOverride.toString() : null;
+
+          // Create updated item with new values
+          final updatedItem = item.copyWith(
+            price: newPrice,
+            finalPrice:
+                newPrice, // Set final_price to the same value for produce items
+            isProduceRaw: newIsProduceRaw,
+          );
+
+          // Replace the item in all lists
+          _updateItemInLists(item, updatedItem);
+
+          print(
+            '✅ Item updated: ${item.name} - Price: ${updatedItem.price}, Final Price: ${updatedItem.finalPrice}, IsProduce: ${updatedItem.isProduce}',
+          );
+        }
+
         updateState();
         return true;
       } else {
@@ -204,6 +229,66 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
     }
   }
 
+  // Helper method to update an item in all lists
+  void _updateItemInLists(OrderItemModel oldItem, OrderItemModel newItem) {
+    final currentState = state;
+    if (currentState is OrderDetailsLoaded) {
+      // Update item in toPick list
+      final toPickIndex = currentState.toPick.indexWhere(
+        (item) => item.id == oldItem.id,
+      );
+      if (toPickIndex != -1) {
+        currentState.toPick[toPickIndex] = newItem;
+      }
+
+      // Update item in picked list
+      final pickedIndex = currentState.picked.indexWhere(
+        (item) => item.id == oldItem.id,
+      );
+      if (pickedIndex != -1) {
+        currentState.picked[pickedIndex] = newItem;
+      }
+
+      // Update item in canceled list
+      final canceledIndex = currentState.canceled.indexWhere(
+        (item) => item.id == oldItem.id,
+      );
+      if (canceledIndex != -1) {
+        currentState.canceled[canceledIndex] = newItem;
+      }
+
+      // Update item in notAvailable list
+      final notAvailableIndex = currentState.notAvailable.indexWhere(
+        (item) => item.id == oldItem.id,
+      );
+      if (notAvailableIndex != -1) {
+        currentState.notAvailable[notAvailableIndex] = newItem;
+      }
+
+      // Update item in categories
+      for (final category in currentState.categories) {
+        final categoryItemIndex = category.items.indexWhere(
+          (item) => item.id == oldItem.id,
+        );
+        if (categoryItemIndex != -1) {
+          category.items[categoryItemIndex] = newItem;
+        }
+      }
+
+      // Emit updated state
+      emit(
+        OrderDetailsLoaded(
+          toPick: currentState.toPick,
+          picked: currentState.picked,
+          canceled: currentState.canceled,
+          notAvailable: currentState.notAvailable,
+          categories: currentState.categories,
+          preparationLabel: currentState.preparationLabel,
+        ),
+      );
+    }
+  }
+
   void updateState() {
     final currentState = state;
     if (currentState is OrderDetailsLoaded) {
@@ -239,6 +324,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
           canceled: canceled,
           notAvailable: notAvailable,
           categories: currentState.categories,
+          preparationLabel: currentState.preparationLabel,
         ),
       );
     }

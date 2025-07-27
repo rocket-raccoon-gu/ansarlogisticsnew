@@ -8,7 +8,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:http/http.dart' as http;
 import 'package:fluttertoast/fluttertoast.dart';
-import '../../../../core/widgets/custom_app_bar.dart';
 import 'package:api_gateway/ws/websockt_client.dart';
 import 'dart:convert';
 import '../../../../core/services/driver_location_service.dart';
@@ -31,319 +30,544 @@ class DriverOrdersPage extends StatefulWidget {
 }
 
 class _DriverOrdersPageState extends State<DriverOrdersPage> {
-  Timer? _timer;
-  Position? _currentPosition;
-  late WebSocketClient _wsClient;
+  late DriverLocationService _locationService;
+
   @override
   void initState() {
     super.initState();
-    _wsClient = getIt<WebSocketClient>();
-
-    _initForegroundTask();
+    _locationService = getIt<DriverLocationService>();
+    _initializeLocationService();
   }
 
-  final _statusController =
-      StreamController<LocationTrackingStatus>.broadcast();
-  LocationTrackingStatus _status = LocationTrackingStatus.idle;
-  Stream<LocationTrackingStatus> get statusStream => _statusController.stream;
-  LocationTrackingStatus get status => _status;
-  void setStatus(LocationTrackingStatus status) {
-    _status = status;
-    _statusController.add(status);
+  Future<void> _initializeLocationService() async {
+    await _locationService.initialize();
   }
 
-  void _initForegroundTask() async {
-    FlutterForegroundTask.init(
-      androidNotificationOptions: AndroidNotificationOptions(
-        channelId: 'location_channel_id',
-        channelName: 'Location Tracking',
-        channelDescription: 'Tracks location in the background',
-        channelImportance: NotificationChannelImportance.LOW,
-        priority: NotificationPriority.LOW,
-      ),
-      iosNotificationOptions: IOSNotificationOptions(),
-      foregroundTaskOptions: ForegroundTaskOptions(
-        eventAction: ForegroundTaskEventAction.repeat(1000),
-        allowWakeLock: true,
-      ),
-    );
-  }
-
-  Future<void> _startForegroundTask() async {
-    LocationPermission permission = await Geolocator.requestPermission();
-    if (permission == LocationPermission.deniedForever ||
-        permission == LocationPermission.denied) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Location permission denied")));
-      return;
-    }
-
-    await FlutterForegroundTask.startService(
-      notificationTitle: 'Location Tracking',
-      notificationText: 'Tracking your location in the background',
-    );
-
-    setStatus(LocationTrackingStatus.loading);
-
-    _timer = Timer.periodic(Duration(minutes: 1), (timer) async {
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-      setStatus(LocationTrackingStatus.tracking);
-      // setState(() {
-      //   _currentPosition = position;
-      // });
-      Fluttertoast.showToast(
-        msg: 'Sending location: ${position.latitude}, ${position.longitude}',
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.CENTER,
-        timeInSecForIosWeb: 1,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 16.0,
-      );
-      _wsClient.send(
-        jsonEncode({
-          'user_id': 18,
-          'lat': position.latitude.toString(),
-          'long': position.longitude.toString(),
-        }),
-      );
-      sendLocationToBackend(position.latitude, position.longitude);
-    });
-  }
-
-  Future<void> sendLocationToBackend(double lat, double lng) async {
-    print("Sending location: $lat, $lng");
-    String token =
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTgsImlhdCI6MTc1MjY0MzkzMywiZXhwIjoxNzUyNzMwMzMzfQ.F3vbuFocVeMWzyvbDz6QbB_vt3kc4LoaFzlswg15yE8';
-    // Simulated request (replace with your API)
-    try {
-      final user = await UserStorageService.getUserData();
-      final response = await http.put(
-        Uri.parse(
-          'https://pickerdriver.testuatah.com/v1/api/qatar/pd_driverstatus.php',
-        ),
-        headers: {
-          'Content-Type': 'application/json;charset=UTF-8',
-          'Authorization': 'Bearer  token}',
-        },
-        body: jsonEncode({
-          'user_id': user?.user?.id,
-          'lat': lat.toString(),
-          'long': lng.toString(),
-        }),
-      );
-      if (response.statusCode == 200) {
-        log("Location sent successfully");
-      } else {
-        log("Failed to send location:  {response.statusCode}");
-      }
-      // Use the persistent WebSocketClient instance for sending location
-      if (_wsClient.isConnected) {
-        _wsClient.send(
-          jsonEncode({
-            'user_id': user?.user?.id,
-            'lat': lat.toString(),
-            'long': lng.toString(),
-          }),
-        );
-      } else {
-        // Optionally, handle reconnection logic or log an error
-        log("WebSocket is not connected");
-      }
-      // Do NOT create a new WebSocketClient or call .connect() here!
-    } catch (e) {
-      print("Failed to send location: $e");
-    }
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    String locText;
-    if (_currentPosition == null) {
-      locText = 'Not tracking yet';
-    } else {
-      locText =
-          'Lat: ${_currentPosition!.latitude}, Lng: ${_currentPosition!.longitude}';
-    }
     return BlocProvider(
       create: (context) => getIt<DriverOrdersPageCubit>(),
-      child: Scaffold(
-        body: Column(
+      child: _DriverOrdersPageContent(),
+    );
+  }
+}
+
+class _DriverOrdersPageContent extends StatefulWidget {
+  @override
+  State<_DriverOrdersPageContent> createState() =>
+      _DriverOrdersPageContentState();
+}
+
+class _DriverOrdersPageContentState extends State<_DriverOrdersPageContent> {
+  late DriverLocationService _locationService;
+
+  @override
+  void initState() {
+    super.initState();
+    _locationService = getIt<DriverLocationService>();
+    _initializeLocationService();
+  }
+
+  Future<void> _initializeLocationService() async {
+    await _locationService.initialize();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: SafeArea(
+        child: Column(
           children: [
-            FutureBuilder<String?>(
-              future: UserStorageService.getUserName(),
-              builder: (context, snapshot) {
-                final username = snapshot.data ?? '';
-                return CustomAppBar(
-                  title: 'Hi, $username',
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.refresh),
-                        onPressed: () {
-                          // Refresh driver orders
-                          final cubit = context.read<DriverOrdersPageCubit>();
-                          cubit.loadOrders();
-                        },
-                      ),
-                      StreamBuilder<LocationTrackingStatus>(
-                        stream: statusStream,
-                        builder: (context, snapshot) {
-                          final status =
-                              snapshot.data ?? LocationTrackingStatus.idle;
-                          return ElevatedButton(
-                            onPressed:
-                                status == LocationTrackingStatus.tracking
-                                    ? null
-                                    : status == LocationTrackingStatus.loading
-                                    ? () {
-                                      Fluttertoast.showToast(
-                                        msg: 'Your location is being fetched',
-                                        toastLength: Toast.LENGTH_SHORT,
-                                        gravity: ToastGravity.CENTER,
-                                        timeInSecForIosWeb: 1,
-                                        backgroundColor: Colors.orange,
-                                        textColor: Colors.white,
-                                        fontSize: 16.0,
-                                      );
-                                    }
-                                    : _startForegroundTask,
-                            child: Text('Start Tracking'),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+            // Custom Modern App Bar
+            _buildCustomAppBar(),
+
+            // Main Content
             Expanded(
               child: BlocBuilder<DriverOrdersPageCubit, DriverOrdersPageState>(
                 builder: (context, state) {
                   if (state is DriverOrdersPageLoaded) {
-                    final List<DriverOrderModel> orders = state.orders;
+                    final orders = state.orders;
                     return Column(
                       children: [
-                        if (orders.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            child: SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                icon: const Icon(Icons.route),
-                                label: const Text('View My Route'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                  textStyle: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                onPressed: () async {
-                                  // Get current location
-                                  Position? position;
-                                  try {
-                                    position =
-                                        await Geolocator.getCurrentPosition(
-                                          desiredAccuracy:
-                                              LocationAccuracy.high,
-                                        );
-                                  } catch (e) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Could not get current location.',
-                                        ),
-                                      ),
-                                    );
-                                    return;
-                                  }
-                                  if (position == null) return;
-                                  final cubit = getIt<DriverOrdersPageCubit>();
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder:
-                                          (_) => DriverRoutePage(
-                                            orders: cubit.orders,
-                                            driverLocation: LatLng(
-                                              position!.latitude,
-                                              position.longitude,
-                                            ),
-                                          ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        if (orders.isEmpty)
-                          Expanded(
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text('No orders available.'),
-                                  ElevatedButton.icon(
-                                    onPressed: () {},
-                                    icon: const Icon(Icons.refresh),
-                                    label: const Text('Refresh'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        else
-                          Expanded(
-                            child: RefreshIndicator(
-                              onRefresh: () async {
-                                final cubit =
-                                    context.read<DriverOrdersPageCubit>();
-                                cubit.loadOrders();
-                              },
-                              child: ListView.builder(
-                                itemCount: orders.length,
-                                itemBuilder: (context, index) {
-                                  final order = orders[index];
-                                  return DriverOrderListItem(
-                                    order: order,
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder:
-                                              (_) => DriverOrderDetailsPage(
-                                                order: order,
-                                              ),
-                                        ),
-                                      );
-                                    },
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
+                        // Route View Button
+                        if (orders.isNotEmpty) _buildRouteButton(),
+
+                        // Orders List
+                        Expanded(
+                          child:
+                              orders.isEmpty
+                                  ? _buildEmptyState()
+                                  : _buildOrdersList(orders),
+                        ),
                       ],
                     );
                   }
-                  return const Center(child: CircularProgressIndicator());
+                  return _buildLoadingState();
                 },
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  // Custom Modern App Bar
+  Widget _buildCustomAppBar() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Colors.white],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Top Row - Welcome and Refresh
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _UsernameDisplay(),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.refresh, color: Colors.black),
+                  onPressed: () {
+                    // Use BlocProvider.of to get the cubit from the correct context
+                    final cubit = BlocProvider.of<DriverOrdersPageCubit>(
+                      context,
+                    );
+                    cubit.loadOrders();
+                  },
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+
+          // Location Tracking Section
+          _buildLocationTrackingSection(),
+        ],
+      ),
+    );
+  }
+
+  // Location Tracking Section
+  Widget _buildLocationTrackingSection() {
+    return StreamBuilder<LocationTrackingStatus>(
+      stream: _locationService.statusStream,
+      builder: (context, snapshot) {
+        final status = snapshot.data ?? LocationTrackingStatus.idle;
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.black.withOpacity(0.2), width: 1),
+          ),
+          child: Row(
+            children: [
+              // Status Icon
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _getStatusColor(status).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  _getStatusIcon(status),
+                  color: _getStatusColor(status),
+                  size: 20,
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              // Status Text
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _getStatusTitle(status),
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      _getStatusSubtitle(status),
+                      style: TextStyle(
+                        color: Colors.black.withOpacity(0.8),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Action Button
+              Container(
+                decoration: BoxDecoration(
+                  color: _getStatusColor(status),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: TextButton(
+                  onPressed: _getStatusAction(status),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    foregroundColor: Colors.black,
+                  ),
+                  child: Text(
+                    _getStatusButtonText(status),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Route Button
+  Widget _buildRouteButton() {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            margin: const EdgeInsets.all(16),
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                try {
+                  // Get current orders from the BlocProvider
+                  final cubit = BlocProvider.of<DriverOrdersPageCubit>(context);
+                  final orders = cubit.orders;
+
+                  // Validate that we have orders
+                  if (orders.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text(
+                          'No orders available to show route.',
+                        ),
+                        backgroundColor: Colors.orange[400],
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+
+                  // Get current location
+                  Position position = await Geolocator.getCurrentPosition();
+
+                  log("🗺️ Opening route page");
+                  log(
+                    "📍 Driver location: ${position.latitude}, ${position.longitude}",
+                  );
+                  log("📦 Orders count: ${orders.length}");
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (_) => DriverRoutePage(
+                            orders: orders,
+                            driverLocation: LatLng(
+                              position.latitude,
+                              position.longitude,
+                            ),
+                          ),
+                    ),
+                  );
+                } catch (e) {
+                  log("❌ Error opening route page: $e");
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Could not get current location: ${e.toString()}',
+                      ),
+                      backgroundColor: Colors.red[400],
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.route, size: 20),
+              label: const Text(
+                'View Route',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[600],
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 2,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Orders List
+  Widget _buildOrdersList(List<DriverOrderModel> orders) {
+    return RefreshIndicator(
+      onRefresh: () async {
+        final cubit = BlocProvider.of<DriverOrdersPageCubit>(context);
+        cubit.loadOrders();
+      },
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: orders.length,
+        itemBuilder: (context, index) {
+          final order = orders[index];
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: DriverOrderListItem(
+              order: order,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DriverOrderDetailsPage(order: order),
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Empty State
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.inbox_outlined,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'No Orders Available',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'You don\'t have any orders assigned at the moment.',
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () {
+              final cubit = BlocProvider.of<DriverOrdersPageCubit>(context);
+              cubit.loadOrders();
+            },
+            icon: const Icon(Icons.refresh),
+            label: const Text('Refresh'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue[600],
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Loading State
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Loading Orders...',
+            style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper methods for status
+  Color _getStatusColor(LocationTrackingStatus status) {
+    switch (status) {
+      case LocationTrackingStatus.tracking:
+        return Colors.green;
+      case LocationTrackingStatus.loading:
+        return Colors.orange;
+      case LocationTrackingStatus.idle:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getStatusIcon(LocationTrackingStatus status) {
+    switch (status) {
+      case LocationTrackingStatus.tracking:
+        return Icons.location_on;
+      case LocationTrackingStatus.loading:
+        return Icons.location_searching;
+      case LocationTrackingStatus.idle:
+        return Icons.location_off;
+    }
+  }
+
+  String _getStatusTitle(LocationTrackingStatus status) {
+    switch (status) {
+      case LocationTrackingStatus.tracking:
+        return 'Location Tracking Active';
+      case LocationTrackingStatus.loading:
+        return 'Getting Location...';
+      case LocationTrackingStatus.idle:
+        return 'Location Tracking Inactive';
+    }
+  }
+
+  String _getStatusSubtitle(LocationTrackingStatus status) {
+    switch (status) {
+      case LocationTrackingStatus.tracking:
+        return 'Your location is being shared with the system';
+      case LocationTrackingStatus.loading:
+        return 'Please wait while we get your current location';
+      case LocationTrackingStatus.idle:
+        return 'Start tracking to share your location';
+    }
+  }
+
+  String _getStatusButtonText(LocationTrackingStatus status) {
+    switch (status) {
+      case LocationTrackingStatus.tracking:
+        return 'Stop';
+      case LocationTrackingStatus.loading:
+        return 'Wait';
+      case LocationTrackingStatus.idle:
+        return 'Start';
+    }
+  }
+
+  VoidCallback? _getStatusAction(LocationTrackingStatus status) {
+    switch (status) {
+      case LocationTrackingStatus.tracking:
+        return _locationService.stopTracking;
+      case LocationTrackingStatus.loading:
+        return () {
+          Fluttertoast.showToast(
+            msg: 'Your location is being fetched',
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.BOTTOM,
+            timeInSecForIosWeb: 1,
+            backgroundColor: Colors.orange,
+            textColor: Colors.white,
+            fontSize: 16.0,
+          );
+        };
+      case LocationTrackingStatus.idle:
+        return _locationService.startTracking;
+    }
+  }
+}
+
+// Separate widget for username display to avoid context issues
+class _UsernameDisplay extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String?>(
+      future: UserStorageService.getUserName(),
+      builder: (context, snapshot) {
+        final username = snapshot.data ?? '';
+        return Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Welcome back,',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.black.withOpacity(0.8),
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                username,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

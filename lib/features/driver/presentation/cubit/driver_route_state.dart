@@ -13,15 +13,25 @@ class DriverRouteLoaded extends DriverRouteState {
   final Set<Marker> markers;
   final Set<Polyline> polylines;
   final List<LatLng> waypoints;
+  final double totalDistance; // in kilometers
+  final int totalDuration; // in minutes
 
   const DriverRouteLoaded({
     required this.markers,
     required this.polylines,
     required this.waypoints,
+    required this.totalDistance,
+    required this.totalDuration,
   });
 
   @override
-  List<Object?> get props => [markers, polylines, waypoints];
+  List<Object?> get props => [
+    markers,
+    polylines,
+    waypoints,
+    totalDistance,
+    totalDuration,
+  ];
 }
 
 class DriverRouteError extends DriverRouteState {

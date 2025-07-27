@@ -270,6 +270,8 @@ class ApiService {
         'longitude': longitude,
       });
 
+      log('Upload bill data: ${formData.fields}');
+
       final response = await dio.put(
         '${ApiConfig.baseUrl}driver/orders/status/$orderId',
         data: formData,

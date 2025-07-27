@@ -74,6 +74,61 @@ class _ProductFoundDialogState extends State<ProductFoundDialog> {
                         style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                     ],
+                    // Handle price display - check for final_price first
+                    if (widget.responseData['final_price'] != null ||
+                        widget.responseData['price'] != null) ...[
+                      SizedBox(height: 8),
+                      if (widget.responseData['final_price'] != null &&
+                          widget.responseData['price'] != null &&
+                          widget.responseData['final_price'].toString() !=
+                              "0.0000") ...[
+                        Text(
+                          'Base Price: QAR ${widget.responseData['price']}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                        Text(
+                          'Final Price: QAR ${widget.responseData['final_price']}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green[700],
+                          ),
+                        ),
+                      ] else if (widget.responseData['final_price'] != null &&
+                          widget.responseData['final_price'].toString() ==
+                              "0.0000" &&
+                          widget.responseData['price'] != null) ...[
+                        Text(
+                          'Price: QAR ${widget.responseData['price']}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.orange[700],
+                          ),
+                        ),
+                        Text(
+                          'Using Base Price (Final Price is 0)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange[600],
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ] else ...[
+                        Text(
+                          'Price: QAR ${widget.responseData['final_price'] ?? widget.responseData['price']}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green[700],
+                          ),
+                        ),
+                      ],
+                    ],
                     SizedBox(height: 16),
                     Text(
                       'Do you want to pick this item?',
@@ -105,12 +160,37 @@ class _ProductFoundDialogState extends State<ProductFoundDialog> {
                               });
 
                               try {
+                                // Handle price from API response - check for final_price first
+                                String apiPrice = '';
+                                if (widget.responseData['final_price'] !=
+                                        null &&
+                                    widget.responseData['final_price']
+                                        .toString()
+                                        .isNotEmpty &&
+                                    widget.responseData['final_price']
+                                            .toString() !=
+                                        "0.0000") {
+                                  apiPrice =
+                                      widget.responseData['final_price']
+                                          .toString();
+                                } else if (widget.responseData['price'] !=
+                                        null &&
+                                    widget.responseData['price']
+                                        .toString()
+                                        .isNotEmpty) {
+                                  apiPrice =
+                                      widget.responseData['price'].toString();
+                                }
+
                                 final success = await widget.cubit
                                     .updateItemStatus(
                                       item: widget.item,
                                       status: 'end_picking',
                                       scannedSku:
                                           widget.responseData['sku'] ?? '',
+                                      priceOverride:
+                                          apiPrice.isNotEmpty ? apiPrice : null,
+                                      isProduceOverride: 1,
                                     );
 
                                 if (success) {

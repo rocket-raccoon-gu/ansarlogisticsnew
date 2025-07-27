@@ -79,7 +79,13 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                   Expanded(
                     child: ListView(
                       children: [
-                        CustomerCardWidget(order: widget.order),
+                        CustomerCardWidget(
+                          order: widget.order,
+                          preparationLabel:
+                              state.preparationLabel.isNotEmpty
+                                  ? state.preparationLabel
+                                  : null,
+                        ),
                         TypeCardsWidget(
                           allItems: [
                             ...state.toPick,

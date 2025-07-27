@@ -1,13 +1,15 @@
 import 'dart:async';
 import 'dart:developer';
+import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:api_gateway/ws/websockt_client.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-import 'package:api_gateway/services/api_service.dart';
-import 'package:api_gateway/http/http_client.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ansarlogisticsnew/core/services/user_storage_service.dart';
+import 'package:ansarlogisticsnew/core/services/shared_websocket_service.dart';
+import 'package:ansarlogisticsnew/core/di/injector.dart';
 
-// Add this enum for tracking status
-enum LocationTrackingStatus { idle, loading, tracking, error }
+enum LocationTrackingStatus { idle, loading, tracking }
 
 class DriverLocationService {
   static final DriverLocationService _instance =
@@ -15,106 +17,194 @@ class DriverLocationService {
   factory DriverLocationService() => _instance;
   DriverLocationService._internal();
 
-  final WebSocketClient _wsClient = WebSocketClient();
-  StreamSubscription<Position>? _positionStream;
-  bool _isTracking = false;
-  DateTime? _lastSentTime;
+  Timer? _timer;
+  Position? _currentPosition;
+  late SharedWebSocketService _sharedWebSocket;
+  static const String _trackingPreferenceKey =
+      'driver_location_tracking_enabled';
 
-  // Add status stream
+  final _statusController =
+      StreamController<LocationTrackingStatus>.broadcast();
+  LocationTrackingStatus _status = LocationTrackingStatus.idle;
+
+  Stream<LocationTrackingStatus> get statusStream => _statusController.stream;
+  LocationTrackingStatus get status => _status;
+
+  void setStatus(LocationTrackingStatus status) {
+    _status = status;
+    _statusController.add(status);
+  }
+
+  // Initialize the service
+  Future<void> initialize() async {
+    _sharedWebSocket = getIt<SharedWebSocketService>();
+    await _sharedWebSocket.initialize();
+    await _initForegroundTask();
+    await _checkAndAutoStartTracking();
+  }
+
+  // Check if tracking was previously enabled and auto-start if needed
+  Future<void> _checkAndAutoStartTracking() async {
+    final prefs = await SharedPreferences.getInstance();
+    final trackingEnabled = prefs.getBool(_trackingPreferenceKey) ?? false;
+
+    if (trackingEnabled) {
+      // Auto-start tracking if it was previously enabled
+      await _startForegroundTask();
+    }
+  }
+
+  // Save tracking preference
+  Future<void> _saveTrackingPreference(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_trackingPreferenceKey, enabled);
+  }
+
+  // Stop tracking and clear preference
+  Future<void> stopTracking() async {
+    _timer?.cancel();
+    setStatus(LocationTrackingStatus.idle);
+    await _saveTrackingPreference(false);
+
+    Fluttertoast.showToast(
+      msg: 'Location tracking stopped',
+      toastLength: Toast.LENGTH_SHORT,
+      gravity: ToastGravity.BOTTOM,
+      timeInSecForIosWeb: 1,
+      backgroundColor: Colors.red,
+      textColor: Colors.white,
+      fontSize: 16.0,
+    );
+  }
+
+  Future<void> _initForegroundTask() async {
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(
+        channelId: 'location_channel_id',
+        channelName: 'Location Tracking',
+        channelDescription: 'Tracks location in the background',
+        channelImportance: NotificationChannelImportance.LOW,
+        priority: NotificationPriority.LOW,
+      ),
+      iosNotificationOptions: IOSNotificationOptions(),
+      foregroundTaskOptions: ForegroundTaskOptions(
+        eventAction: ForegroundTaskEventAction.repeat(
+          60000,
+        ), // 60 seconds = 1 minute
+        allowWakeLock: true,
+      ),
+    );
+  }
 
   Future<void> startTracking() async {
-    if (_isTracking) return;
-    _isTracking = true;
-    // setStatus(LocationTrackingStatus.loading);
-
-    // Request permissions
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
+    LocationPermission permission = await Geolocator.requestPermission();
     if (permission == LocationPermission.deniedForever ||
         permission == LocationPermission.denied) {
-      // Handle permission denied
-      _isTracking = false;
-      // setStatus(LocationTrackingStatus.error);
+      log("Location permission denied");
       return;
     }
 
-    // TODO: Start foreground service for Android using flutter_foreground_task
+    // Ensure WebSocket is connected before starting tracking
+    if (!_sharedWebSocket.isConnected) {
+      log("Connecting to WebSocket before starting tracking...");
+      await _sharedWebSocket.initialize();
+      // Wait for connection to establish
+      await Future.delayed(Duration(seconds: 3));
+    }
 
-    // Connect to WebSocket using your client
-    // _wsClient.connect(
-    //   'wss://your-api-server/ws',
-    // ); // TODO: Replace with your actual URL
+    await FlutterForegroundTask.startService(
+      notificationTitle: 'Location Tracking',
+      notificationText: 'Tracking your location in the background',
+    );
 
-    // Start listening to location updates
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 10, // meters
-      ),
-    ).listen((Position position) {
-      final now = DateTime.now();
-      if (_lastSentTime == null ||
-          now.difference(_lastSentTime!).inSeconds >= 4) {
-        final data = '{"lat":${position.latitude},"lng":${position.longitude}}';
-        log(data);
-        // _wsClient.send(data);
-        // _lastSentTime = now;
-        // setStatus(
-        //   LocationTrackingStatus.tracking,
-        // ); // Set to tracking on first location
-      }
+    setStatus(LocationTrackingStatus.loading);
+
+    // Send first location immediately
+    Position firstPosition = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+    setStatus(LocationTrackingStatus.tracking);
+
+    Fluttertoast.showToast(
+      msg:
+          'First location sent: ${firstPosition.latitude}, ${firstPosition.longitude}',
+      toastLength: Toast.LENGTH_SHORT,
+      gravity: ToastGravity.BOTTOM,
+      timeInSecForIosWeb: 1,
+      backgroundColor: Colors.green,
+      textColor: Colors.white,
+      fontSize: 16.0,
+    );
+
+    // Send first location immediately
+    log("🚀 Sending first location immediately");
+    final user = await UserStorageService.getUserData();
+    await _sharedWebSocket.sendLocationUpdate(
+      user?.user?.id ?? 18,
+      firstPosition.latitude,
+      firstPosition.longitude,
+    );
+    log(
+      "✅ First location sent: ${firstPosition.latitude}, ${firstPosition.longitude}",
+    );
+
+    // Save tracking preference as enabled
+    await _saveTrackingPreference(true);
+
+    // Then start timer for subsequent locations every minute
+    _timer = Timer.periodic(Duration(minutes: 1), (timer) async {
+      log("🕐 Timer triggered - sending location update (every 1 minute)");
+
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      setStatus(LocationTrackingStatus.tracking);
+
+      // Fluttertoast.showToast(
+      //   msg: 'Sending location: ${position.latitude}, ${position.longitude}',
+      //   toastLength: Toast.LENGTH_SHORT,
+      //   gravity: ToastGravity.BOTTOM,
+      //   timeInSecForIosWeb: 1,
+      //   backgroundColor: Colors.blue,
+      //   textColor: Colors.white,
+      //   fontSize: 16.0,
+      // );
+
+      // Send location update via WebSocket with proper format
+      final user = await UserStorageService.getUserData();
+      await _sharedWebSocket.sendLocationUpdate(
+        user?.user?.id ?? 18,
+        position.latitude,
+        position.longitude,
+      );
+
+      log(
+        "✅ Location sent via timer: ${position.latitude}, ${position.longitude}",
+      );
     });
   }
 
-  Future<void> stopTracking() async {
-    _isTracking = false;
-    await _positionStream?.cancel();
-    _positionStream = null;
-    _wsClient.disconnect();
-    _lastSentTime = null;
-    // setStatus(LocationTrackingStatus.idle);
-    // TODO: Stop foreground service for Android
+  Future<void> _startForegroundTask() async {
+    await startTracking();
   }
 
-  bool get isTracking => _isTracking;
-}
-
-class LocationTaskHandler extends TaskHandler {
-  @override
-  Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
-    print('[LocationTask] onStart at $timestamp');
+  void dispose() {
+    _timer?.cancel();
+    _statusController.close();
   }
 
-  @override
-  void onRepeatEvent(DateTime timestamp) {
-    () async {
-      print('[LocationTask] onRepeatEvent at $timestamp');
-      try {
-        final pos = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-        );
-        print(
-          '[LocationTask] position: lat=${pos.latitude}, lng=${pos.longitude}',
-        );
-        await ApiService(
-          HttpClient(),
-          WebSocketClient(),
-        ).sendLocation(pos.latitude, pos.longitude);
-      } catch (e) {
-        print('[LocationTask] error fetching/sending location: $e');
-      }
-    }();
-  }
+  // Check WebSocket connection status
+  bool get isWebSocketConnected => _sharedWebSocket.isConnected;
 
-  @override
-  Future<void> onDestroy(DateTime timestamp, bool isForceStop) async {
-    print('[LocationTask] onDestroy at $timestamp');
-  }
-
-  @override
-  void onNotificationPressed() {
-    print('[LocationTask] notification pressed');
+  // Force reconnect WebSocket
+  Future<void> reconnectWebSocket() async {
+    log("Force reconnecting WebSocket...");
+    _sharedWebSocket.disconnect();
+    await Future.delayed(Duration(seconds: 1));
+    await _sharedWebSocket.initialize();
+    await Future.delayed(Duration(seconds: 2));
+    log(
+      "WebSocket reconnection attempt completed. Connected: ${_sharedWebSocket.isConnected}",
+    );
   }
 }

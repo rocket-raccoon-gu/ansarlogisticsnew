@@ -335,8 +335,18 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                           const SizedBox(height: 16),
                           Container(
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
+                              color:
+                                  _manualBarcodeController.text.isNotEmpty
+                                      ? Colors.green.shade50
+                                      : Colors.grey.shade100,
                               borderRadius: BorderRadius.circular(10),
+                              border:
+                                  _manualBarcodeController.text.isNotEmpty
+                                      ? Border.all(
+                                        color: Colors.green.shade200,
+                                        width: 2,
+                                      )
+                                      : null,
                             ),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -344,6 +354,14 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                             ),
                             child: Row(
                               children: [
+                                if (_manualBarcodeController.text.isNotEmpty)
+                                  Icon(
+                                    Icons.qr_code_scanner,
+                                    color: Colors.green,
+                                    size: 20,
+                                  ),
+                                if (_manualBarcodeController.text.isNotEmpty)
+                                  SizedBox(width: 8),
                                 Expanded(
                                   child: TextField(
                                     enabled:
@@ -351,16 +369,60 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                                             OrderItemStatus.picked &&
                                         !_isLoading,
                                     controller: _manualBarcodeController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Enter Barcode',
+                                    decoration: InputDecoration(
+                                      labelText:
+                                          _manualBarcodeController
+                                                  .text
+                                                  .isNotEmpty
+                                              ? 'Scanned Barcode (Edit if needed)'
+                                              : 'Enter Barcode',
                                       border: InputBorder.none,
+                                      labelStyle: TextStyle(
+                                        color:
+                                            _manualBarcodeController
+                                                    .text
+                                                    .isNotEmpty
+                                                ? Colors.green.shade700
+                                                : Colors.grey.shade600,
+                                      ),
                                     ),
-                                    style: const TextStyle(fontSize: 16),
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontFamily:
+                                          _manualBarcodeController
+                                                  .text
+                                                  .isNotEmpty
+                                              ? 'monospace'
+                                              : null,
+                                      fontWeight:
+                                          _manualBarcodeController
+                                                  .text
+                                                  .isNotEmpty
+                                              ? FontWeight.w600
+                                              : FontWeight.normal,
+                                    ),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        // Trigger rebuild to update UI
+                                      });
+                                    },
                                     onSubmitted:
                                         (value) => _handleManualBarcodeSubmit(),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
+                                if (_manualBarcodeController.text.isNotEmpty)
+                                  IconButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _manualBarcodeController.clear();
+                                      });
+                                    },
+                                    icon: Icon(Icons.clear, color: Colors.red),
+                                    tooltip: 'Clear barcode',
+                                  ),
+                                if (_manualBarcodeController.text.isNotEmpty)
+                                  SizedBox(width: 4),
                                 ElevatedButton(
                                   onPressed:
                                       (widget.item.status ==
@@ -369,7 +431,10 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                                           ? null
                                           : _handleManualBarcodeSubmit,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.blue,
+                                    backgroundColor:
+                                        _manualBarcodeController.text.isNotEmpty
+                                            ? Colors.green
+                                            : Colors.blue,
                                     foregroundColor: Colors.white,
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 18,
@@ -379,7 +444,11 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                  child: const Text('Submit'),
+                                  child: Text(
+                                    _manualBarcodeController.text.isNotEmpty
+                                        ? 'Submit Scanned'
+                                        : 'Submit',
+                                  ),
                                 ),
                               ],
                             ),
@@ -574,6 +643,101 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
     BuildContext context,
     String barcode,
   ) async {
+    // Show scanned barcode in text field for editing
+    setState(() {
+      _manualBarcodeController.text = barcode;
+      _isProcessing = false; // Close scanner
+    });
+
+    // Show confirmation dialog with scanned barcode
+    _showScannedBarcodeDialog(context, barcode);
+  }
+
+  void _showScannedBarcodeDialog(BuildContext context, String scannedBarcode) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.qr_code_scanner, color: Colors.green),
+              SizedBox(width: 8),
+              Text('Barcode Scanned'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Barcode scanned successfully!',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Scanned Code:',
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(12),
+                margin: EdgeInsets.only(top: 4),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: Text(
+                  scannedBarcode,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'You can edit the barcode in the text field below before submitting.',
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                // Clear the text field if user cancels
+                setState(() {
+                  _manualBarcodeController.clear();
+                });
+              },
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                // The barcode is already in the text field, user can edit and submit
+                // Focus on the text field for easy editing
+                FocusScope.of(context).requestFocus(FocusNode());
+                Future.delayed(Duration(milliseconds: 100), () {
+                  FocusScope.of(context).requestFocus(FocusNode());
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+              child: Text('Continue'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _processBarcode(BuildContext context, String barcode) async {
     if (widget.item.isProduce) {
       final dialogContext = context;
       String produceBarcode = barcode
@@ -614,6 +778,22 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
         setState(() => _isLoading = false);
 
         if (response.data != null && response.data['match'] == "0") {
+          // Handle price from API response - check for final_price first
+          String displayPrice = price; // Default to extracted price
+          String apiPrice = price; // Default for API call
+
+          // Check if API response has price information
+          if (response.data['final_price'] != null &&
+              response.data['final_price'].toString().isNotEmpty &&
+              response.data['final_price'].toString() != "0.0000") {
+            apiPrice = response.data['final_price'].toString();
+            displayPrice = apiPrice;
+          } else if (response.data['price'] != null &&
+              response.data['price'].toString().isNotEmpty) {
+            apiPrice = response.data['price'].toString();
+            displayPrice = apiPrice;
+          }
+
           // Show confirmation dialog
           showDialog(
             context: context,
@@ -626,7 +806,41 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                   children: [
                     Text('Barcode: $produceBarcode'),
                     SizedBox(height: 8),
-                    Text('Price: QAR $price'),
+                    Text('Price: QAR $displayPrice'),
+                    if (response.data['final_price'] != null &&
+                        response.data['price'] != null &&
+                        response.data['final_price'].toString() !=
+                            "0.0000") ...[
+                      SizedBox(height: 4),
+                      Text(
+                        'Base Price: QAR ${response.data['price']}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                          decoration: TextDecoration.lineThrough,
+                        ),
+                      ),
+                      Text(
+                        'Final Price: QAR ${response.data['final_price']}',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green[700],
+                        ),
+                      ),
+                    ] else if (response.data['final_price'] != null &&
+                        response.data['final_price'].toString() == "0.0000" &&
+                        response.data['price'] != null) ...[
+                      SizedBox(height: 4),
+                      Text(
+                        'Using Base Price (Final Price is 0)',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.orange[600],
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
                     SizedBox(height: 16),
                     Text('Do you want to pick this produce item?'),
                   ],
@@ -661,7 +875,8 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                           status: 'end_picking',
                           scannedSku: barcode,
                           reason: '',
-                          priceOverride: price,
+                          priceOverride:
+                              apiPrice, // Use the correct price from API
                           isProduceOverride: 1,
                         );
 
@@ -839,7 +1054,7 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
       return;
     }
     setState(() => _isLoading = true);
-    await _handleBarcodeScanned(context, barcode);
+    await _processBarcode(context, barcode);
     setState(() => _isLoading = false);
   }
 

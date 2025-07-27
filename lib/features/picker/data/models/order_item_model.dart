@@ -10,6 +10,7 @@ class OrderItemModel {
   final String deliveryType;
   final String? sku;
   final double? price;
+  final double? finalPrice; // Add final_price field for produce items
   final List<String> productImages;
   final String? isProduceRaw;
   final String? subgroupIdentifier;
@@ -24,12 +25,46 @@ class OrderItemModel {
     required this.deliveryType,
     this.sku,
     this.price,
+    this.finalPrice,
     required this.productImages,
     this.isProduceRaw,
     this.subgroupIdentifier,
   });
 
   bool get isProduce => isProduceRaw == '1';
+
+  // Method to update item with new price and produce status
+  OrderItemModel copyWith({
+    String? id,
+    String? name,
+    String? imageUrl,
+    int? quantity,
+    OrderItemStatus? status,
+    String? description,
+    String? deliveryType,
+    String? sku,
+    double? price,
+    double? finalPrice,
+    List<String>? productImages,
+    String? isProduceRaw,
+    String? subgroupIdentifier,
+  }) {
+    return OrderItemModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      imageUrl: imageUrl ?? this.imageUrl,
+      quantity: quantity ?? this.quantity,
+      status: status ?? this.status,
+      description: description ?? this.description,
+      deliveryType: deliveryType ?? this.deliveryType,
+      sku: sku ?? this.sku,
+      price: price ?? this.price,
+      finalPrice: finalPrice ?? this.finalPrice,
+      productImages: productImages ?? this.productImages,
+      isProduceRaw: isProduceRaw ?? this.isProduceRaw,
+      subgroupIdentifier: subgroupIdentifier ?? this.subgroupIdentifier,
+    );
+  }
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
     // Parse product images
@@ -82,6 +117,10 @@ class OrderItemModel {
           json['price'] != null
               ? double.tryParse(json['price'].toString())
               : null,
+      finalPrice:
+          json['final_price'] != null
+              ? double.tryParse(json['final_price'].toString())
+              : null,
       productImages: images,
       isProduceRaw: json['is_produce']?.toString(),
       subgroupIdentifier: json['subgroup_identifier']?.toString(),
@@ -99,6 +138,7 @@ class OrderItemModel {
       'delivery_type': deliveryType,
       'sku': sku,
       'price': price,
+      'final_price': finalPrice,
       'product_images': productImages.join(','),
       'subgroup_identifier': subgroupIdentifier,
     };

@@ -143,33 +143,38 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              FutureBuilder<String?>(
-                future: UserStorageService.getUserName(),
-                builder: (context, snapshot) {
-                  final username = snapshot.data ?? '';
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Welcome back,',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
+              Expanded(
+                child: FutureBuilder<String?>(
+                  future: UserStorageService.getUserName(),
+                  builder: (context, snapshot) {
+                    final username = snapshot.data ?? '';
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Welcome back,',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
-                      Text(
-                        username.isNotEmpty ? username : 'Picker',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                        Text(
+                          username.isNotEmpty ? username : 'Picker',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
-                      ),
-                    ],
-                  );
-                },
+                      ],
+                    );
+                  },
+                ),
               ),
+              const SizedBox(width: 12),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -496,7 +501,7 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
         context.read<PickerOrdersCubit>().refreshOrders();
       },
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         itemCount: orders.length,
         itemBuilder: (context, index) {
           final order = orders[index];

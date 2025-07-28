@@ -49,80 +49,108 @@ class OrderDetailsModel {
   });
 
   factory OrderDetailsModel.fromJson(Map<String, dynamic> json) {
-    List<CategoryItemModel> parsedCategories = [];
+    try {
+      List<CategoryItemModel> parsedCategories = [];
 
-    print('Parsing OrderDetailsModel from JSON: ${json.keys}');
-    print('Items structure: ${json['items']}');
+      print('Parsing OrderDetailsModel from JSON: ${json.keys}');
+      print('Items structure: ${json['items']}');
 
-    if (json['items'] != null && json['items'] is List) {
-      for (var typeGroup in json['items']) {
-        print('Processing typeGroup: $typeGroup');
+      if (json['items'] != null && json['items'] is List) {
+        for (var typeGroup in json['items']) {
+          print('Processing typeGroup: $typeGroup');
 
-        if (typeGroup is List && typeGroup.length >= 2) {
-          final deliveryType = typeGroup[0]; // "exp" or "nol"
-          final categories = typeGroup[1];
+          if (typeGroup is List && typeGroup.length >= 2) {
+            final deliveryType = typeGroup[0]; // "exp" or "nol"
+            final categories = typeGroup[1];
 
-          print('Delivery type: $deliveryType');
-          print('Categories: $categories');
+            print('Delivery type: $deliveryType');
+            print('Categories: $categories');
 
-          if (categories is List) {
-            for (var categoryGroup in categories) {
-              print('Processing categoryGroup: $categoryGroup');
+            if (categories is List) {
+              for (var categoryGroup in categories) {
+                print('Processing categoryGroup: $categoryGroup');
 
-              if (categoryGroup is Map) {
-                try {
-                  // The delivery_type is already provided by the API in each item
-                  // No need to manually add it
-                  if (categoryGroup['items'] is List) {
-                    print(
-                      'Found ${categoryGroup['items'].length} items in category ${categoryGroup['category']}',
-                    );
+                if (categoryGroup is Map) {
+                  try {
+                    // The delivery_type is already provided by the API in each item
+                    // No need to manually add it
+                    if (categoryGroup['items'] is List) {
+                      print(
+                        'Found ${categoryGroup['items'].length} items in category ${categoryGroup['category']}',
+                      );
 
-                    // Debug: Print delivery types of items in this category
-                    for (var itemJson in categoryGroup['items']) {
-                      if (itemJson is Map) {
-                        print(
-                          'Item: ${itemJson['name']}, Delivery Type: ${itemJson['delivery_type']}',
-                        );
+                      // Debug: Print delivery types of items in this category
+                      for (var itemJson in categoryGroup['items']) {
+                        if (itemJson is Map) {
+                          print(
+                            'Item: ${itemJson['name']}, Delivery Type: ${itemJson['delivery_type']}',
+                          );
+                        }
                       }
                     }
-                  }
 
-                  parsedCategories.add(
-                    CategoryItemModel.fromJson(
-                      Map<String, dynamic>.from(categoryGroup),
-                    ),
-                  );
-                } catch (e) {
-                  print('Error parsing category group: $e');
-                  print('Category group data: $categoryGroup');
-                  // Continue with other categories even if one fails
+                    parsedCategories.add(
+                      CategoryItemModel.fromJson(
+                        Map<String, dynamic>.from(categoryGroup),
+                      ),
+                    );
+                  } catch (e) {
+                    print('Error parsing category group: $e');
+                    print('Category group data: $categoryGroup');
+                    // Continue with other categories even if one fails
+                  }
                 }
               }
+            } else {
+              print('Categories is not a list: $categories');
             }
           } else {
-            print('Categories is not a list: $categories');
+            print('Invalid typeGroup structure: $typeGroup');
           }
-        } else {
-          print('Invalid typeGroup structure: $typeGroup');
         }
       }
+
+      print('Total parsed categories: ${parsedCategories.length}');
+      print(
+        'Total items: ${parsedCategories.fold(0, (sum, cat) => sum + cat.items.length)}',
+      );
+
+      return OrderDetailsModel(
+        preparationId: _parsePreparationId(json['preparation_id']),
+        preparationLabel: json['preparation_label'] ?? '',
+        parentPreparationId: json['parent_preparation_id'],
+        status: json['status'] ?? '',
+        createdAt:
+            DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
+        subgroupIdentifier: json['subgroup_identifier'] ?? '',
+        categories: parsedCategories,
+      );
+    } catch (e) {
+      print('Error parsing OrderDetailsModel: $e');
+      print('JSON data: $json');
+      // Return a default model with empty data
+      return OrderDetailsModel(
+        preparationId: 0,
+        preparationLabel: '',
+        status: '',
+        createdAt: DateTime.now(),
+        subgroupIdentifier: '',
+        categories: [],
+      );
     }
+  }
 
-    print('Total parsed categories: ${parsedCategories.length}');
-    print(
-      'Total items: ${parsedCategories.fold(0, (sum, cat) => sum + cat.items.length)}',
-    );
-
-    return OrderDetailsModel(
-      preparationId: json['preparation_id'] ?? 0,
-      preparationLabel: json['preparation_label'] ?? '',
-      parentPreparationId: json['parent_preparation_id'],
-      status: json['status'] ?? '',
-      createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
-      subgroupIdentifier: json['subgroup_identifier'] ?? '',
-      categories: parsedCategories,
-    );
+  static int _parsePreparationId(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is String) {
+      try {
+        return int.parse(value);
+      } catch (e) {
+        return 0;
+      }
+    }
+    return 0;
   }
 
   // Helper method to get all items flattened

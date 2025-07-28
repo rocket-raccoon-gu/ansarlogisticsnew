@@ -8,6 +8,7 @@ import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/auth/data/models/login_request_model.dart';
 import '../../features/auth/domain/usecases/login_cases.dart';
 import '../../core/di/injector.dart';
+import '../services/firebase_service.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -41,7 +42,12 @@ class _SplashPageState extends State<SplashPage> {
 
       if (savedUsername != null && savedPassword != null) {
         // Attempt auto-login with saved credentials
-        await _performAutoLogin(savedUsername, savedPassword);
+        final deviceToken = await FirebaseService.getFCMToken();
+        await _performAutoLogin(
+          savedUsername,
+          savedPassword,
+          deviceToken ?? '',
+        );
       } else {
         // No saved credentials, go to login
         if (!_navigated) {
@@ -58,7 +64,11 @@ class _SplashPageState extends State<SplashPage> {
     }
   }
 
-  Future<void> _performAutoLogin(String email, String password) async {
+  Future<void> _performAutoLogin(
+    String email,
+    String password,
+    String deviceToken,
+  ) async {
     try {
       // Create auth cubit for auto-login
       final authCubit = AuthCubit(loginCases: getIt<LoginCases>());
@@ -79,6 +89,8 @@ class _SplashPageState extends State<SplashPage> {
       final loginRequest = LoginRequestModel(
         username: email,
         password: password,
+        device_token: deviceToken,
+        version: '1.0.0',
       );
 
       await authCubit.login(loginRequest);

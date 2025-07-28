@@ -66,6 +66,35 @@ class OrderItemModel {
     );
   }
 
+  static int _parseQuantity(dynamic value) {
+    if (value == null) return 1;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) {
+      try {
+        final doubleValue = double.tryParse(value);
+        return doubleValue?.toInt() ?? 1;
+      } catch (e) {
+        return 1;
+      }
+    }
+    return 1;
+  }
+
+  static double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      try {
+        return double.tryParse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
     // Parse product images
     List<String> images = [];
@@ -105,22 +134,13 @@ class OrderItemModel {
       id: json['item_id']?.toString() ?? json['id']?.toString() ?? '',
       name: json['name'] ?? '',
       imageUrl: json['image_url'] ?? '',
-      quantity:
-          json['qty_ordered'] != null
-              ? double.tryParse(json['qty_ordered'].toString())?.toInt() ?? 1
-              : json['quantity'] ?? 1,
+      quantity: _parseQuantity(json['qty_ordered'] ?? json['quantity']),
       status: status,
       description: json['description'],
       deliveryType: json['delivery_type']?.toString() ?? '',
       sku: json['sku']?.toString(),
-      price:
-          json['price'] != null
-              ? double.tryParse(json['price'].toString())
-              : null,
-      finalPrice:
-          json['final_price'] != null
-              ? double.tryParse(json['final_price'].toString())
-              : null,
+      price: _parseDouble(json['price']),
+      finalPrice: _parseDouble(json['final_price']),
       productImages: images,
       isProduceRaw: json['is_produce']?.toString(),
       subgroupIdentifier: json['subgroup_identifier']?.toString(),

@@ -49,7 +49,10 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text('${AppStrings.orderId} #${widget.order.preparationId}'),
+          title: Text(
+            '${AppStrings.orderId} #${widget.order.preparationId}',
+            style: TextStyle(color: Colors.black, fontSize: 16),
+          ),
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,
           elevation: 0,
@@ -72,7 +75,52 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                     ),
               );
             } else if (state is OrderDetailsError) {
-              return Center(child: Text(state.message));
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: Colors.grey[400],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No Data Available',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Text(
+                        'Unable to load order details. Please try again later.',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        context.read<OrderDetailsCubit>().loadItems();
+                      },
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Retry'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
             } else if (state is OrderDetailsLoaded) {
               return Column(
                 children: [
@@ -94,7 +142,9 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                             ...state.notAvailable,
                           ],
                           cubit: BlocProvider.of<OrderDetailsCubit>(context),
-                          preparationId: int.parse(widget.order.preparationId),
+                          preparationId: _parsePreparationId(
+                            widget.order.preparationId,
+                          ),
                           order: widget.order,
                         ),
                       ],
@@ -357,5 +407,15 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
         ),
       ),
     );
+  }
+
+  int _parsePreparationId(String preparationId) {
+    try {
+      return int.parse(preparationId);
+    } catch (e) {
+      // Fallback to 0 or throw an error if parsing is critical
+      // For now, we'll return 0 as a fallback
+      return 0;
+    }
   }
 }

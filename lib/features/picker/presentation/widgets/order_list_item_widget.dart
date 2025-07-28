@@ -67,7 +67,7 @@ class OrderListItemWidget extends StatelessWidget {
         onTap: () => _handleOrderTap(context),
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -96,9 +96,9 @@ class OrderListItemWidget extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Order #${order.preparationId}',
+                                '#${order.preparationLabel}',
                                 style: const TextStyle(
-                                  fontSize: 18,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.black87,
                                 ),
@@ -118,7 +118,7 @@ class OrderListItemWidget extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,

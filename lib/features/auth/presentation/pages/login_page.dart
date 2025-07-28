@@ -4,7 +4,7 @@ import '../cubit/auth_cubit.dart';
 import '../widgets/login_form.dart';
 import '../widgets/splash_screen.dart';
 import '../../../../core/di/injector.dart';
-import '../../../../core/services/firebase_service.dart';
+import '../../../../core/services/notification_service.dart';
 import '../../../../core/constants/app_assets.dart';
 
 class LoginPage extends StatefulWidget {
@@ -25,8 +25,8 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _handleLoginSuccess() async {
-    // Request notification permissions
-    await FirebaseService.requestNotificationPermissions();
+    // Request notification permissions after successful login
+    await NotificationService.requestPermissions();
     // Navigate to home
     if (mounted) {
       setState(() => _navigated = true); // <-- set flag

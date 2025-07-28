@@ -426,4 +426,34 @@ class ApiService {
       rethrow;
     }
   }
+
+  Future<Response> getReport({
+    required String token,
+    required String role,
+    required DateTime fromDate,
+    required DateTime toDate,
+  }) async {
+    try {
+      final dio = Dio();
+      final response = await dio.get(
+        '${ApiConfig.baseUrl}reports/$role',
+        queryParameters: {
+          'from_date': fromDate.toIso8601String(),
+          'to_date': toDate.toIso8601String(),
+        },
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+      log('Report response status: ${response.statusCode}');
+      log('Report response data: ${response.data}');
+      return response;
+    } catch (e) {
+      log('Report error: ${e.toString()}');
+      rethrow;
+    }
+  }
 }

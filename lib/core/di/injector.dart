@@ -17,6 +17,7 @@ import '../services/firebase_auth_service.dart';
 import '../../features/driver/presentation/cubit/driver_orders_page_cubit.dart';
 import '../../features/driver/presentation/cubit/bill_upload_cubit.dart';
 import '../../features/picker/presentation/cubit/picker_orders_cubit.dart';
+import '../../features/report/presentation/cubit/report_cubit.dart';
 import '../services/driver_location_service.dart';
 import '../services/shared_websocket_service.dart';
 
@@ -71,6 +72,8 @@ void setupDependencyInjection() {
   getIt.registerFactory(() => BillUploadCubit(apiService: getIt<ApiService>()));
 
   getIt.registerFactory(() => PickerOrdersCubit());
+
+  getIt.registerFactory(() => ReportCubit(apiService: getIt<ApiService>()));
 
   // Services
   getIt.registerLazySingleton(() => DriverLocationService());

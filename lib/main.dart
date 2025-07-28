@@ -2,10 +2,19 @@ import 'package:flutter/material.dart';
 import 'core/di/injector.dart';
 import 'core/routes/app_router.dart';
 import 'core/services/firebase_service.dart';
+import 'core/widgets/in_app_notification.dart';
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:api_gateway/ws/websockt_client.dart';
 import 'package:api_gateway/config/api_config.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'core/services/notification_service.dart';
+import 'core/services/global_notification_service.dart';
+import 'package:overlay_support/overlay_support.dart';
+
+// Use GlobalNotificationService's navigator key
+final GlobalKey<NavigatorState> navigatorKey =
+    GlobalNotificationService.navigatorKey;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,7 +29,35 @@ void main() async {
   // Setup dependency injection
   setupDependencyInjection();
 
-  runApp(const MyApp());
+  // Configure Firebase messaging for foreground notifications
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    print('Got a message whilst in the foreground!');
+    print('Message data: ${message.data}');
+
+    if (message.notification != null) {
+      print('Message also contained a notification: ${message.notification}');
+
+      // Always show local notification with sound
+      NotificationService.showNotification(
+        title: message.notification?.title ?? 'New Notification',
+        body: message.notification?.body ?? '',
+        payload: message.data.toString(),
+      );
+
+      // If it's a new order, also show the in-app dialog
+      if (message.data.containsKey('type') &&
+          message.data['type'] == 'new_order') {
+        final orderId = message.data['order_id'] ?? 'Unknown Order';
+        final userRole = message.data['user_role'] ?? 'picker';
+        GlobalNotificationService.showNewOrderNotification(
+          orderId: orderId,
+          userRole: userRole,
+        );
+      }
+    }
+  });
+
+  runApp(OverlaySupport.global(child: const MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -30,6 +67,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'Ansar Logistics',
       theme: ThemeData(

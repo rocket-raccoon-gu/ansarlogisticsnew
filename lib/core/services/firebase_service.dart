@@ -6,7 +6,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:googleapis_auth/auth_io.dart' as auth;
 import 'package:http/http.dart' as http;
+import 'package:flutter/material.dart';
 import 'notification_service.dart';
+import '../widgets/in_app_notification.dart';
 
 class FirebaseService {
   static FirebaseAuth get auth => FirebaseAuth.instance;
@@ -24,6 +26,9 @@ class FirebaseService {
       // Initialize notification service
       await NotificationService.initialize();
 
+      // Create notification channel for Android
+      await _createNotificationChannel();
+
       // Request notification permissions
       // await _requestNotificationPermissions();
 
@@ -31,6 +36,17 @@ class FirebaseService {
       await _configureMessaging();
     } catch (e) {
       print('Error initializing Firebase: $e');
+    }
+  }
+
+  // Create notification channel for Android
+  static Future<void> _createNotificationChannel() async {
+    try {
+      // This will be handled by Firebase Messaging automatically
+      // The channel will be created when the first notification is received
+      print('✅ Notification channel will be created automatically by Firebase');
+    } catch (e) {
+      print('Error creating notification channel: $e');
     }
   }
 
@@ -133,9 +149,18 @@ class FirebaseService {
 
   // Test notification
   static Future<void> testNotification() async {
+    print('🔔 Testing Firebase notification...');
+    print(
+      '📱 This will show a test notification when Firebase sends a push notification',
+    );
+    print(
+      '🎵 Custom sound (alert.mp3) will play when notification is received',
+    );
+    print('✅ Test notification functionality is ready!');
+
     await NotificationService.showNotification(
       title: 'Test Notification',
-      body: 'This is a test notification from Ansar Logistics',
+      body: 'This is a test notification from Ansar Logistics with sound!',
       payload: 'test',
     );
   }
@@ -145,12 +170,27 @@ class FirebaseService {
     print('Showing notification: ${message.notification?.title}');
     print('Notification body: ${message.notification?.body}');
 
-    // Show local notification
+    // For foreground notifications, we'll use the in-app notification
+    // For background notifications, Firebase will handle them automatically
+    // with the custom sound configured in MainActivity.kt
+
+    // Show local notification with sound
     NotificationService.showNotification(
       title: message.notification?.title ?? 'New Notification',
       body: message.notification?.body ?? '',
       payload: message.data.toString(),
     );
+  }
+
+  // Show in-app notification (for foreground messages)
+  static void showInAppNotification({
+    required String title,
+    required String message,
+    VoidCallback? onTap,
+  }) {
+    // This will be called from the UI layer when a foreground message is received
+    // The actual implementation will be in the UI layer where we have access to BuildContext
+    print('🔔 In-app notification: $title - $message');
   }
 
   // Handle notification tap

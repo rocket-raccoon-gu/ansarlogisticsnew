@@ -90,7 +90,7 @@ class UserStorageService {
   static Future<void> clearUserData() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Clear all known keys
+    // Clear only user-specific keys (faster than clearing all)
     await prefs.remove(_userKey);
     await prefs.remove(_tokenKey);
     await prefs.remove(_roleKey);
@@ -98,10 +98,26 @@ class UserStorageService {
     await prefs.remove(_passwordKey);
     await prefs.setBool(_isLoggedInKey, false);
 
-    // Clear all SharedPreferences data completely
-    await prefs.clear();
+    // Also clear any other app-specific keys that might exist
+    final keys = prefs.getKeys();
+    final keysToRemove =
+        keys
+            .where(
+              (key) =>
+                  key.startsWith('user_') ||
+                  key.startsWith('auth_') ||
+                  key.startsWith('driver_') ||
+                  key.startsWith('picker_') ||
+                  key.startsWith('location_') ||
+                  key.startsWith('notification_'),
+            )
+            .toList();
 
-    print('✅ All SharedPreferences data cleared successfully');
+    for (final key in keysToRemove) {
+      await prefs.remove(key);
+    }
+
+    print('✅ All user data cleared successfully');
   }
 
   // Save only user role

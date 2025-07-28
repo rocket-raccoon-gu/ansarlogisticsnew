@@ -46,7 +46,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
         ),
       );
     } else {
-      emit(OrderDetailsLoading(preparationId: int.parse(orderId)));
+      emit(OrderDetailsLoading(preparationId: _parseOrderId(orderId)));
     }
 
     try {
@@ -385,6 +385,15 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
       }
     } catch (e) {
       emit(OrderDetailsError(e.toString()));
+    }
+  }
+
+  int _parseOrderId(String orderId) {
+    try {
+      return int.parse(orderId);
+    } catch (e) {
+      // Fallback to 0 if parsing fails
+      return 0;
     }
   }
 }

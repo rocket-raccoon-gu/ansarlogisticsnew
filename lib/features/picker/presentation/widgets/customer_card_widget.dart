@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:io';
+import 'dart:developer';
 import '../../data/models/order_model.dart';
 import 'package:ansarlogisticsnew/core/constants/app_strings.dart';
+import '../../../../core/services/user_storage_service.dart';
 
 class CustomerCardWidget extends StatelessWidget {
   final OrderModel order;
@@ -99,16 +102,93 @@ class CustomerCardWidget extends StatelessWidget {
   }
 
   void _launchPhone(String phone) async {
-    final uri = Uri(scheme: 'tel', path: phone);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+    try {
+      String contact = phone.trim();
+      String formattedContact;
+
+      // Apply the same phone number formatting logic
+      if (contact.startsWith('+974') || contact.startsWith('974')) {
+        formattedContact = contact;
+      } else {
+        formattedContact = "+974${contact}";
+      }
+
+      final uri = Uri(scheme: 'tel', path: formattedContact);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
+    } catch (e) {
+      log("Error launching phone: $e");
+      // Fallback to original phone number
+      final uri = Uri(scheme: 'tel', path: phone);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
     }
   }
 
   void _launchWhatsApp(String phone) async {
-    final uri = Uri.parse('https://wa.me/$phone');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      // Get user data for role-based messaging
+      final userData = await UserStorageService.getUserData();
+      final userName = userData?.user?.name ?? 'Team Member';
+      final userRole = userData?.user?.role ?? 3; // Default to picker role
+
+      String contact = phone.trim();
+      String androidUrl;
+      String iosUrl;
+
+      // Handle special contact number
+      if (contact == "+97460094446") {
+        androidUrl = "whatsapp://send?phone=$contact&text=Hi, I need some help";
+      } else {
+        String contactSplit = "";
+
+        if (contact.startsWith('+974') || contact.startsWith('974')) {
+          contactSplit = contact;
+        } else {
+          contactSplit = "+974${contact}";
+        }
+
+        log("Formatted contact: $contactSplit");
+
+        // Create role-based message
+        String message;
+        if (userRole == 1) {
+          // Picker role
+          message =
+              "Hello, this is $userName Your *Ansar Gallery Order Picker*. I am here to assist with Preparing your order ${order.preparationId}";
+        } else {
+          // Driver role
+          message =
+              "Hello, this is $userName Your *Ansar Gallery Order Driver*. I am here to assist with Deliver your order ${order.preparationId}";
+        }
+
+        androidUrl =
+            "whatsapp://send?phone=${contactSplit}&text=${Uri.encodeComponent(message)}";
+      }
+
+      iosUrl =
+          "https://wa.me/$contact?text=${Uri.encodeComponent('Hi, I need some help')}";
+
+      if (Platform.isIOS) {
+        await launchUrl(
+          Uri.parse(iosUrl),
+          mode: LaunchMode.externalApplication,
+        );
+      } else {
+        await launchUrl(
+          Uri.parse(androidUrl),
+          mode: LaunchMode.externalApplication,
+        );
+      }
+    } catch (e) {
+      log("Error launching WhatsApp: $e");
+      // Fallback to simple WhatsApp launch
+      final uri = Uri.parse('https://wa.me/$phone');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
     }
   }
 }

@@ -11,6 +11,22 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/global_notification_service.dart';
 import 'package:overlay_support/overlay_support.dart';
+import 'core/services/user_storage_service.dart';
+import 'core/services/shared_websocket_service.dart';
+
+// Firebase background message handler
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  print('Handling a background message: ${message.messageId}');
+  print('Message data: ${message.data}');
+
+  // Show notification with sound even in background
+  await NotificationService.showNotification(
+    title: message.notification?.title ?? 'New Notification',
+    body: message.notification?.body ?? '',
+    payload: message.data.toString(),
+  );
+}
 
 // Use GlobalNotificationService's navigator key
 final GlobalKey<NavigatorState> navigatorKey =
@@ -21,6 +37,9 @@ void main() async {
 
   // Initialize Firebase
   await FirebaseService.initialize();
+
+  // Initialize Notification Service
+  await NotificationService.initialize();
 
   final ws = WebSocketClient();
   ws.connect(ApiConfig.wsUrl);
@@ -37,7 +56,7 @@ void main() async {
     if (message.notification != null) {
       print('Message also contained a notification: ${message.notification}');
 
-      // Always show local notification with sound
+      // Always show local notification with sound for foreground messages
       NotificationService.showNotification(
         title: message.notification?.title ?? 'New Notification',
         body: message.notification?.body ?? '',
@@ -57,11 +76,112 @@ void main() async {
     }
   });
 
+  // Handle background messages
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
   runApp(OverlaySupport.global(child: const MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  Timer? _statusUpdateTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    _statusUpdateTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    print('📱 App lifecycle state changed: $state');
+
+    // Cancel any pending status update
+    _statusUpdateTimer?.cancel();
+
+    switch (state) {
+      case AppLifecycleState.paused:
+        // App is not visible but still running (e.g., notification center)
+        print(
+          '📱 App paused - User might still be active, not setting offline',
+        );
+        break;
+      case AppLifecycleState.inactive:
+        // App is transitioning (e.g., incoming call, system dialog)
+        print(
+          '📱 App inactive - User might still be active, not setting offline',
+        );
+        break;
+      case AppLifecycleState.detached:
+        // App is completely closed/terminated
+        print('📱 App detached - Setting user offline');
+        _setUserOfflineStatus();
+        break;
+      case AppLifecycleState.resumed:
+        // App is back in foreground
+        print('📱 App resumed - Setting user online in 500ms');
+        _statusUpdateTimer = Timer(const Duration(milliseconds: 500), () {
+          _setUserOnlineStatus();
+        });
+        break;
+      default:
+        print('📱 App lifecycle: Unknown state - $state');
+        break;
+    }
+  }
+
+  Future<void> _setUserOfflineStatus() async {
+    try {
+      final userData = await UserStorageService.getUserData();
+      if (userData != null && userData.user != null) {
+        final userId = userData.user!.id;
+        final webSocketService = SharedWebSocketService();
+
+        // Send offline status update
+        await webSocketService.sendStatusUpdate(userId, 0); // 0 = offline
+        print('✅ App lifecycle: Offline status sent for user $userId');
+      }
+    } catch (e) {
+      print('⚠️ App lifecycle: Error sending offline status: $e');
+    }
+  }
+
+  Future<void> _setUserOnlineStatus() async {
+    try {
+      final userData = await UserStorageService.getUserData();
+      if (userData != null && userData.user != null) {
+        final userId = userData.user!.id;
+        final webSocketService = SharedWebSocketService();
+
+        // Ensure WebSocket is connected
+        if (!webSocketService.isConnected) {
+          await webSocketService.initialize();
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+
+        // Send online status update
+        await webSocketService.sendStatusUpdate(userId, 1); // 1 = online
+        print('✅ App lifecycle: Online status sent for user $userId');
+      }
+    } catch (e) {
+      print('⚠️ App lifecycle: Error sending online status: $e');
+    }
+  }
 
   // This widget is the root of your application.
   @override

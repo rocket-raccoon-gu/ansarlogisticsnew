@@ -162,7 +162,7 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
                         Text(
                           username.isNotEmpty ? username : 'Picker',
                           style: const TextStyle(
-                            fontSize: 24,
+                            fontSize: 19,
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,
                           ),

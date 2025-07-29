@@ -10,6 +10,8 @@ import '../../data/models/order_item_model.dart';
 import '../cubit/order_details_cubit.dart';
 import '../widgets/order_item_tile.dart';
 import '../widgets/customer_card_widget.dart';
+import '../widgets/customer_comment_widget.dart';
+import '../widgets/cancel_reason_dialog.dart';
 import '../widgets/type_cards_widget.dart';
 import '../widgets/item_list_widget.dart';
 import 'order_item_details_page.dart';
@@ -133,6 +135,16 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                               state.preparationLabel.isNotEmpty
                                   ? state.preparationLabel
                                   : null,
+                        ),
+                        CustomerCommentWidget(
+                          order: widget.order,
+                          deliveryNote: state.deliveryNote,
+                          orderItems: [
+                            ...state.toPick,
+                            ...state.picked,
+                            ...state.canceled,
+                            ...state.notAvailable,
+                          ],
                         ),
                         TypeCardsWidget(
                           allItems: [
@@ -324,28 +336,112 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                             elevation: 0,
                           ),
                           onPressed: () async {
+                            // Show cancel reason selection dialog
+                            final result =
+                                await showDialog<Map<String, String?>>(
+                                  context: context,
+                                  builder:
+                                      (context) => const CancelReasonDialog(),
+                                );
+
+                            print('🔍 Cancel dialog result: $result');
+
+                            if (result == null) {
+                              // User cancelled the dialog
+                              print('🔍 User cancelled the cancel dialog');
+                              return;
+                            }
+
+                            final cancelReason = result['reason'];
+                            final reasonId = result['reasonId'];
+
+                            print('🔍 Cancel reason: $cancelReason');
+                            print('🔍 Reason ID: $reasonId');
+
+                            if (cancelReason == null || reasonId == null) {
+                              // Invalid result
+                              print('❌ Invalid cancel reason result');
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Invalid cancel reason selected',
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+
+                            // Show confirmation dialog with selected reason
                             final confirmed = await showDialog<bool>(
                               context: context,
                               builder:
                                   (context) => AlertDialog(
-                                    title: Text('Cancel Request for All Order'),
-                                    content: Text(
-                                      'Are you sure you want to send a cancel request for the entire order?',
+                                    title: const Text('Confirm Cancel Request'),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Are you sure you want to send a cancel request for the entire order?',
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.shade50,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.red.shade200,
+                                            ),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Selected Reason:',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.red.shade700,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                cancelReason,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.red.shade800,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                     actions: [
                                       TextButton(
                                         onPressed:
                                             () => Navigator.pop(context, false),
-                                        child: Text('No'),
+                                        child: const Text('No'),
                                       ),
                                       ElevatedButton(
                                         onPressed:
                                             () => Navigator.pop(context, true),
-                                        child: Text('Yes'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.red.shade600,
+                                          foregroundColor: Colors.white,
+                                        ),
+                                        child: const Text('Yes, Cancel Order'),
                                       ),
                                     ],
                                   ),
                             );
+
                             if (confirmed == true) {
                               try {
                                 showDialog(
@@ -356,9 +452,18 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                                         child: CircularProgressIndicator(),
                                       ),
                                 );
+
                                 await BlocProvider.of<OrderDetailsCubit>(
                                   context,
-                                ).cancelOrder(orderNumber: '');
+                                ).cancelOrder(
+                                  orderNumber: '',
+                                  cancelReason: cancelReason,
+                                );
+
+                                print(
+                                  '✅ Cancel order API call completed with reason: $cancelReason',
+                                );
+
                                 if (mounted) {
                                   Navigator.of(
                                     context,
@@ -367,8 +472,9 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        'Cancel request for all order sent successfully.',
+                                        'Cancel request sent successfully with reason: $cancelReason',
                                       ),
+                                      backgroundColor: Colors.orange.shade600,
                                     ),
                                   );
                                   Navigator.of(context).pushAndRemoveUntil(
@@ -390,6 +496,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text('Error: ${e.toString()}'),
+                                    backgroundColor: Colors.red.shade600,
                                   ),
                                 );
                               }

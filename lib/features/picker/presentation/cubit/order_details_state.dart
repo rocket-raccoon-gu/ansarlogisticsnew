@@ -16,6 +16,7 @@ class OrderDetailsLoaded extends OrderDetailsState {
   final List<OrderItemModel> notAvailable;
   final List<CategoryItemModel> categories;
   final String preparationLabel;
+  final String? deliveryNote;
 
   OrderDetailsLoaded({
     required this.toPick,
@@ -24,6 +25,7 @@ class OrderDetailsLoaded extends OrderDetailsState {
     required this.notAvailable,
     required this.categories,
     required this.preparationLabel,
+    this.deliveryNote,
   });
 }
 

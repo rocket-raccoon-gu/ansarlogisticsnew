@@ -10,6 +10,8 @@ import '../../../../core/services/driver_location_service.dart';
 import '../../../../core/services/shared_websocket_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/global_notification_service.dart';
+import 'package:overlay_support/overlay_support.dart';
+import 'dart:async'; // Added for Timer
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -549,6 +551,15 @@ class SettingsCard extends StatelessWidget {
             const SizedBox(height: 20),
             _buildSettingTile(
               context,
+              "Test Notification Sound",
+              "Test notification with sound",
+              Icons.notifications_active,
+              Colors.blue,
+              () => _testNotificationSound(context),
+            ),
+            const SizedBox(height: 20),
+            _buildSettingTile(
+              context,
               "Logout",
               "Sign out from your account",
               Icons.logout,
@@ -616,6 +627,38 @@ class SettingsCard extends StatelessWidget {
     );
   }
 
+  void _testNotificationSound(BuildContext context) async {
+    try {
+      print('🔔 Testing notification sound...');
+
+      // Test local notification with sound using debug method
+      await NotificationService.debugNotificationSound();
+
+      // Also test global notification
+      GlobalNotificationService.showCustomNotification(
+        title: '🔔 Sound Test',
+        message: 'Testing notification sound functionality',
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            '🔔 Test notifications sent! Check if you hear the sound.',
+          ),
+          backgroundColor: Colors.blue,
+        ),
+      );
+    } catch (e) {
+      print('❌ Error testing notification sound: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error testing notification: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -632,7 +675,7 @@ class SettingsCard extends StatelessWidget {
             ],
           ),
           content: const Text(
-            'Are you sure you want to logout? This will clear all your data and stop location tracking.',
+            'Are you sure you want to logout? This will set your status to offline, clear all your data and stop location tracking.',
           ),
           actions: [
             TextButton(
@@ -674,11 +717,19 @@ class SettingsCard extends StatelessWidget {
       },
     );
 
+    // Add a final safety timeout to ensure logout always completes
+    Timer(const Duration(seconds: 8), () {
+      if (context.mounted) {
+        print('🚨 Safety timeout triggered - forcing logout');
+        _forceLogout(context);
+      }
+    });
+
     try {
       // Set a timeout for the entire logout process
       await Future.any([
         _performLogoutWithTimeout(),
-        Future.delayed(const Duration(seconds: 10)).then((_) {
+        Future.delayed(const Duration(seconds: 5)).then((_) {
           throw Exception('Logout timeout - forcing logout');
         }),
       ]);
@@ -686,7 +737,6 @@ class SettingsCard extends StatelessWidget {
       if (context.mounted) {
         // Close loading dialog
         Navigator.of(context).pop();
-
         // Navigate to login
         Navigator.of(
           context,
@@ -694,35 +744,76 @@ class SettingsCard extends StatelessWidget {
       }
     } catch (e) {
       print('⚠️ Logout error: $e');
+      await _forceLogout(context);
+    }
+  }
 
-      if (context.mounted) {
-        // Close loading dialog
-        Navigator.of(context).pop();
+  Future<void> _forceLogout(BuildContext context) async {
+    print('🚨 Force logout initiated');
 
-        // Even if there's an error, force logout by clearing data and navigating
-        try {
-          await UserStorageService.clearUserData();
-        } catch (clearError) {
-          print('⚠️ Error clearing data: $clearError');
-        }
+    // Always close loading dialog and navigate, regardless of errors
+    if (context.mounted) {
+      // Close loading dialog
+      Navigator.of(context).pop();
 
-        // Navigate to login regardless of errors
-        Navigator.of(
-          context,
-        ).pushNamedAndRemoveUntil('/login', (route) => false);
+      // Force logout by clearing data immediately
+      try {
+        await UserStorageService.clearUserData();
+        print('✅ Forced logout completed');
+      } catch (clearError) {
+        print('⚠️ Error during forced logout: $clearError');
       }
+
+      // Navigate to login immediately
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
     }
   }
 
   Future<void> _performLogoutWithTimeout() async {
-    // Clean up services with individual timeouts
+    print('🔄 Starting logout process...');
+
+    try {
+      // First, update user status to offline via WebSocket
+      print('📡 Attempting to send offline status...');
+      final userData = await UserStorageService.getUserData();
+      if (userData != null && userData.user != null) {
+        final userId = userData.user!.id;
+        final webSocketService = SharedWebSocketService();
+
+        print('🔌 WebSocket connected: ${webSocketService.isConnected}');
+
+        // Send offline status update with timeout
+        await Future.any([
+          webSocketService.sendStatusUpdate(userId, 0), // 0 = offline
+          Future.delayed(const Duration(seconds: 2)),
+        ]);
+        print('✅ Offline status sent via WebSocket for user $userId');
+      } else {
+        print('⚠️ No user data found, skipping offline status update');
+      }
+    } catch (e) {
+      print('⚠️ Error sending offline status: $e');
+      // Continue with logout even if status update fails
+    }
+
+    print('🧹 Starting service cleanup...');
+
+    // Clean up services with individual timeouts - run them in parallel
     final futures = <Future>[];
 
     // Stop location tracking with timeout
     futures.add(
       Future.any([
         DriverLocationService().stopTracking(),
-        Future.delayed(const Duration(seconds: 3)),
+        Future.delayed(const Duration(seconds: 1)),
+      ]),
+    );
+
+    // Stop foreground task with timeout
+    futures.add(
+      Future.any([
+        FlutterForegroundTask.stopService(),
+        Future.delayed(const Duration(seconds: 1)),
       ]),
     );
 
@@ -733,26 +824,17 @@ class SettingsCard extends StatelessWidget {
           SharedWebSocketService().disconnect();
           return true;
         }),
-        Future.delayed(const Duration(seconds: 2)),
+        Future.delayed(const Duration(seconds: 1)),
       ]),
     );
 
-    // Stop foreground task with timeout
-    futures.add(
-      Future.any([
-        FlutterForegroundTask.stopService(),
-        Future.delayed(const Duration(seconds: 2)),
-      ]),
-    );
-
+    print('⏳ Waiting for service cleanup...');
     // Wait for all cleanup operations with timeout
     await Future.wait(futures);
 
-    // Clear SharedPreferences data with timeout
-    await Future.any([
-      UserStorageService.clearUserData(),
-      Future.delayed(const Duration(seconds: 3)),
-    ]);
+    print('🗑️ Clearing user data...');
+    // Clear user data
+    await UserStorageService.clearUserData();
 
     print('✅ Logout completed successfully');
   }

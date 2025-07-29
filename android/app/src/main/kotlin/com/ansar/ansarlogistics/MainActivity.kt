@@ -10,6 +10,7 @@ import android.os.Build
 import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Bundle
+import android.app.Notification
 
 class MainActivity: FlutterActivity() {
     private val CHANNEL = "ansar_logistics_channel"
@@ -40,11 +41,25 @@ class MainActivity: FlutterActivity() {
                 setSound(soundUri, audioAttributes)
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 500, 200, 500)
+                
+                // Enable all notification features
+                enableLights(true)
+                lightColor = android.graphics.Color.RED
+                
+                // Set lockscreen visibility
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             }
             
             val notificationManager: NotificationManager =
                 getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
+            
+            // Log channel creation
+            println("✅ Notification channel created successfully with sound")
+            println("🔔 Channel ID: $CHANNEL")
+            println("🔊 Sound URI: android.resource://${packageName}/raw/alert")
+        } else {
+            println("⚠️ Notification channels not supported on this Android version")
         }
     }
 } 

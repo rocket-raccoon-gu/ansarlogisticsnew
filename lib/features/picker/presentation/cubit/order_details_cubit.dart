@@ -43,6 +43,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
                   .toList(),
           categories: _cachedOrderDetails!.categories,
           preparationLabel: _cachedOrderDetails!.preparationLabel,
+          deliveryNote: _cachedOrderDetails!.deliveryNote,
         ),
       );
     } else {
@@ -94,6 +95,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
             notAvailable: notAvailable,
             categories: orderDetails.categories,
             preparationLabel: orderDetails.preparationLabel,
+            deliveryNote: orderDetails.deliveryNote,
           ),
         );
       } else {
@@ -284,6 +286,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
           notAvailable: currentState.notAvailable,
           categories: currentState.categories,
           preparationLabel: currentState.preparationLabel,
+          deliveryNote: currentState.deliveryNote,
         ),
       );
     }
@@ -325,6 +328,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
           notAvailable: notAvailable,
           categories: currentState.categories,
           preparationLabel: currentState.preparationLabel,
+          deliveryNote: currentState.deliveryNote,
         ),
       );
     }
@@ -335,8 +339,13 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
     await loadItems();
   }
 
-  Future<void> cancelOrder({required String orderNumber}) async {
+  Future<void> cancelOrder({
+    required String orderNumber,
+    String? cancelReason,
+  }) async {
     try {
+      print('🔍 Canceling order with reason: $cancelReason');
+
       final userData = await UserStorageService.getUserData();
       final token = userData?.token;
 
@@ -350,13 +359,18 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
         int.parse(orderId),
         token,
         orderNumber: orderNumber,
+        cancelReason: cancelReason,
       );
+
+      print('🔍 Cancel order API response: ${response.statusCode}');
+
       if (response.statusCode == 200) {
         emit(OrderDetailsError('Order canceled successfully'));
       } else {
         emit(OrderDetailsError('Failed to cancel order'));
       }
     } catch (e) {
+      print('❌ Error canceling order: $e');
       emit(OrderDetailsError(e.toString()));
     }
   }

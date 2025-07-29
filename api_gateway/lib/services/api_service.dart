@@ -193,11 +193,18 @@ class ApiService {
     int preparationId,
     String token, {
     String? orderNumber,
+    String? cancelReason,
   }) async {
     try {
       final dio = Dio();
-      final data = {'status': status, 'preparation_id': preparationId};
+      final data = {
+        'status': status,
+        'preparation_id': preparationId,
+        'comment': cancelReason,
+      };
       if (orderNumber != null) data['order_number'] = orderNumber;
+      if (cancelReason != null) data['cancel_reason'] = cancelReason;
+
       final response = await dio.patch(
         '${ApiConfig.baseUrl}picker/orders/status',
         data: data,

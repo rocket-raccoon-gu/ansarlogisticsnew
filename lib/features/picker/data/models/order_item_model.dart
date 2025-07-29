@@ -14,6 +14,7 @@ class OrderItemModel {
   final List<String> productImages;
   final String? isProduceRaw;
   final String? subgroupIdentifier;
+  final String? deliveryNote; // Customer delivery note
 
   OrderItemModel({
     required this.id,
@@ -29,6 +30,7 @@ class OrderItemModel {
     required this.productImages,
     this.isProduceRaw,
     this.subgroupIdentifier,
+    this.deliveryNote,
   });
 
   bool get isProduce => isProduceRaw == '1';
@@ -48,6 +50,7 @@ class OrderItemModel {
     List<String>? productImages,
     String? isProduceRaw,
     String? subgroupIdentifier,
+    String? deliveryNote,
   }) {
     return OrderItemModel(
       id: id ?? this.id,
@@ -63,6 +66,7 @@ class OrderItemModel {
       productImages: productImages ?? this.productImages,
       isProduceRaw: isProduceRaw ?? this.isProduceRaw,
       subgroupIdentifier: subgroupIdentifier ?? this.subgroupIdentifier,
+      deliveryNote: deliveryNote ?? this.deliveryNote,
     );
   }
 
@@ -144,6 +148,7 @@ class OrderItemModel {
       productImages: images,
       isProduceRaw: json['is_produce']?.toString(),
       subgroupIdentifier: json['subgroup_identifier']?.toString(),
+      deliveryNote: json['delivery_note']?.toString(),
     );
   }
 
@@ -161,6 +166,7 @@ class OrderItemModel {
       'final_price': finalPrice,
       'product_images': productImages.join(','),
       'subgroup_identifier': subgroupIdentifier,
+      'delivery_note': deliveryNote,
     };
   }
 }

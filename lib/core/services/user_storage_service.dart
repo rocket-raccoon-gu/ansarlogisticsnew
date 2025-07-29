@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/auth/data/models/login_response_model.dart';
 import '../../features/navigation/presentation/cubit/bottom_navigation_cubit.dart';
 import '../utils/role_utils.dart';
+import 'shared_websocket_service.dart';
 
 class UserStorageService {
   static const String _userKey = 'user_data';
@@ -89,35 +90,49 @@ class UserStorageService {
   // Clear all user data (logout)
   static Future<void> clearUserData() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    print('✅ All user data cleared from SharedPreferences');
+  }
 
-    // Clear only user-specific keys (faster than clearing all)
-    await prefs.remove(_userKey);
-    await prefs.remove(_tokenKey);
-    await prefs.remove(_roleKey);
-    await prefs.remove(_usernameKey);
-    await prefs.remove(_passwordKey);
-    await prefs.setBool(_isLoggedInKey, false);
+  // Centralized logout method that handles offline status update
+  static Future<void> logout() async {
+    try {
+      // First, update user status to offline via WebSocket
+      final userData = await getUserData();
+      if (userData != null && userData.user != null) {
+        final userId = userData.user!.id;
+        final webSocketService = SharedWebSocketService();
 
-    // Also clear any other app-specific keys that might exist
-    final keys = prefs.getKeys();
-    final keysToRemove =
-        keys
-            .where(
-              (key) =>
-                  key.startsWith('user_') ||
-                  key.startsWith('auth_') ||
-                  key.startsWith('driver_') ||
-                  key.startsWith('picker_') ||
-                  key.startsWith('location_') ||
-                  key.startsWith('notification_'),
-            )
-            .toList();
+        // Ensure WebSocket is connected before sending status update
+        if (!webSocketService.isConnected) {
+          await webSocketService.initialize();
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
 
-    for (final key in keysToRemove) {
-      await prefs.remove(key);
+        // Send offline status update
+        final success = await webSocketService.sendStatusUpdate(
+          userId,
+          0,
+        ); // 0 = offline
+        if (success) {
+          print('✅ Offline status sent via WebSocket for user $userId');
+        } else {
+          print(
+            '⚠️ Failed to send offline status via WebSocket for user $userId',
+          );
+        }
+
+        // Wait a moment for the status to be processed
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+    } catch (e) {
+      print('⚠️ Error sending offline status during logout: $e');
+      // Continue with logout even if status update fails
     }
 
-    print('✅ All user data cleared successfully');
+    // Clear all user data
+    await clearUserData();
+    print('✅ Logout completed successfully');
   }
 
   // Save only user role

@@ -37,7 +37,7 @@ class OrderDetailsModel {
   final DateTime createdAt;
   final String subgroupIdentifier;
   final List<CategoryItemModel> categories;
-
+  final String? deliveryNote;
   OrderDetailsModel({
     required this.preparationId,
     required this.preparationLabel,
@@ -46,6 +46,7 @@ class OrderDetailsModel {
     required this.createdAt,
     required this.subgroupIdentifier,
     required this.categories,
+    this.deliveryNote,
   });
 
   factory OrderDetailsModel.fromJson(Map<String, dynamic> json) {
@@ -124,6 +125,7 @@ class OrderDetailsModel {
             DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
         subgroupIdentifier: json['subgroup_identifier'] ?? '',
         categories: parsedCategories,
+        deliveryNote: json['delivery_note'] ?? '',
       );
     } catch (e) {
       print('Error parsing OrderDetailsModel: $e');
@@ -136,6 +138,7 @@ class OrderDetailsModel {
         createdAt: DateTime.now(),
         subgroupIdentifier: '',
         categories: [],
+        deliveryNote: '',
       );
     }
   }
@@ -171,6 +174,7 @@ class OrderDetailsModel {
       'created_at': createdAt.toIso8601String(),
       'subgroup_identifier': subgroupIdentifier,
       'categories': categories.map((category) => category.toJson()).toList(),
+      'delivery_note': deliveryNote,
     };
   }
 }

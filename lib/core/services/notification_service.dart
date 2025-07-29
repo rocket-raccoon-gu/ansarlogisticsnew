@@ -50,6 +50,8 @@ class NotificationService {
 
   static Future<void> _createNotificationChannel() async {
     if (defaultTargetPlatform == TargetPlatform.android) {
+      print('🔔 Creating Android notification channel with sound...');
+
       AndroidNotificationChannel channel = AndroidNotificationChannel(
         'ansar_logistics_channel',
         'Ansar Logistics Notifications',
@@ -61,11 +63,18 @@ class NotificationService {
         vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
       );
 
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin
-          >()
-          ?.createNotificationChannel(channel);
+      try {
+        await _localNotifications
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >()
+            ?.createNotificationChannel(channel);
+        print('✅ Android notification channel created successfully with sound');
+      } catch (e) {
+        print('❌ Error creating Android notification channel: $e');
+      }
+    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+      print('🔔 iOS notification sound will use alert.mp3');
     }
   }
 
@@ -97,6 +106,8 @@ class NotificationService {
     int id = 0,
   }) async {
     try {
+      print('🔔 Showing notification with sound: $title - $body');
+
       AndroidNotificationDetails androidPlatformChannelSpecifics =
           AndroidNotificationDetails(
             'ansar_logistics_channel',
@@ -111,6 +122,10 @@ class NotificationService {
             vibrationPattern: Int64List.fromList([0, 500, 200, 500]),
             showWhen: true,
             when: DateTime.now().millisecondsSinceEpoch,
+            // Force sound to play even in foreground
+            fullScreenIntent: false,
+            category: AndroidNotificationCategory.message,
+            visibility: NotificationVisibility.public,
           );
 
       const DarwinNotificationDetails iOSPlatformChannelSpecifics =
@@ -119,6 +134,8 @@ class NotificationService {
             presentBadge: true,
             presentSound: true,
             sound: 'alert.mp3',
+            // Force sound to play even in foreground
+            interruptionLevel: InterruptionLevel.active,
           );
 
       NotificationDetails platformChannelSpecifics = NotificationDetails(
@@ -134,7 +151,9 @@ class NotificationService {
         payload: payload,
       );
 
-      print('✅ Local notification shown with sound: $title - $body');
+      print(
+        '✅ Local notification shown successfully with sound: $title - $body',
+      );
     } catch (e) {
       print('❌ Error showing local notification: $e');
     }
@@ -158,10 +177,39 @@ class NotificationService {
 
   // Test notification with sound
   static Future<void> testNotificationWithSound() async {
+    print('🔔 Testing notification sound...');
     await showNotification(
       title: '🔔 Sound Test',
       body: 'This notification should play the alert sound!',
       payload: 'sound_test',
     );
+  }
+
+  // Test notification for debugging
+  static Future<void> debugNotificationSound() async {
+    print('🔔 Debug: Testing notification sound configuration...');
+
+    try {
+      // Test with different notification IDs to ensure they all play sound
+      await showNotification(
+        title: '🔔 Test 1',
+        body: 'First test notification with sound',
+        payload: 'test1',
+        id: 1001,
+      );
+
+      await Future.delayed(const Duration(seconds: 2));
+
+      await showNotification(
+        title: '🔔 Test 2',
+        body: 'Second test notification with sound',
+        payload: 'test2',
+        id: 1002,
+      );
+
+      print('✅ Debug: Both test notifications sent successfully');
+    } catch (e) {
+      print('❌ Debug: Error testing notification sound: $e');
+    }
   }
 }

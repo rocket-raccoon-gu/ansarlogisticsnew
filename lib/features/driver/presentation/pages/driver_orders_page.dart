@@ -31,16 +31,42 @@ class DriverOrdersPage extends StatefulWidget {
 
 class _DriverOrdersPageState extends State<DriverOrdersPage> {
   late DriverLocationService _locationService;
+  bool _isInitializing = true;
+  String? _initError;
 
   @override
   void initState() {
     super.initState();
     _locationService = getIt<DriverLocationService>();
-    _initializeLocationService();
+    _initializeLocationServiceWithTimeout();
   }
 
-  Future<void> _initializeLocationService() async {
-    await _locationService.initialize();
+  Future<void> _initializeLocationServiceWithTimeout() async {
+    try {
+      // Add timeout to prevent hanging
+      await _locationService.initialize().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          log("⚠️ Location service initialization timed out");
+          throw TimeoutException('Location service initialization timed out');
+        },
+      );
+
+      if (mounted) {
+        setState(() {
+          _isInitializing = false;
+          _initError = null;
+        });
+      }
+    } catch (e) {
+      log("❌ Error initializing location service: $e");
+      if (mounted) {
+        setState(() {
+          _isInitializing = false;
+          _initError = e.toString();
+        });
+      }
+    }
   }
 
   @override
@@ -52,29 +78,86 @@ class _DriverOrdersPageState extends State<DriverOrdersPage> {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => getIt<DriverOrdersPageCubit>(),
-      child: _DriverOrdersPageContent(),
+      child: _DriverOrdersPageContent(
+        isInitializing: _isInitializing,
+        initError: _initError,
+        onRetryInit: _initializeLocationServiceWithTimeout,
+      ),
     );
   }
 }
 
 class _DriverOrdersPageContent extends StatefulWidget {
+  final bool isInitializing;
+  final String? initError;
+  final VoidCallback onRetryInit;
+
+  const _DriverOrdersPageContent({
+    required this.isInitializing,
+    this.initError,
+    required this.onRetryInit,
+  });
+
   @override
   State<_DriverOrdersPageContent> createState() =>
       _DriverOrdersPageContentState();
 }
 
-class _DriverOrdersPageContentState extends State<_DriverOrdersPageContent> {
+class _DriverOrdersPageContentState extends State<_DriverOrdersPageContent>
+    with WidgetsBindingObserver {
   late DriverLocationService _locationService;
+  LocationTrackingStatus _currentStatus = LocationTrackingStatus.idle;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _locationService = getIt<DriverLocationService>();
-    _initializeLocationService();
+    _initializeLocationStatus();
   }
 
-  Future<void> _initializeLocationService() async {
-    await _locationService.initialize();
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    if (state == AppLifecycleState.resumed) {
+      // Refresh status when app comes back to foreground
+      _refreshLocationStatus();
+    }
+  }
+
+  void _refreshLocationStatus() async {
+    await _locationService.refreshStatus();
+    if (mounted) {
+      setState(() {
+        _currentStatus = _locationService.status;
+      });
+    }
+  }
+
+  void _initializeLocationStatus() async {
+    // Restore the tracking state from preferences
+    await _locationService.restoreTrackingState();
+
+    // Get the current status from the service
+    setState(() {
+      _currentStatus = _locationService.status;
+    });
+
+    // Listen to status changes
+    _locationService.statusStream.listen((status) {
+      if (mounted) {
+        setState(() {
+          _currentStatus = status;
+        });
+      }
+    });
   }
 
   @override
@@ -88,33 +171,99 @@ class _DriverOrdersPageContentState extends State<_DriverOrdersPageContent> {
             _buildCustomAppBar(),
 
             // Main Content
-            Expanded(
-              child: BlocBuilder<DriverOrdersPageCubit, DriverOrdersPageState>(
-                builder: (context, state) {
-                  if (state is DriverOrdersPageLoaded) {
-                    final orders = state.orders;
-                    return Column(
-                      children: [
-                        // Route View Button
-                        if (orders.isNotEmpty) _buildRouteButton(),
+            Expanded(child: _buildMainContent()),
+          ],
+        ),
+      ),
+    );
+  }
 
-                        // Orders List
-                        Expanded(
-                          child:
-                              orders.isEmpty
-                                  ? _buildEmptyState()
-                                  : _buildOrdersList(orders),
-                        ),
-                      ],
-                    );
-                  }
-                  return _buildLoadingState();
-                },
+  Widget _buildMainContent() {
+    // Show initialization error if any
+    if (widget.initError != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Initialization Error',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                'Failed to initialize location services. This may affect location tracking.',
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: widget.onRetryInit,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
               ),
             ),
           ],
         ),
-      ),
+      );
+    }
+
+    // Show loading if still initializing
+    if (widget.isInitializing) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Initializing...',
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Show normal content
+    return BlocBuilder<DriverOrdersPageCubit, DriverOrdersPageState>(
+      builder: (context, state) {
+        if (state is DriverOrdersPageLoaded) {
+          final orders = state.orders;
+          return Column(
+            children: [
+              // Route View Button
+              if (orders.isNotEmpty) _buildRouteButton(),
+
+              // Orders List
+              Expanded(
+                child:
+                    orders.isEmpty
+                        ? _buildEmptyState()
+                        : _buildOrdersList(orders),
+              ),
+            ],
+          );
+        }
+        return _buildLoadingState();
+      },
     );
   }
 
@@ -173,88 +322,81 @@ class _DriverOrdersPageContentState extends State<_DriverOrdersPageContent> {
 
   // Location Tracking Section
   Widget _buildLocationTrackingSection() {
-    return StreamBuilder<LocationTrackingStatus>(
-      stream: _locationService.statusStream,
-      builder: (context, snapshot) {
-        final status = snapshot.data ?? LocationTrackingStatus.idle;
-
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.black.withOpacity(0.2), width: 1),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black.withOpacity(0.2), width: 1),
+      ),
+      child: Row(
+        children: [
+          // Status Icon
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _getStatusColor(_currentStatus).withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              _getStatusIcon(_currentStatus),
+              color: _getStatusColor(_currentStatus),
+              size: 20,
+            ),
           ),
-          child: Row(
-            children: [
-              // Status Icon
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: _getStatusColor(status).withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  _getStatusIcon(status),
-                  color: _getStatusColor(status),
-                  size: 20,
-                ),
-              ),
 
-              const SizedBox(width: 12),
+          const SizedBox(width: 12),
 
-              // Status Text
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _getStatusTitle(status),
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      _getStatusSubtitle(status),
-                      style: TextStyle(
-                        color: Colors.black.withOpacity(0.8),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Action Button
-              Container(
-                decoration: BoxDecoration(
-                  color: _getStatusColor(status),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: TextButton(
-                  onPressed: _getStatusAction(status),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    foregroundColor: Colors.black,
-                  ),
-                  child: Text(
-                    _getStatusButtonText(status),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
+          // Status Text
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _getStatusTitle(_currentStatus),
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ),
-            ],
+                Text(
+                  _getStatusSubtitle(_currentStatus),
+                  style: TextStyle(
+                    color: Colors.black.withOpacity(0.8),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
           ),
-        );
-      },
+
+          // Action Button
+          Container(
+            decoration: BoxDecoration(
+              color: _getStatusColor(_currentStatus),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: TextButton(
+              onPressed: _getStatusAction(_currentStatus),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                foregroundColor: Colors.black,
+              ),
+              child: Text(
+                _getStatusButtonText(_currentStatus),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -22,6 +22,7 @@ class DriverLocationService {
   late SharedWebSocketService _sharedWebSocket;
   static const String _trackingPreferenceKey =
       'driver_location_tracking_enabled';
+  bool _isInitialized = false;
 
   final _statusController =
       StreamController<LocationTrackingStatus>.broadcast();
@@ -37,10 +38,52 @@ class DriverLocationService {
 
   // Initialize the service
   Future<void> initialize() async {
-    _sharedWebSocket = getIt<SharedWebSocketService>();
-    await _sharedWebSocket.initialize();
-    await _initForegroundTask();
-    await _checkAndAutoStartTracking();
+    // Prevent multiple initializations
+    if (_isInitialized) {
+      log("⚠️ DriverLocationService already initialized, skipping");
+      return;
+    }
+
+    try {
+      log("🚀 Initializing DriverLocationService...");
+
+      _sharedWebSocket = getIt<SharedWebSocketService>();
+
+      // Initialize WebSocket with timeout
+      await _sharedWebSocket.initialize().timeout(
+        const Duration(seconds: 8),
+        onTimeout: () {
+          log(
+            "⚠️ WebSocket initialization timed out, continuing without WebSocket",
+          );
+          return false;
+        },
+      );
+
+      // Initialize foreground task with timeout
+      await _initForegroundTask().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          log("⚠️ Foreground task initialization timed out");
+          throw TimeoutException('Foreground task initialization timed out');
+        },
+      );
+
+      // Check and auto-start tracking with timeout
+      await _checkAndAutoStartTracking().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          log("⚠️ Auto-start tracking check timed out");
+        },
+      );
+
+      _isInitialized = true;
+      log("✅ DriverLocationService initialized successfully");
+    } catch (e) {
+      log("❌ Error initializing DriverLocationService: $e");
+      // Don't rethrow - allow the app to continue without location tracking
+      // The UI will handle this gracefully
+    }
   }
 
   // Check if tracking was previously enabled and auto-start if needed
@@ -50,18 +93,63 @@ class DriverLocationService {
 
     if (trackingEnabled) {
       // Auto-start tracking if it was previously enabled
+      log("🔄 Auto-starting location tracking (was previously enabled)");
+      setStatus(LocationTrackingStatus.loading);
       await _startForegroundTask();
+    } else {
+      log("ℹ️ Location tracking was not previously enabled");
+      setStatus(LocationTrackingStatus.idle);
     }
+  }
+
+  // Refresh the current status based on actual tracking state
+  Future<void> refreshStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final trackingEnabled = prefs.getBool(_trackingPreferenceKey) ?? false;
+
+    if (trackingEnabled && _timer != null) {
+      // If tracking is enabled and timer is active, we're tracking
+      setStatus(LocationTrackingStatus.tracking);
+    } else if (trackingEnabled && _timer == null) {
+      // If tracking is enabled but timer is not active, we're loading
+      setStatus(LocationTrackingStatus.loading);
+    } else {
+      // If tracking is not enabled, we're idle
+      setStatus(LocationTrackingStatus.idle);
+    }
+  }
+
+  // Restore tracking state from preferences
+  Future<void> restoreTrackingState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final trackingEnabled = prefs.getBool(_trackingPreferenceKey) ?? false;
+
+    if (trackingEnabled) {
+      log("🔄 Restoring tracking state - was previously enabled");
+      setStatus(LocationTrackingStatus.loading);
+      // Don't auto-start here, let the user decide
+    } else {
+      log("ℹ️ Restoring tracking state - was not previously enabled");
+      setStatus(LocationTrackingStatus.idle);
+    }
+  }
+
+  // Get current tracking status from preferences
+  Future<bool> isTrackingEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_trackingPreferenceKey) ?? false;
   }
 
   // Save tracking preference
   Future<void> _saveTrackingPreference(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_trackingPreferenceKey, enabled);
+    log("💾 Saved tracking preference: $enabled");
   }
 
   // Stop tracking and clear preference
   Future<void> stopTracking() async {
+    log("🛑 Stopping location tracking...");
     _timer?.cancel();
     setStatus(LocationTrackingStatus.idle);
     await _saveTrackingPreference(false);

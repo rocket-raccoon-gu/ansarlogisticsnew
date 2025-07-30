@@ -44,6 +44,10 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
           categories: _cachedOrderDetails!.categories,
           preparationLabel: _cachedOrderDetails!.preparationLabel,
           deliveryNote: _cachedOrderDetails!.deliveryNote,
+          expressItems: _cachedOrderDetails!.expressItems,
+          normalItems: _cachedOrderDetails!.normalItems,
+          expressCategories: _cachedOrderDetails!.expressCategories,
+          normalCategories: _cachedOrderDetails!.normalCategories,
         ),
       );
     } else {
@@ -96,8 +100,25 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
             categories: orderDetails.categories,
             preparationLabel: orderDetails.preparationLabel,
             deliveryNote: orderDetails.deliveryNote,
+            expressItems: orderDetails.expressItems,
+            normalItems: orderDetails.normalItems,
+            expressCategories: orderDetails.expressCategories,
+            normalCategories: orderDetails.normalCategories,
           ),
         );
+
+        // Debug logging for cubit state
+        print('🔍 OrderDetailsCubit - State populated:');
+        print('  - Express items: ${orderDetails.expressItems.length}');
+        print('  - Normal items: ${orderDetails.normalItems.length}');
+        print(
+          '  - Express picked: ${orderDetails.expressItems.where((item) => item.status == OrderItemStatus.picked).length}',
+        );
+        print(
+          '  - Normal picked: ${orderDetails.normalItems.where((item) => item.status == OrderItemStatus.picked).length}',
+        );
+        print('  - Total picked: ${picked.length}');
+        print('  - Total toPick: ${toPick.length}');
       } else {
         emit(OrderDetailsError('No data received from server'));
       }
@@ -287,6 +308,10 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
           categories: currentState.categories,
           preparationLabel: currentState.preparationLabel,
           deliveryNote: currentState.deliveryNote,
+          expressItems: currentState.expressItems,
+          normalItems: currentState.normalItems,
+          expressCategories: currentState.expressCategories,
+          normalCategories: currentState.normalCategories,
         ),
       );
     }
@@ -329,6 +354,10 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
           categories: currentState.categories,
           preparationLabel: currentState.preparationLabel,
           deliveryNote: currentState.deliveryNote,
+          expressItems: currentState.expressItems,
+          normalItems: currentState.normalItems,
+          expressCategories: currentState.expressCategories,
+          normalCategories: currentState.normalCategories,
         ),
       );
     }

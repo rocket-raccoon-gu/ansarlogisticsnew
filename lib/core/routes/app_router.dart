@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:developer';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/navigation/presentation/pages/role_based_navigation_page.dart';
@@ -11,6 +12,7 @@ import '../pages/splash_page.dart';
 import '../../features/picker/presentation/pages/item_add_page.dart';
 import '../../features/picker/presentation/pages/order_item_details_page.dart';
 import '../../features/picker/data/models/order_model.dart';
+import 'package:flutter/foundation.dart';
 
 class AppRoutes {
   static const String splash = '/';
@@ -34,11 +36,17 @@ class AppRouter {
       case AppRoutes.register:
         return MaterialPageRoute(builder: (context) => const RegisterPage());
       case AppRoutes.home:
-        // Get role from SharedPreferences
+        // Get role from SharedPreferences with timeout
         return MaterialPageRoute(
           builder:
               (context) => FutureBuilder<UserRole?>(
-                future: UserStorageService.getUserRole(),
+                future: UserStorageService.getUserRole().timeout(
+                  const Duration(seconds: 5),
+                  onTimeout: () {
+                    log("⚠️ User role retrieval timed out, using default role");
+                    return UserRole.picker;
+                  },
+                ),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Scaffold(

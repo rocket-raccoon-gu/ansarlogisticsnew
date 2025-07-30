@@ -6,6 +6,7 @@ import 'dart:developer';
 import '../../data/models/order_model.dart';
 import 'package:ansarlogisticsnew/core/constants/app_strings.dart';
 import '../../../../core/services/user_storage_service.dart';
+import '../../../../core/services/call_logs_service.dart';
 
 class CustomerCardWidget extends StatelessWidget {
   final OrderModel order;
@@ -83,7 +84,7 @@ class CustomerCardWidget extends StatelessWidget {
             if (order.phone != null)
               IconButton(
                 icon: const Icon(Icons.call, color: Colors.green),
-                onPressed: () => _launchPhone(order.phone),
+                onPressed: () => _handleCall(),
                 tooltip: AppStrings.call,
               ),
             if (order.phone != null)
@@ -101,30 +102,11 @@ class CustomerCardWidget extends StatelessWidget {
     );
   }
 
-  void _launchPhone(String phone) async {
-    try {
-      String contact = phone.trim();
-      String formattedContact;
-
-      // Apply the same phone number formatting logic
-      if (contact.startsWith('+974') || contact.startsWith('974')) {
-        formattedContact = contact;
-      } else {
-        formattedContact = "+974${contact}";
-      }
-
-      final uri = Uri(scheme: 'tel', path: formattedContact);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-      }
-    } catch (e) {
-      log("Error launching phone: $e");
-      // Fallback to original phone number
-      final uri = Uri(scheme: 'tel', path: phone);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-      }
-    }
+  void _handleCall() async {
+    CallLogs c1 = CallLogs();
+    await c1.handleCall(order.phone, () async {
+      log("📞 Call initiated for order: ${order.preparationId}");
+    });
   }
 
   void _launchWhatsApp(String phone) async {

@@ -12,6 +12,7 @@ class SharedWebSocketService {
 
   WebSocketClient? _wsClient;
   bool _isConnected = false;
+  bool _isConnecting = false;
   String? _currentToken;
   List<void Function(dynamic)> _messageListeners = [];
   Timer? _pingTimer;
@@ -40,7 +41,13 @@ class SharedWebSocketService {
 
       // Only reconnect if token changed or not connected
       if (_currentToken != token || !isConnected) {
-        await _connect(token);
+        await _connect(token).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            log("⚠️ WebSocket connection timed out");
+            return false;
+          },
+        );
       }
 
       return isConnected;
@@ -52,7 +59,15 @@ class SharedWebSocketService {
 
   // Connect to WebSocket with token
   Future<bool> _connect(String token) async {
+    // Prevent multiple simultaneous connection attempts
+    if (_isConnecting) {
+      log("⚠️ WebSocket connection already in progress, skipping");
+      return false;
+    }
+
     try {
+      _isConnecting = true;
+
       // Disconnect existing connection if any
       if (_wsClient != null) {
         _wsClient!.disconnect();
@@ -64,8 +79,13 @@ class SharedWebSocketService {
 
       _wsClient!.connect(wsUrl);
 
-      // Wait for connection to establish
-      await Future.delayed(Duration(seconds: 3));
+      // Wait for connection to establish with timeout
+      await Future.delayed(Duration(seconds: 3)).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          log("⚠️ WebSocket connection establishment timed out");
+        },
+      );
 
       _isConnected = _wsClient!.isConnected;
       _currentToken = token;
@@ -90,6 +110,8 @@ class SharedWebSocketService {
       log("❌ Error connecting to WebSocket: $e");
       _isConnected = false;
       return false;
+    } finally {
+      _isConnecting = false;
     }
   }
 

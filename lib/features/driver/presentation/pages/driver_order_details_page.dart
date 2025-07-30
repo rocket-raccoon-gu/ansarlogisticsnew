@@ -6,9 +6,11 @@ import '../../data/models/driver_order_model.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/driver_order_details_cubit.dart';
 import '../../../../core/services/user_storage_service.dart';
+import '../../../../core/services/call_logs_service.dart';
 import 'package:ansarlogisticsnew/features/navigation/presentation/pages/role_based_navigation_page.dart';
 import 'package:ansarlogisticsnew/features/navigation/presentation/cubit/bottom_navigation_cubit.dart';
 import 'bill_upload_page.dart';
+import 'dart:developer';
 
 class DriverOrderDetailsPage extends StatefulWidget {
   final DriverOrderModel order;
@@ -45,10 +47,10 @@ class _DriverOrderDetailsPageState extends State<DriverOrderDetailsPage> {
   }
 
   void _launchPhone(String phone) async {
-    final uri = Uri(scheme: 'tel', path: phone);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    }
+    CallLogs c1 = CallLogs();
+    await c1.handleCall(phone, () async {
+      log("📞 Call initiated for driver order: ${widget.order.id}");
+    });
   }
 
   void _launchWhatsApp(String phone) async {

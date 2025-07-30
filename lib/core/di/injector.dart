@@ -20,6 +20,8 @@ import '../../features/picker/presentation/cubit/picker_orders_cubit.dart';
 import '../../features/report/presentation/cubit/report_cubit.dart';
 import '../services/driver_location_service.dart';
 import '../services/shared_websocket_service.dart';
+import '../services/call_logs_service.dart';
+import '../services/barcode_scanner_service.dart';
 
 final getIt = GetIt.instance;
 
@@ -78,4 +80,6 @@ void setupDependencyInjection() {
   // Services
   getIt.registerLazySingleton(() => DriverLocationService());
   getIt.registerLazySingleton(() => SharedWebSocketService());
+  getIt.registerLazySingleton(() => CallLogs());
+  getIt.registerLazySingleton(() => BarcodeScannerService());
 }

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:developer';
 import '../cubit/auth_cubit.dart';
 import '../widgets/login_form.dart';
 import '../widgets/splash_screen.dart';
+import '../widgets/permission_request_dialog.dart';
 import '../../../../core/di/injector.dart';
-import '../../../../core/services/notification_service.dart';
+import '../../../../core/services/permission_service.dart';
 import '../../../../core/constants/app_assets.dart';
 
 class LoginPage extends StatefulWidget {
@@ -25,12 +27,83 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _handleLoginSuccess() async {
-    // Request notification permissions after successful login
-    await NotificationService.requestPermissions();
-    // Navigate to home
-    if (mounted) {
-      setState(() => _navigated = true); // <-- set flag
-      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+    try {
+      // Show permission request dialog after successful login
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (context) => PermissionRequestDialog(
+                onPermissionsGranted: () {
+                  if (mounted) {
+                    Navigator.of(context).pop(); // Close dialog
+                    _navigateToHome();
+                  }
+                },
+                onPermissionsDenied: () {
+                  if (mounted) {
+                    Navigator.of(context).pop(); // Close dialog
+                    _navigateToHome();
+                  }
+                },
+              ),
+        );
+      }
+    } catch (e) {
+      log("❌ Error in login success handling: $e");
+      // Reset navigation flag and show error
+      if (mounted) {
+        setState(() => _navigated = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Navigation error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _navigateToHome() async {
+    try {
+      if (mounted) {
+        setState(() => _navigated = true);
+
+        // Add a small delay to ensure state is updated
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        if (!mounted) return;
+
+        // Navigate with timeout
+        await Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/home',
+          (route) => false,
+        ).timeout(
+          const Duration(seconds: 3),
+          onTimeout: () {
+            log("⚠️ Navigation timed out, forcing navigation");
+            // Force navigation if timeout occurs
+            if (mounted) {
+              Navigator.of(
+                context,
+              ).pushNamedAndRemoveUntil('/home', (route) => false);
+            }
+          },
+        );
+      }
+    } catch (e) {
+      log("❌ Error navigating to home: $e");
+      if (mounted) {
+        setState(() => _navigated = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Navigation error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

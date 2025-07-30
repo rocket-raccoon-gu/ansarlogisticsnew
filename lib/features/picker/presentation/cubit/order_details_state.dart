@@ -18,6 +18,12 @@ class OrderDetailsLoaded extends OrderDetailsState {
   final String preparationLabel;
   final String? deliveryNote;
 
+  // New fields for delivery type groups
+  final List<OrderItemModel> expressItems;
+  final List<OrderItemModel> normalItems;
+  final List<CategoryItemModel> expressCategories;
+  final List<CategoryItemModel> normalCategories;
+
   OrderDetailsLoaded({
     required this.toPick,
     required this.picked,
@@ -26,6 +32,10 @@ class OrderDetailsLoaded extends OrderDetailsState {
     required this.categories,
     required this.preparationLabel,
     this.deliveryNote,
+    required this.expressItems,
+    required this.normalItems,
+    required this.expressCategories,
+    required this.normalCategories,
   });
 }
 

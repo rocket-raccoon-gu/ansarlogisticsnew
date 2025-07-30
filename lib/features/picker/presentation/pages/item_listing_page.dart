@@ -57,12 +57,15 @@ class _ItemListingPageState extends State<ItemListingPage> {
 
   List<OrderItemModel> _getFilteredItems(List<OrderItemModel> allItems) {
     List<OrderItemModel> filtered = allItems;
-    if (_selectedDeliveryType != null) {
+
+    // Additional filtering by delivery type if specified
+    if (widget.deliveryType != null) {
       filtered =
           filtered
-              .where((item) => item.deliveryType == _selectedDeliveryType)
+              .where((item) => item.deliveryType == widget.deliveryType)
               .toList();
     }
+
     switch (_selectedIndex) {
       case 0:
         return filtered
@@ -191,30 +194,53 @@ class _ItemListingPageState extends State<ItemListingPage> {
         bloc: widget.cubit,
         builder: (context, state) {
           if (state is OrderDetailsLoaded) {
-            // Filter the cubit's categories to only include items that match the passed items' delivery types
-            final passedItemsDeliveryTypes =
-                widget.items.map((item) => item.deliveryType).toSet();
+            // Use the cubit's categories but filter them to only include items that match the delivery type
+            List<CategoryItemModel> filteredCategories = [];
 
-            final filteredCategories =
-                state.categories
-                    .map((category) {
-                      // Filter items in this category to only include those matching the passed items' delivery types
-                      final filteredItems =
-                          category.items
-                              .where(
-                                (item) => passedItemsDeliveryTypes.contains(
-                                  item.deliveryType,
-                                ),
-                              )
-                              .toList();
+            if (widget.deliveryType != null) {
+              // Filter categories to only include items of the specified delivery type
+              filteredCategories =
+                  state.categories
+                      .map((category) {
+                        // Filter items in this category to only include those matching the delivery type
+                        final filteredItems =
+                            category.items
+                                .where(
+                                  (item) =>
+                                      item.deliveryType == widget.deliveryType,
+                                )
+                                .toList();
 
-                      return CategoryItemModel(
-                        category: category.category,
-                        items: filteredItems,
-                      );
-                    })
-                    .where((category) => category.items.isNotEmpty)
-                    .toList();
+                        return CategoryItemModel(
+                          category: category.category,
+                          items: filteredItems,
+                        );
+                      })
+                      .where((category) => category.items.isNotEmpty)
+                      .toList();
+
+              // Debug logging for category filtering
+              print(
+                '🔍 ItemListingPage - Delivery Type: ${widget.deliveryType}',
+              );
+              print(
+                '🔍 ItemListingPage - Original categories: ${state.categories.length}',
+              );
+              print(
+                '🔍 ItemListingPage - Filtered categories: ${filteredCategories.length}',
+              );
+              for (var category in filteredCategories) {
+                print(
+                  '  - Category: ${category.category}, Items: ${category.items.length}',
+                );
+                for (var item in category.items) {
+                  print('    - ${item.name}: ${item.deliveryType}');
+                }
+              }
+            } else {
+              // If no delivery type specified, use all categories
+              filteredCategories = state.categories;
+            }
 
             // Further filter by the selected tab (To Pick, Picked, etc.)
             final tabFilteredCategories = _getFilteredCategories(

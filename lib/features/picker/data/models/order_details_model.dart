@@ -29,6 +29,22 @@ class CategoryItemModel {
   }
 }
 
+class DeliveryTypeGroup {
+  final String deliveryType; // "exp" or "nol"
+  final List<CategoryItemModel> categories;
+
+  DeliveryTypeGroup({required this.deliveryType, required this.categories});
+
+  // Get all items from all categories in this delivery type group
+  List<OrderItemModel> get allItems {
+    List<OrderItemModel> allItems = [];
+    for (var category in categories) {
+      allItems.addAll(category.items);
+    }
+    return allItems;
+  }
+}
+
 class OrderDetailsModel {
   final int preparationId;
   final String preparationLabel;
@@ -36,8 +52,9 @@ class OrderDetailsModel {
   final String status;
   final DateTime createdAt;
   final String subgroupIdentifier;
-  final List<CategoryItemModel> categories;
+  final List<DeliveryTypeGroup> deliveryTypeGroups;
   final String? deliveryNote;
+
   OrderDetailsModel({
     required this.preparationId,
     required this.preparationLabel,
@@ -45,13 +62,13 @@ class OrderDetailsModel {
     required this.status,
     required this.createdAt,
     required this.subgroupIdentifier,
-    required this.categories,
+    required this.deliveryTypeGroups,
     this.deliveryNote,
   });
 
   factory OrderDetailsModel.fromJson(Map<String, dynamic> json) {
     try {
-      List<CategoryItemModel> parsedCategories = [];
+      List<DeliveryTypeGroup> parsedDeliveryTypeGroups = [];
 
       print('Parsing OrderDetailsModel from JSON: ${json.keys}');
       print('Items structure: ${json['items']}');
@@ -67,14 +84,14 @@ class OrderDetailsModel {
             print('Delivery type: $deliveryType');
             print('Categories: $categories');
 
+            List<CategoryItemModel> parsedCategories = [];
+
             if (categories is List) {
               for (var categoryGroup in categories) {
                 print('Processing categoryGroup: $categoryGroup');
 
                 if (categoryGroup is Map) {
                   try {
-                    // The delivery_type is already provided by the API in each item
-                    // No need to manually add it
                     if (categoryGroup['items'] is List) {
                       print(
                         'Found ${categoryGroup['items'].length} items in category ${categoryGroup['category']}',
@@ -105,16 +122,26 @@ class OrderDetailsModel {
             } else {
               print('Categories is not a list: $categories');
             }
+
+            // Create delivery type group
+            parsedDeliveryTypeGroups.add(
+              DeliveryTypeGroup(
+                deliveryType: deliveryType,
+                categories: parsedCategories,
+              ),
+            );
           } else {
             print('Invalid typeGroup structure: $typeGroup');
           }
         }
       }
 
-      print('Total parsed categories: ${parsedCategories.length}');
       print(
-        'Total items: ${parsedCategories.fold(0, (sum, cat) => sum + cat.items.length)}',
+        'Total parsed delivery type groups: ${parsedDeliveryTypeGroups.length}',
       );
+      for (var group in parsedDeliveryTypeGroups) {
+        print('${group.deliveryType}: ${group.allItems.length} items');
+      }
 
       return OrderDetailsModel(
         preparationId: _parsePreparationId(json['preparation_id']),
@@ -124,7 +151,7 @@ class OrderDetailsModel {
         createdAt:
             DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
         subgroupIdentifier: json['subgroup_identifier'] ?? '',
-        categories: parsedCategories,
+        deliveryTypeGroups: parsedDeliveryTypeGroups,
         deliveryNote: json['delivery_note'] ?? '',
       );
     } catch (e) {
@@ -137,7 +164,7 @@ class OrderDetailsModel {
         status: '',
         createdAt: DateTime.now(),
         subgroupIdentifier: '',
-        categories: [],
+        deliveryTypeGroups: [],
         deliveryNote: '',
       );
     }
@@ -156,13 +183,62 @@ class OrderDetailsModel {
     return 0;
   }
 
-  // Helper method to get all items flattened
+  // Helper method to get all items flattened (for backward compatibility)
   List<OrderItemModel> get allItems {
     List<OrderItemModel> allItems = [];
-    for (var category in categories) {
-      allItems.addAll(category.items);
+    for (var group in deliveryTypeGroups) {
+      allItems.addAll(group.allItems);
     }
     return allItems;
+  }
+
+  // Helper method to get all categories flattened (for backward compatibility)
+  List<CategoryItemModel> get categories {
+    List<CategoryItemModel> allCategories = [];
+    for (var group in deliveryTypeGroups) {
+      allCategories.addAll(group.categories);
+    }
+    return allCategories;
+  }
+
+  // Helper method to get express items
+  List<OrderItemModel> get expressItems {
+    for (var group in deliveryTypeGroups) {
+      if (group.deliveryType == 'exp') {
+        return group.allItems;
+      }
+    }
+    return [];
+  }
+
+  // Helper method to get normal items
+  List<OrderItemModel> get normalItems {
+    for (var group in deliveryTypeGroups) {
+      if (group.deliveryType == 'nol') {
+        return group.allItems;
+      }
+    }
+    return [];
+  }
+
+  // Helper method to get express categories
+  List<CategoryItemModel> get expressCategories {
+    for (var group in deliveryTypeGroups) {
+      if (group.deliveryType == 'exp') {
+        return group.categories;
+      }
+    }
+    return [];
+  }
+
+  // Helper method to get normal categories
+  List<CategoryItemModel> get normalCategories {
+    for (var group in deliveryTypeGroups) {
+      if (group.deliveryType == 'nol') {
+        return group.categories;
+      }
+    }
+    return [];
   }
 
   Map<String, dynamic> toJson() {
@@ -173,7 +249,18 @@ class OrderDetailsModel {
       'status': status,
       'created_at': createdAt.toIso8601String(),
       'subgroup_identifier': subgroupIdentifier,
-      'categories': categories.map((category) => category.toJson()).toList(),
+      'delivery_type_groups':
+          deliveryTypeGroups
+              .map(
+                (group) => {
+                  'delivery_type': group.deliveryType,
+                  'categories':
+                      group.categories
+                          .map((category) => category.toJson())
+                          .toList(),
+                },
+              )
+              .toList(),
       'delivery_note': deliveryNote,
     };
   }

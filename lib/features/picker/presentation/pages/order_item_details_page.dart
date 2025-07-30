@@ -5,6 +5,13 @@ import '../../data/models/order_item_model.dart';
 import '../../data/models/order_model.dart';
 import '../cubit/order_details_cubit.dart';
 import '../widgets/barcode_scanner_widget.dart';
+import '../widgets/optimized_barcode_scanner_widget.dart';
+import '../widgets/simple_barcode_scanner_widget.dart';
+import '../widgets/test_scanner_widget.dart';
+import '../widgets/minimal_scanner_widget.dart';
+import '../widgets/debug_scanner_widget.dart';
+import '../widgets/production_scanner_widget.dart';
+import '../widgets/stable_scanner_widget.dart';
 import '../widgets/product_found_dialog.dart';
 import '../widgets/product_not_matching_dialog.dart';
 import 'package:api_gateway/services/api_service.dart';
@@ -17,6 +24,8 @@ import 'package:ansarlogisticsnew/core/routes/app_router.dart';
 import '../widgets/confirmation_dialog.dart';
 import '../widgets/notfound_dialog.dart';
 import 'dart:developer';
+import '../../../../core/services/barcode_scanner_service.dart';
+import '../../../../core/di/injector.dart';
 
 class OrderItemDetailsPage extends StatefulWidget {
   final OrderItemModel item;
@@ -58,7 +67,7 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
   @override
   Widget build(BuildContext context) {
     if (_isProcessing) {
-      return BarcodeScannerWidget(
+      return StableScannerWidget(
         title: 'Scan Barcode',
         subtitle: 'Scan the barcode for ${widget.item.name}',
         onBarcodeScanned: (barcode) => _handleBarcodeScanned(context, barcode),
@@ -85,71 +94,106 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Product Images
+                            // Product Images - Made more responsive
                             if (widget.item.productImages.isNotEmpty)
-                              SizedBox(
-                                height: 180,
-                                child: ListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: widget.item.productImages.length,
-                                  itemBuilder: (context, index) {
-                                    return Container(
-                                      width: 180,
-                                      margin: const EdgeInsets.only(right: 12),
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: Colors.grey.shade200,
-                                        ),
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Image.network(
-                                          '${ApiConfig.imageUrl}${widget.item.productImages[index]}',
-                                          fit: BoxFit.cover,
-                                          errorBuilder:
-                                              (
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final imageHeight =
+                                      constraints.maxWidth < 400
+                                          ? 140.0
+                                          : 180.0;
+                                  final imageWidth =
+                                      constraints.maxWidth < 400
+                                          ? 140.0
+                                          : 180.0;
+
+                                  return SizedBox(
+                                    height: imageHeight,
+                                    child: ListView.builder(
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount:
+                                          widget.item.productImages.length,
+                                      itemBuilder: (context, index) {
+                                        return Container(
+                                          width: imageWidth,
+                                          margin: const EdgeInsets.only(
+                                            right: 12,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            border: Border.all(
+                                              color: Colors.grey.shade200,
+                                              width: 1,
+                                            ),
+                                          ),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            child: Image.network(
+                                              '${ApiConfig.imageUrl}${widget.item.productImages[index]}',
+                                              width: imageWidth,
+                                              height: imageHeight,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (
                                                 context,
                                                 error,
                                                 stackTrace,
-                                              ) => Container(
-                                                decoration: BoxDecoration(
-                                                  color: Colors.grey.shade100,
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                                child: const Icon(
-                                                  Icons.image_not_supported,
-                                                  size: 60,
-                                                  color: Colors.grey,
-                                                ),
-                                              ),
-                                          loadingBuilder: (
-                                            context,
-                                            child,
-                                            loadingProgress,
-                                          ) {
-                                            if (loadingProgress == null)
-                                              return child;
-                                            return Container(
-                                              decoration: BoxDecoration(
-                                                color: Colors.grey.shade100,
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-                                              child: const Center(
-                                                child:
-                                                    CircularProgressIndicator(),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              )
-                            else
+                                              ) {
+                                                return Container(
+                                                  width: imageWidth,
+                                                  height: imageHeight,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.grey.shade100,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.image_not_supported,
+                                                    size: 36,
+                                                    color: Colors.grey,
+                                                  ),
+                                                );
+                                              },
+                                              loadingBuilder: (
+                                                context,
+                                                child,
+                                                loadingProgress,
+                                              ) {
+                                                if (loadingProgress == null)
+                                                  return child;
+                                                return Container(
+                                                  width: imageWidth,
+                                                  height: imageHeight,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.grey.shade100,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                  ),
+                                                  child: const Center(
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                        ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  );
+                                },
+                              ),
+                            // Fallback image if no product images
+                            if (widget.item.productImages.isEmpty)
                               Center(
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
@@ -333,6 +377,7 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                             ],
                           ),
                           const SizedBox(height: 16),
+                          // Barcode Input Section - Made more responsive
                           Container(
                             decoration: BoxDecoration(
                               color:
@@ -352,104 +397,132 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                               horizontal: 12,
                               vertical: 10,
                             ),
-                            child: Row(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (_manualBarcodeController.text.isNotEmpty)
-                                  Icon(
-                                    Icons.qr_code_scanner,
-                                    color: Colors.green,
-                                    size: 20,
-                                  ),
-                                if (_manualBarcodeController.text.isNotEmpty)
-                                  SizedBox(width: 8),
-                                Expanded(
-                                  child: TextField(
-                                    enabled:
-                                        widget.item.status !=
-                                            OrderItemStatus.picked &&
-                                        !_isLoading,
-                                    controller: _manualBarcodeController,
-                                    decoration: InputDecoration(
-                                      labelText:
-                                          _manualBarcodeController
-                                                  .text
-                                                  .isNotEmpty
-                                              ? 'Scanned Barcode (Edit if needed)'
-                                              : 'Enter Barcode',
-                                      border: InputBorder.none,
-                                      labelStyle: TextStyle(
-                                        color:
-                                            _manualBarcodeController
-                                                    .text
-                                                    .isNotEmpty
-                                                ? Colors.green.shade700
-                                                : Colors.grey.shade600,
+                                // Barcode input row
+                                Row(
+                                  children: [
+                                    if (_manualBarcodeController
+                                        .text
+                                        .isNotEmpty)
+                                      Icon(
+                                        Icons.qr_code_scanner,
+                                        color: Colors.green,
+                                        size: 20,
+                                      ),
+                                    if (_manualBarcodeController
+                                        .text
+                                        .isNotEmpty)
+                                      SizedBox(width: 8),
+                                    Expanded(
+                                      child: TextField(
+                                        enabled:
+                                            widget.item.status !=
+                                                OrderItemStatus.picked &&
+                                            !_isLoading,
+                                        controller: _manualBarcodeController,
+                                        decoration: InputDecoration(
+                                          labelText:
+                                              _manualBarcodeController
+                                                      .text
+                                                      .isNotEmpty
+                                                  ? 'Scanned Barcode'
+                                                  : 'Enter Barcode',
+                                          border: InputBorder.none,
+                                          labelStyle: TextStyle(
+                                            color:
+                                                _manualBarcodeController
+                                                        .text
+                                                        .isNotEmpty
+                                                    ? Colors.green.shade700
+                                                    : Colors.grey.shade600,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontFamily:
+                                              _manualBarcodeController
+                                                      .text
+                                                      .isNotEmpty
+                                                  ? 'monospace'
+                                                  : null,
+                                          fontWeight:
+                                              _manualBarcodeController
+                                                      .text
+                                                      .isNotEmpty
+                                                  ? FontWeight.w600
+                                                  : FontWeight.normal,
+                                        ),
+                                        onChanged: (value) {
+                                          setState(() {
+                                            // Trigger rebuild to update UI
+                                          });
+                                        },
+                                        onSubmitted:
+                                            (value) =>
+                                                _handleManualBarcodeSubmit(),
                                       ),
                                     ),
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontFamily:
-                                          _manualBarcodeController
-                                                  .text
-                                                  .isNotEmpty
-                                              ? 'monospace'
-                                              : null,
-                                      fontWeight:
-                                          _manualBarcodeController
-                                                  .text
-                                                  .isNotEmpty
-                                              ? FontWeight.w600
-                                              : FontWeight.normal,
-                                    ),
-                                    onChanged: (value) {
-                                      setState(() {
-                                        // Trigger rebuild to update UI
-                                      });
-                                    },
-                                    onSubmitted:
-                                        (value) => _handleManualBarcodeSubmit(),
-                                  ),
+                                  ],
                                 ),
-                                const SizedBox(width: 8),
+                                // Action buttons row - responsive layout
                                 if (_manualBarcodeController.text.isNotEmpty)
-                                  IconButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        _manualBarcodeController.clear();
-                                      });
-                                    },
-                                    icon: Icon(Icons.clear, color: Colors.red),
-                                    tooltip: 'Clear barcode',
-                                  ),
-                                if (_manualBarcodeController.text.isNotEmpty)
-                                  SizedBox(width: 4),
-                                ElevatedButton(
-                                  onPressed:
-                                      (widget.item.status ==
-                                                  OrderItemStatus.picked ||
-                                              _isLoading)
-                                          ? null
-                                          : _handleManualBarcodeSubmit,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        _manualBarcodeController.text.isNotEmpty
-                                            ? Colors.green
-                                            : Colors.blue,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 18,
-                                      vertical: 14,
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8.0),
+                                    child: Row(
+                                      children: [
+                                        IconButton(
+                                          onPressed: () {
+                                            setState(() {
+                                              _manualBarcodeController.clear();
+                                            });
+                                          },
+                                          icon: Icon(
+                                            Icons.clear,
+                                            color: Colors.red,
+                                            size: 20,
+                                          ),
+                                          tooltip: 'Clear barcode',
+                                          padding: EdgeInsets.zero,
+                                          constraints: BoxConstraints(
+                                            minWidth: 40,
+                                            minHeight: 40,
+                                          ),
+                                        ),
+                                        SizedBox(width: 8),
+                                        Expanded(
+                                          child: ElevatedButton(
+                                            onPressed:
+                                                (widget.item.status ==
+                                                            OrderItemStatus
+                                                                .picked ||
+                                                        _isLoading)
+                                                    ? null
+                                                    : _handleManualBarcodeSubmit,
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.green,
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 12,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              'Submit Scanned',
+                                              style: TextStyle(fontSize: 14),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
                                   ),
-                                  child: Text(
-                                    _manualBarcodeController.text.isNotEmpty
-                                        ? 'Submit Scanned'
-                                        : 'Submit',
-                                  ),
-                                ),
                               ],
                             ),
                           ),
@@ -459,6 +532,7 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                     Divider(height: 1, thickness: 1, color: Color(0xFFE0E0E0)),
                     const SizedBox(height: 20),
                     // Section: Other Actions
+                    // Other Actions - Made responsive for smaller screens
                     Text(
                       'Other Actions',
                       style: TextStyle(
@@ -468,120 +542,317 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.remove_circle_outline),
-                            label: const Text(AppStrings.notAvailable),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.red,
-                              side: const BorderSide(color: Colors.red),
-                              textStyle: const TextStyle(
-                                fontWeight: FontWeight.w600,
+                    // Responsive action buttons layout
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        // Use column layout for smaller screens, row for larger screens
+                        if (constraints.maxWidth < 600) {
+                          return Column(
+                            children: [
+                              // Not Available Button
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(
+                                    Icons.remove_circle_outline,
+                                    size: 20,
+                                  ),
+                                  label: Text(
+                                    AppStrings.notAvailable,
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.red,
+                                    side: const BorderSide(color: Colors.red),
+                                    textStyle: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  onPressed:
+                                      widget.item.status ==
+                                              OrderItemStatus.itemNotAvailable
+                                          ? null
+                                          : () {
+                                            showDialog(
+                                              context: context,
+                                              builder:
+                                                  (
+                                                    context,
+                                                  ) => ConfirmationDialog(
+                                                    title:
+                                                        'Mark as Not Available',
+                                                    message:
+                                                        'Are you sure you want to mark "${widget.item.name}" as not available?',
+                                                    confirmText:
+                                                        'Mark Not Available',
+                                                    confirmColor: Colors.orange,
+                                                    item: widget.item,
+                                                    cubit: widget.cubit,
+                                                    status:
+                                                        'item_not_available',
+                                                    reason:
+                                                        'Manually marked as not available',
+                                                  ),
+                                            );
+                                          },
+                                ),
                               ),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                              const SizedBox(height: 12),
+                              // Canceled Button
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(
+                                    Icons.cancel_outlined,
+                                    size: 20,
+                                  ),
+                                  label: Text(
+                                    AppStrings.canceled,
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.grey,
+                                    side: const BorderSide(color: Colors.grey),
+                                    textStyle: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  onPressed:
+                                      widget.item.status ==
+                                              OrderItemStatus.canceled
+                                          ? null
+                                          : () {
+                                            showDialog(
+                                              context: context,
+                                              builder:
+                                                  (
+                                                    context,
+                                                  ) => ConfirmationDialog(
+                                                    title: 'Cancel Item',
+                                                    message:
+                                                        'Are you sure you want to cancel "${widget.item.name}"?',
+                                                    confirmText: 'Cancel Item',
+                                                    confirmColor: Colors.grey,
+                                                    item: widget.item,
+                                                    cubit: widget.cubit,
+                                                    status: 'item_canceled',
+                                                    reason: 'Manually canceled',
+                                                  ),
+                                            );
+                                          },
+                                ),
                               ),
-                            ),
-                            onPressed:
-                                widget.item.status ==
-                                        OrderItemStatus.itemNotAvailable
-                                    ? null
-                                    : () {
-                                      showDialog(
-                                        context: context,
-                                        builder:
-                                            (context) => ConfirmationDialog(
-                                              title: 'Mark as Not Available',
-                                              message:
-                                                  'Are you sure you want to mark "${widget.item.name}" as not available?',
-                                              confirmText: 'Mark Not Available',
-                                              confirmColor: Colors.orange,
+                              const SizedBox(height: 12),
+                              // Hold Button
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(
+                                    Icons.pause_circle_outline,
+                                    size: 20,
+                                  ),
+                                  label: Text(
+                                    'Hold',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.amber,
+                                    side: const BorderSide(color: Colors.amber),
+                                    textStyle: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  onPressed:
+                                      widget.item.status ==
+                                              OrderItemStatus.holded
+                                          ? null
+                                          : () async {
+                                            await widget.cubit.updateItemStatus(
                                               item: widget.item,
-                                              cubit: widget.cubit,
-                                              status: 'item_not_available',
-                                              reason:
-                                                  'Manually marked as not available',
-                                            ),
-                                      );
-                                    },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.cancel_outlined),
-                            label: const Text(AppStrings.canceled),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.grey,
-                              side: const BorderSide(color: Colors.grey),
-                              textStyle: const TextStyle(
-                                fontWeight: FontWeight.w600,
+                                              status: 'holded',
+                                              scannedSku: widget.item.sku ?? '',
+                                              reason: null,
+                                            );
+                                            if (mounted) {
+                                              Navigator.of(context).pop(
+                                                'holded',
+                                              ); // Will trigger reload and switch to On Hold tab
+                                            }
+                                          },
+                                ),
                               ),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                            ],
+                          );
+                        } else {
+                          // Horizontal layout for larger screens
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(
+                                    Icons.remove_circle_outline,
+                                    size: 20,
+                                  ),
+                                  label: Text(
+                                    AppStrings.notAvailable,
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.red,
+                                    side: const BorderSide(color: Colors.red),
+                                    textStyle: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  onPressed:
+                                      widget.item.status ==
+                                              OrderItemStatus.itemNotAvailable
+                                          ? null
+                                          : () {
+                                            showDialog(
+                                              context: context,
+                                              builder:
+                                                  (
+                                                    context,
+                                                  ) => ConfirmationDialog(
+                                                    title:
+                                                        'Mark as Not Available',
+                                                    message:
+                                                        'Are you sure you want to mark "${widget.item.name}" as not available?',
+                                                    confirmText:
+                                                        'Mark Not Available',
+                                                    confirmColor: Colors.orange,
+                                                    item: widget.item,
+                                                    cubit: widget.cubit,
+                                                    status:
+                                                        'item_not_available',
+                                                    reason:
+                                                        'Manually marked as not available',
+                                                  ),
+                                            );
+                                          },
+                                ),
                               ),
-                            ),
-                            onPressed:
-                                widget.item.status == OrderItemStatus.canceled
-                                    ? null
-                                    : () {
-                                      showDialog(
-                                        context: context,
-                                        builder:
-                                            (context) => ConfirmationDialog(
-                                              title: 'Cancel Item',
-                                              message:
-                                                  'Are you sure you want to cancel "${widget.item.name}"?',
-                                              confirmText: 'Cancel Item',
-                                              confirmColor: Colors.grey,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(
+                                    Icons.cancel_outlined,
+                                    size: 20,
+                                  ),
+                                  label: Text(
+                                    AppStrings.canceled,
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.grey,
+                                    side: const BorderSide(color: Colors.grey),
+                                    textStyle: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  onPressed:
+                                      widget.item.status ==
+                                              OrderItemStatus.canceled
+                                          ? null
+                                          : () {
+                                            showDialog(
+                                              context: context,
+                                              builder:
+                                                  (
+                                                    context,
+                                                  ) => ConfirmationDialog(
+                                                    title: 'Cancel Item',
+                                                    message:
+                                                        'Are you sure you want to cancel "${widget.item.name}"?',
+                                                    confirmText: 'Cancel Item',
+                                                    confirmColor: Colors.grey,
+                                                    item: widget.item,
+                                                    cubit: widget.cubit,
+                                                    status: 'item_canceled',
+                                                    reason: 'Manually canceled',
+                                                  ),
+                                            );
+                                          },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(
+                                    Icons.pause_circle_outline,
+                                    size: 20,
+                                  ),
+                                  label: Text(
+                                    'Hold',
+                                    style: TextStyle(fontSize: 14),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.amber,
+                                    side: const BorderSide(color: Colors.amber),
+                                    textStyle: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  onPressed:
+                                      widget.item.status ==
+                                              OrderItemStatus.holded
+                                          ? null
+                                          : () async {
+                                            await widget.cubit.updateItemStatus(
                                               item: widget.item,
-                                              cubit: widget.cubit,
-                                              status: 'item_canceled',
-                                              reason: 'Manually canceled',
-                                            ),
-                                      );
-                                    },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.pause_circle_outline),
-                            label: const Text('Hold'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.amber,
-                              side: const BorderSide(color: Colors.amber),
-                              textStyle: const TextStyle(
-                                fontWeight: FontWeight.w600,
+                                              status: 'holded',
+                                              scannedSku: widget.item.sku ?? '',
+                                              reason: null,
+                                            );
+                                            if (mounted) {
+                                              Navigator.of(context).pop(
+                                                'holded',
+                                              ); // Will trigger reload and switch to On Hold tab
+                                            }
+                                          },
+                                ),
                               ),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            onPressed:
-                                widget.item.status == OrderItemStatus.holded
-                                    ? null
-                                    : () async {
-                                      await widget.cubit.updateItemStatus(
-                                        item: widget.item,
-                                        status: 'holded',
-                                        scannedSku: widget.item.sku ?? '',
-                                        reason: null,
-                                      );
-                                      if (mounted) {
-                                        Navigator.of(context).pop(
-                                          'holded',
-                                        ); // Will trigger reload and switch to On Hold tab
-                                      }
-                                    },
-                          ),
-                        ),
-                      ],
+                            ],
+                          );
+                        }
+                      },
                     ),
                     const SizedBox(height: 24),
                   ],

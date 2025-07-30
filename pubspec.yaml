@@ -73,6 +73,9 @@ dependencies:
   flutter_local_notifications: ^14.1.5
   overlay_support: any
   
+  # Phone calling functionality
+  flutter_phone_direct_caller: any
+  
   api_gateway:
     path: ./api_gateway
   

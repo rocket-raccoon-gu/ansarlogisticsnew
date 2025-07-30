@@ -8,11 +8,13 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:api_gateway/ws/websockt_client.dart';
 import 'package:api_gateway/config/api_config.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'core/services/permission_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/global_notification_service.dart';
 import 'package:overlay_support/overlay_support.dart';
 import 'core/services/user_storage_service.dart';
 import 'core/services/shared_websocket_service.dart';
+import 'core/services/barcode_scanner_service.dart';
 
 // Firebase background message handler
 @pragma('vm:entry-point')
@@ -35,49 +37,67 @@ final GlobalKey<NavigatorState> navigatorKey =
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
-  await FirebaseService.initialize();
+  try {
+    // Initialize Firebase with timeout
+    await FirebaseService.initialize().timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        print("⚠️ Firebase initialization timed out");
+      },
+    );
 
-  // Initialize Notification Service
-  await NotificationService.initialize();
+    // Initialize Notification Service with timeout
+    await PermissionService.initialize().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        print("⚠️ Notification service initialization timed out");
+      },
+    );
 
-  final ws = WebSocketClient();
-  ws.connect(ApiConfig.wsUrl);
-  getIt.registerSingleton<WebSocketClient>(ws);
+    // Initialize WebSocket with timeout
+    final ws = WebSocketClient();
+    ws.connect(ApiConfig.wsUrl);
+    getIt.registerSingleton<WebSocketClient>(ws);
 
-  // Setup dependency injection
-  setupDependencyInjection();
+    // Setup dependency injection
+    setupDependencyInjection();
 
-  // Configure Firebase messaging for foreground notifications
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    print('Got a message whilst in the foreground!');
-    print('Message data: ${message.data}');
+    // Configure Firebase messaging for foreground notifications
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print('Got a message whilst in the foreground!');
+      print('Message data: ${message.data}');
 
-    if (message.notification != null) {
-      print('Message also contained a notification: ${message.notification}');
+      if (message.notification != null) {
+        print('Message also contained a notification: ${message.notification}');
 
-      // Always show local notification with sound for foreground messages
-      NotificationService.showNotification(
-        title: message.notification?.title ?? 'New Notification',
-        body: message.notification?.body ?? '',
-        payload: message.data.toString(),
-      );
-
-      // If it's a new order, also show the in-app dialog
-      if (message.data.containsKey('type') &&
-          message.data['type'] == 'new_order') {
-        final orderId = message.data['order_id'] ?? 'Unknown Order';
-        final userRole = message.data['user_role'] ?? 'picker';
-        GlobalNotificationService.showNewOrderNotification(
-          orderId: orderId,
-          userRole: userRole,
+        // Always show local notification with sound for foreground messages
+        NotificationService.showNotification(
+          title: message.notification?.title ?? 'New Notification',
+          body: message.notification?.body ?? '',
+          payload: message.data.toString(),
         );
-      }
-    }
-  });
 
-  // Handle background messages
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+        // If it's a new order, also show the in-app dialog
+        if (message.data.containsKey('type') &&
+            message.data['type'] == 'new_order') {
+          final orderId = message.data['order_id'] ?? 'Unknown Order';
+          final userRole = message.data['user_role'] ?? 'picker';
+          GlobalNotificationService.showNewOrderNotification(
+            orderId: orderId,
+            userRole: userRole,
+          );
+        }
+      }
+    });
+
+    // Handle background messages
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    print("✅ App initialization completed successfully");
+  } catch (e) {
+    print("❌ Error during app initialization: $e");
+    // Continue with app launch even if initialization fails
+  }
 
   runApp(OverlaySupport.global(child: const MyApp()));
 }

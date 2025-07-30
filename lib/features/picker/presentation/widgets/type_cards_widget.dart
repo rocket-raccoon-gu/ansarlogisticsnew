@@ -21,34 +21,42 @@ class TypeCardsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final expItems =
-        allItems.where((item) => item.deliveryType == 'exp').toList();
-    final nolItems =
-        allItems.where((item) => item.deliveryType == 'nol').toList();
+    // Get express and normal items from the cubit state
+    List<OrderItemModel> expItems = [];
+    List<OrderItemModel> nolItems = [];
+
+    try {
+      final state = cubit?.state;
+      if (state is OrderDetailsLoaded) {
+        expItems = state.expressItems;
+        nolItems = state.normalItems;
+
+        // Debug logging for item retrieval
+        print('🔍 TypeCardsWidget - Retrieved from cubit state:');
+        print('  - Express items: ${expItems.length}');
+        print('  - Normal items: ${nolItems.length}');
+        print(
+          '  - Total items (toPick + picked + canceled + notAvailable): ${state.toPick.length + state.picked.length + state.canceled.length + state.notAvailable.length}',
+        );
+      }
+    } catch (e) {
+      print('Error getting express/normal items from cubit: $e');
+      // Fallback to filtering by deliveryType if cubit is not available
+      expItems = allItems.where((item) => item.deliveryType == 'exp').toList();
+      nolItems = allItems.where((item) => item.deliveryType == 'nol').toList();
+
+      // Debug logging for fallback
+      print('🔍 TypeCardsWidget - Using fallback filtering:');
+      print('  - Express items (fallback): ${expItems.length}');
+      print('  - Normal items (fallback): ${nolItems.length}');
+    }
+
     final hasEXP = expItems.isNotEmpty;
     final hasNOL = nolItems.isNotEmpty;
 
     print('TypeCardsWidget - Total items: ${allItems.length}');
     print('TypeCardsWidget - EXP items: ${expItems.length}');
     print('TypeCardsWidget - NOL items: ${nolItems.length}');
-
-    // Debug: Print delivery types of all items
-    for (var item in allItems) {
-      print(
-        'Item: ${item.name}, Delivery Type: "${item.deliveryType}" (length: ${item.deliveryType.length})',
-      );
-    }
-
-    // Debug: Print filtered items
-    print('=== EXP Items ===');
-    for (var item in expItems) {
-      print('EXP Item: ${item.name}, Delivery Type: "${item.deliveryType}"');
-    }
-
-    print('=== NOL Items ===');
-    for (var item in nolItems) {
-      print('NOL Item: ${item.name}, Delivery Type: "${item.deliveryType}"');
-    }
 
     if (!hasEXP && !hasNOL) {
       return const SizedBox.shrink();
@@ -92,9 +100,13 @@ class TypeCardsWidget extends StatelessWidget {
                               items: expItems,
                               title: 'Express Items',
                               cubit: orderCubit,
+                              deliveryType:
+                                  'exp', // Pass delivery type for filtering
                               preparationId: preparationId,
                               orderNumber:
-                                  expItems.last.subgroupIdentifier ?? '',
+                                  expItems.isNotEmpty
+                                      ? expItems.first.subgroupIdentifier ?? ''
+                                      : '',
                               order: order,
                             ),
                       ),
@@ -120,6 +132,61 @@ class TypeCardsWidget extends StatelessWidget {
                                   .length;
                           final total = expItems.length;
                           final progress = total > 0 ? picked / total : 0.0;
+
+                          // Debug logging for express items
+                          print(
+                            '🔍 EXP Progress - Total: $total, Picked: $picked, Progress: ${(progress * 100).toStringAsFixed(1)}%',
+                          );
+                          print('🔍 EXP Items Status Breakdown:');
+                          for (var item in expItems) {
+                            print('  - ${item.name}: ${item.status}');
+                          }
+
+                          // Additional status count verification
+                          final toPickCount =
+                              expItems
+                                  .where(
+                                    (item) =>
+                                        item.status == OrderItemStatus.toPick,
+                                  )
+                                  .length;
+                          final pickedCount =
+                              expItems
+                                  .where(
+                                    (item) =>
+                                        item.status == OrderItemStatus.picked,
+                                  )
+                                  .length;
+                          final holdedCount =
+                              expItems
+                                  .where(
+                                    (item) =>
+                                        item.status == OrderItemStatus.holded,
+                                  )
+                                  .length;
+                          final notAvailableCount =
+                              expItems
+                                  .where(
+                                    (item) =>
+                                        item.status ==
+                                        OrderItemStatus.itemNotAvailable,
+                                  )
+                                  .length;
+                          final canceledCount =
+                              expItems
+                                  .where(
+                                    (item) =>
+                                        item.status == OrderItemStatus.canceled,
+                                  )
+                                  .length;
+
+                          print(
+                            '🔍 EXP Status Counts - ToPick: $toPickCount, Picked: $pickedCount, Holded: $holdedCount, NotAvailable: $notAvailableCount, Canceled: $canceledCount',
+                          );
+                          print(
+                            '🔍 EXP Verification - Total should be: ${toPickCount + pickedCount + holdedCount + notAvailableCount + canceledCount}',
+                          );
+
                           return Column(
                             children: [
                               SizedBox(
@@ -198,9 +265,13 @@ class TypeCardsWidget extends StatelessWidget {
                               items: nolItems,
                               title: 'Normal Local Items',
                               cubit: orderCubit,
+                              deliveryType:
+                                  'nol', // Pass delivery type for filtering
                               preparationId: preparationId,
                               orderNumber:
-                                  nolItems.last.subgroupIdentifier ?? '',
+                                  nolItems.isNotEmpty
+                                      ? nolItems.first.subgroupIdentifier ?? ''
+                                      : '',
                               order: order,
                             ),
                       ),
@@ -226,6 +297,61 @@ class TypeCardsWidget extends StatelessWidget {
                                   .length;
                           final total = nolItems.length;
                           final progress = total > 0 ? picked / total : 0.0;
+
+                          // Debug logging for normal items
+                          print(
+                            '🔍 NOL Progress - Total: $total, Picked: $picked, Progress: ${(progress * 100).toStringAsFixed(1)}%',
+                          );
+                          print('🔍 NOL Items Status Breakdown:');
+                          for (var item in nolItems) {
+                            print('  - ${item.name}: ${item.status}');
+                          }
+
+                          // Additional status count verification
+                          final toPickCount =
+                              nolItems
+                                  .where(
+                                    (item) =>
+                                        item.status == OrderItemStatus.toPick,
+                                  )
+                                  .length;
+                          final pickedCount =
+                              nolItems
+                                  .where(
+                                    (item) =>
+                                        item.status == OrderItemStatus.picked,
+                                  )
+                                  .length;
+                          final holdedCount =
+                              nolItems
+                                  .where(
+                                    (item) =>
+                                        item.status == OrderItemStatus.holded,
+                                  )
+                                  .length;
+                          final notAvailableCount =
+                              nolItems
+                                  .where(
+                                    (item) =>
+                                        item.status ==
+                                        OrderItemStatus.itemNotAvailable,
+                                  )
+                                  .length;
+                          final canceledCount =
+                              nolItems
+                                  .where(
+                                    (item) =>
+                                        item.status == OrderItemStatus.canceled,
+                                  )
+                                  .length;
+
+                          print(
+                            '🔍 NOL Status Counts - ToPick: $toPickCount, Picked: $pickedCount, Holded: $holdedCount, NotAvailable: $notAvailableCount, Canceled: $canceledCount',
+                          );
+                          print(
+                            '🔍 NOL Verification - Total should be: ${toPickCount + pickedCount + holdedCount + notAvailableCount + canceledCount}',
+                          );
+
                           return Column(
                             children: [
                               SizedBox(

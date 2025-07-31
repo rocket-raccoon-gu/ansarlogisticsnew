@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../cubit/profile_cubit.dart';
@@ -15,31 +16,6 @@ import 'dart:async'; // Added for Timer
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
-
-  // Clean up all services before logout
-  Future<void> _cleanupServices() async {
-    try {
-      // Stop location tracking
-      final locationService = DriverLocationService();
-      await locationService.stopTracking();
-
-      // Disconnect WebSocket
-      final webSocketService = SharedWebSocketService();
-      webSocketService.disconnect();
-
-      // Stop foreground task if running
-      try {
-        await FlutterForegroundTask.stopService();
-      } catch (e) {
-        // Ignore errors if service is not running
-      }
-
-      print('✅ All services cleaned up successfully');
-    } catch (e) {
-      print('⚠️ Error cleaning up services: $e');
-      // Don't throw error, continue with logout
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +39,8 @@ class ProfilePage extends StatelessWidget {
                     const UserInfoCard(),
                     const SizedBox(height: 20),
                     const SettingsCard(),
+                    const SizedBox(height: 20),
+                    const AppVersionCard(),
                     const SizedBox(height: 20),
                     // const TestButtonsCard(),
                   ],
@@ -520,6 +498,13 @@ class UserInfoCard extends StatelessWidget {
 class SettingsCard extends StatelessWidget {
   const SettingsCard({super.key});
 
+  // Clean up all services before logout (kept for compatibility)
+  Future<void> _cleanupServices() async {
+    // This method is now replaced by _simpleLogout()
+    // Keeping it for compatibility but it's no longer used
+    print('⚠️ _cleanupServices is deprecated, use _simpleLogout instead');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -717,22 +702,25 @@ class SettingsCard extends StatelessWidget {
       },
     );
 
-    // Add a final safety timeout to ensure logout always completes
-    Timer(const Duration(seconds: 8), () {
+    // Add a safety timeout to ensure dialog always closes
+    Timer(const Duration(seconds: 3), () {
       if (context.mounted) {
-        print('🚨 Safety timeout triggered - forcing logout');
-        _forceLogout(context);
+        try {
+          Navigator.of(context).pop(); // Close dialog
+          Navigator.of(
+            context,
+          ).pushNamedAndRemoveUntil('/login', (route) => false);
+        } catch (e) {
+          print('⚠️ Safety timeout error: $e');
+        }
       }
     });
 
     try {
-      // Set a timeout for the entire logout process
-      await Future.any([
-        _performLogoutWithTimeout(),
-        Future.delayed(const Duration(seconds: 5)).then((_) {
-          throw Exception('Logout timeout - forcing logout');
-        }),
-      ]);
+      print('🔄 Starting logout process...');
+
+      // Simple logout without complex timeout logic
+      await _simpleLogout();
 
       if (context.mounted) {
         // Close loading dialog
@@ -744,99 +732,54 @@ class SettingsCard extends StatelessWidget {
       }
     } catch (e) {
       print('⚠️ Logout error: $e');
-      await _forceLogout(context);
-    }
-  }
 
-  Future<void> _forceLogout(BuildContext context) async {
-    print('🚨 Force logout initiated');
-
-    // Always close loading dialog and navigate, regardless of errors
-    if (context.mounted) {
-      // Close loading dialog
-      Navigator.of(context).pop();
-
-      // Force logout by clearing data immediately
-      try {
-        await UserStorageService.clearUserData();
-        print('✅ Forced logout completed');
-      } catch (clearError) {
-        print('⚠️ Error during forced logout: $clearError');
+      // Always close dialog and navigate, regardless of errors
+      if (context.mounted) {
+        // Close loading dialog
+        Navigator.of(context).pop();
+        // Navigate to login
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/login', (route) => false);
       }
-
-      // Navigate to login immediately
-      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
     }
   }
 
-  Future<void> _performLogoutWithTimeout() async {
-    print('🔄 Starting logout process...');
-
+  Future<void> _simpleLogout() async {
     try {
-      // First, update user status to offline via WebSocket
-      print('📡 Attempting to send offline status...');
-      final userData = await UserStorageService.getUserData();
-      if (userData != null && userData.user != null) {
-        final userId = userData.user!.id;
-        final webSocketService = SharedWebSocketService();
+      // Clear user data immediately
+      await UserStorageService.clearUserData();
+      print('✅ User data cleared');
 
-        print('🔌 WebSocket connected: ${webSocketService.isConnected}');
-
-        // Send offline status update with timeout
-        await Future.any([
-          webSocketService.sendStatusUpdate(userId, 0), // 0 = offline
-          Future.delayed(const Duration(seconds: 2)),
-        ]);
-        print('✅ Offline status sent via WebSocket for user $userId');
-      } else {
-        print('⚠️ No user data found, skipping offline status update');
+      // Clean up services with individual try-catch blocks
+      try {
+        final locationService = DriverLocationService();
+        await locationService.stopTracking();
+        print('✅ Location tracking stopped');
+      } catch (e) {
+        print('⚠️ Error stopping location tracking: $e');
       }
+
+      try {
+        final webSocketService = SharedWebSocketService();
+        webSocketService.disconnect();
+        print('✅ WebSocket disconnected');
+      } catch (e) {
+        print('⚠️ Error disconnecting WebSocket: $e');
+      }
+
+      try {
+        await FlutterForegroundTask.stopService();
+        print('✅ Foreground task stopped');
+      } catch (e) {
+        print('⚠️ Error stopping foreground task: $e');
+      }
+
+      print('✅ Logout completed successfully');
     } catch (e) {
-      print('⚠️ Error sending offline status: $e');
-      // Continue with logout even if status update fails
+      print('⚠️ Error during simple logout: $e');
+      // Don't rethrow, just log the error
     }
-
-    print('🧹 Starting service cleanup...');
-
-    // Clean up services with individual timeouts - run them in parallel
-    final futures = <Future>[];
-
-    // Stop location tracking with timeout
-    futures.add(
-      Future.any([
-        DriverLocationService().stopTracking(),
-        Future.delayed(const Duration(seconds: 1)),
-      ]),
-    );
-
-    // Stop foreground task with timeout
-    futures.add(
-      Future.any([
-        FlutterForegroundTask.stopService(),
-        Future.delayed(const Duration(seconds: 1)),
-      ]),
-    );
-
-    // Disconnect WebSocket with timeout
-    futures.add(
-      Future.any([
-        Future(() {
-          SharedWebSocketService().disconnect();
-          return true;
-        }),
-        Future.delayed(const Duration(seconds: 1)),
-      ]),
-    );
-
-    print('⏳ Waiting for service cleanup...');
-    // Wait for all cleanup operations with timeout
-    await Future.wait(futures);
-
-    print('🗑️ Clearing user data...');
-    // Clear user data
-    await UserStorageService.clearUserData();
-
-    print('✅ Logout completed successfully');
   }
 }
 
@@ -979,6 +922,185 @@ class TestButtonsCard extends StatelessWidget {
       const SnackBar(
         content: Text('🔔 Global notification test triggered!'),
         backgroundColor: Colors.purple,
+      ),
+    );
+  }
+}
+
+class AppVersionCard extends StatefulWidget {
+  const AppVersionCard({super.key});
+
+  @override
+  State<AppVersionCard> createState() => _AppVersionCardState();
+}
+
+class _AppVersionCardState extends State<AppVersionCard> {
+  String _appVersion = '';
+  String _buildNumber = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      PackageInfo packageInfo = await PackageInfo.fromPlatform();
+      setState(() {
+        _appVersion = packageInfo.version;
+        _buildNumber = packageInfo.buildNumber;
+      });
+    } catch (e) {
+      setState(() {
+        _appVersion = '2.0.17';
+        _buildNumber = '17';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.blue[100],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.info_outline,
+                  size: 24,
+                  color: Colors.blue[700],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'App Information',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Ansar Logistics Picker App',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _buildVersionInfo(
+                  'Version',
+                  'v$_appVersion',
+                  Icons.tag,
+                  Colors.green,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildVersionInfo(
+                  'Build',
+                  '#$_buildNumber',
+                  Icons.build,
+                  Colors.orange,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.phone_android, size: 16, color: Colors.grey[600]),
+                const SizedBox(width: 8),
+                Text(
+                  'Picker Application',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[700],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVersionInfo(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }

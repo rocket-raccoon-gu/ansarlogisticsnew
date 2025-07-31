@@ -13,24 +13,34 @@ class ItemReplacementCubit extends Cubit<ItemReplacementState> {
   ItemReplacementCubit() : super(ItemReplacementInitial());
 
   void selectReplacement(OrderReplacementProductModel item) {
-    emit(ItemReplacementLoaded(selectedReplacement: item));
+    if (!isClosed) {
+      emit(ItemReplacementLoaded(selectedReplacement: item));
+    }
   }
 
   Future<void> getProductBySku(String sku) async {
     try {
-      emit(ItemReplacementLoading());
+      if (!isClosed) {
+        emit(ItemReplacementLoading());
+      }
       final userData = await UserStorageService.getUserData();
       final token = userData?.token;
       final apiService = ApiService(HttpClient(), WebSocketClient());
       final response = await apiService.getProductBySku(sku, token ?? '');
       if (response.statusCode == 200) {
         final product = OrderReplacementProductModel.fromJson(response.data);
-        emit(ItemReplacementLoaded(selectedReplacement: product));
+        if (!isClosed) {
+          emit(ItemReplacementLoaded(selectedReplacement: product));
+        }
       } else {
-        emit(ItemReplacementError());
+        if (!isClosed) {
+          emit(ItemReplacementError());
+        }
       }
     } catch (e) {
-      emit(ItemReplacementError());
+      if (!isClosed) {
+        emit(ItemReplacementError());
+      }
     }
   }
 
@@ -47,7 +57,9 @@ class ItemReplacementCubit extends Cubit<ItemReplacementState> {
     OrderDetailsCubit? orderDetailsCubit, // <-- add this parameter
   ) async {
     try {
-      emit(ItemReplacementLoading());
+      if (!isClosed) {
+        emit(ItemReplacementLoading());
+      }
       final userData = await UserStorageService.getUserData();
       final token = userData?.token;
       final apiService = ApiService(HttpClient(), WebSocketClient());
@@ -75,12 +87,20 @@ class ItemReplacementCubit extends Cubit<ItemReplacementState> {
             pickedBarcode: pickedBarcode,
           );
         }
-        emit(ItemReplacementSuccess());
+
+        // Check if cubit is still active before emitting
+        if (!isClosed) {
+          emit(ItemReplacementSuccess());
+        }
       } else {
-        emit(ItemReplacementError());
+        if (!isClosed) {
+          emit(ItemReplacementError());
+        }
       }
     } catch (e) {
-      emit(ItemReplacementError());
+      if (!isClosed) {
+        emit(ItemReplacementError());
+      }
     }
   }
 }

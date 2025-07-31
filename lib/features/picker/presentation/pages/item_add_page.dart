@@ -1,6 +1,6 @@
 import 'dart:developer';
 
-import 'package:ansarlogisticsnew/features/picker/presentation/widgets/barcode_scanner_widget.dart';
+import 'package:ansarlogisticsnew/features/picker/presentation/widgets/stable_scanner_widget.dart';
 import 'package:api_gateway/config/api_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -93,7 +93,7 @@ class _ItemAddPageState extends State<ItemAddPage> {
                 //     child: LinearProgressIndicator(),
                 //   ),
                 if (_isScanning)
-                  BarcodeScannerWidget(
+                  StableScannerWidget(
                     title: 'Scan Item Barcode',
                     subtitle:
                         'Please scan the barcode of the item you want to add.',

@@ -93,11 +93,23 @@ class BillUploadCubit extends Cubit<BillUploadState> {
       return;
     }
 
-    emit(BillUploadUploading());
+    emit(BillUploadUploading(progress: 0.0));
+
     try {
+      // Simulate progress updates
+      await Future.delayed(Duration(milliseconds: 500));
+      emit(BillUploadUploading(progress: 0.3));
+
+      await Future.delayed(Duration(milliseconds: 500));
+      emit(BillUploadUploading(progress: 0.6));
+
       final location = await Geolocator.getCurrentPosition();
       final latitude = location.latitude;
       final longitude = location.longitude;
+
+      await Future.delayed(Duration(milliseconds: 500));
+      emit(BillUploadUploading(progress: 0.8));
+
       await _apiService.uploadBill(
         orderId,
         currentState.imageFile,
@@ -105,6 +117,10 @@ class BillUploadCubit extends Cubit<BillUploadState> {
         latitude,
         longitude,
       );
+
+      emit(BillUploadUploading(progress: 1.0));
+      await Future.delayed(Duration(milliseconds: 300));
+
       emit(BillUploadSuccess());
     } catch (e) {
       emit(BillUploadError('Failed to upload bill: ${e.toString()}'));
@@ -112,7 +128,7 @@ class BillUploadCubit extends Cubit<BillUploadState> {
   }
 
   Future<void> markAsDelivered(String orderId, String token) async {
-    emit(BillUploadLoading());
+    emit(BillUploadDelivering());
     try {
       await _apiService.updateOrderStatusDriver(token, orderId, 'complete');
       emit(BillUploadDelivered());

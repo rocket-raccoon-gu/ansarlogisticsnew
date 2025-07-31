@@ -13,8 +13,9 @@ class AppColors {
   static const assignedPicker = Color(0xFF88A762);
   static const assignedDriver = Color(0xFF08925F);
   static const startPicking = Color(0xFF3B7CF3);
-  static const endPicking = Color(0xFF3B7CF3);
+  static const endPicking = Color.fromARGB(255, 6, 230, 163);
   static const startDelivery = Color(0xFF3B7CF3);
   static const endDelivery = Color(0xFF3B7CF3);
   static const onTheWay = Color.fromARGB(255, 2, 196, 245);
+  static const materialRequest = Color.fromARGB(255, 255, 165, 0);
 }

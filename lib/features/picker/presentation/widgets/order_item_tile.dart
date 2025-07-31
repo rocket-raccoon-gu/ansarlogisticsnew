@@ -3,7 +3,7 @@ import '../../data/models/order_item_model.dart';
 import 'package:ansarlogisticsnew/core/constants/app_methods.dart';
 import 'package:ansarlogisticsnew/core/constants/app_colors.dart';
 import 'package:api_gateway/config/api_config.dart';
-import 'barcode_scanner_widget.dart';
+import 'stable_scanner_widget.dart';
 import 'package:api_gateway/services/api_service.dart';
 import 'package:api_gateway/http/http_client.dart';
 import 'package:api_gateway/ws/websockt_client.dart';
@@ -291,7 +291,7 @@ class OrderItemTile extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder:
-            (context) => BarcodeScannerWidget(
+            (context) => StableScannerWidget(
               title: 'Scan Barcode',
               subtitle: 'Scan the barcode for ${item.name}',
               onBarcodeScanned:

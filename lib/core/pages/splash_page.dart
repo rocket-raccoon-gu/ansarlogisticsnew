@@ -90,7 +90,7 @@ class _SplashPageState extends State<SplashPage> {
         username: email,
         password: password,
         device_token: deviceToken,
-        version: '1.0.0',
+        version: '2.0.17',
       );
 
       await authCubit.login(loginRequest);

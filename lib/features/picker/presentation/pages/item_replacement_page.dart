@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/order_item_model.dart';
 import '../cubit/item_replacement_page_cubit.dart';
-import '../widgets/barcode_scanner_widget.dart';
+import '../widgets/stable_scanner_widget.dart';
 import '../cubit/order_details_cubit.dart';
 import 'order_details_page.dart';
 import '../../data/models/order_model.dart';
+import 'package:ansarlogisticsnew/features/navigation/presentation/pages/main_navigation_page.dart';
+import 'package:ansarlogisticsnew/features/picker/presentation/cubit/picker_orders_cubit.dart';
 
 class ItemReplacementPage extends StatefulWidget {
   final OrderItemModel item;
@@ -63,6 +65,27 @@ class _ItemReplacementPageState extends State<ItemReplacementPage> {
     return '$baseUrl$path';
   }
 
+  String _getDisplayPrice(dynamic replacementProduct) {
+    // Priority: current_promotion_price > special_price > regular_price
+    if (replacementProduct.currentPromotionPrice != null &&
+        replacementProduct.currentPromotionPrice.toString() != 'null' &&
+        replacementProduct.currentPromotionPrice.toString().isNotEmpty) {
+      return double.parse(
+        replacementProduct.currentPromotionPrice.toString(),
+      ).toStringAsFixed(2);
+    }
+    if (replacementProduct.specialPrice != null &&
+        replacementProduct.specialPrice.toString() != 'null' &&
+        replacementProduct.specialPrice.toString().isNotEmpty) {
+      return double.parse(
+        replacementProduct.specialPrice.toString(),
+      ).toStringAsFixed(2);
+    }
+    return double.parse(
+      replacementProduct.regularPrice.toString(),
+    ).toStringAsFixed(2);
+  }
+
   void _handleManualBarcodeSubmit(BuildContext context) async {
     final barcode = _manualBarcodeController.text.trim();
     if (barcode.isEmpty) {
@@ -86,13 +109,30 @@ class _ItemReplacementPageState extends State<ItemReplacementPage> {
       child: BlocListener<ItemReplacementCubit, ItemReplacementState>(
         listener: (context, state) {
           if (state is ItemReplacementSuccess) {
-            // Navigate to OrderDetailsPage and reload items
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (context) => OrderDetailsPage(order: widget.order),
-              ),
-            );
+            // First, reload items in the orderDetailsCubit before navigation
             widget.orderDetailsCubit.reloadItemsFromApi();
+
+            // Then navigate to OrderDetailsPage and reload items
+            // First, navigate to MainNavigationPage (Picker Orders)
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder:
+                    (context) => BlocProvider(
+                      create: (_) => PickerOrdersCubit(),
+                      child: const MainNavigationPage(),
+                    ),
+              ),
+              (route) => false, // Remove all previous routes
+            );
+
+            // Then navigate to OrderDetailsPage from the MainNavigationPage
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => OrderDetailsPage(order: widget.order),
+                ),
+              );
+            });
           }
           if (state is ItemReplacementError) {
             ScaffoldMessenger.of(
@@ -105,7 +145,7 @@ class _ItemReplacementPageState extends State<ItemReplacementPage> {
             return Stack(
               children: [
                 if (_isScanning)
-                  BarcodeScannerWidget(
+                  StableScannerWidget(
                     title: 'Scan Replacement Barcode',
                     subtitle: 'Scan the barcode for the replacement item',
                     onBarcodeScanned: (barcode) async {
@@ -229,6 +269,29 @@ class _ItemReplacementPageState extends State<ItemReplacementPage> {
                                                 fontSize: 13,
                                               ),
                                             ),
+                                          SizedBox(height: 8),
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red[50],
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: Colors.red[200]!,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              'Price: QAR ${widget.item.price?.toStringAsFixed(2) ?? '0.00'}',
+                                              style: TextStyle(
+                                                color: Colors.red[700],
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -410,10 +473,127 @@ class _ItemReplacementPageState extends State<ItemReplacementPage> {
                                                     fontSize: 13,
                                                   ),
                                                 ),
+                                                SizedBox(height: 8),
+                                                Container(
+                                                  padding: EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.green[50],
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: Colors.green[200]!,
+                                                    ),
+                                                  ),
+                                                  child: Text(
+                                                    'Price: QAR ${_getDisplayPrice(state.selectedReplacement)}',
+                                                    style: TextStyle(
+                                                      color: Colors.green[700],
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                ),
                                               ],
                                             ),
                                           ),
                                         ],
+                                      ),
+                                      SizedBox(height: 16),
+                                      // Price Comparison Section
+                                      Container(
+                                        padding: EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue[50],
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.blue[200]!,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Price Comparison',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                                color: Colors.blue[700],
+                                              ),
+                                            ),
+                                            SizedBox(height: 8),
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        'Original',
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          color:
+                                                              Colors.grey[600],
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        'QAR ${widget.item.price?.toStringAsFixed(2) ?? '0.00'}',
+                                                        style: TextStyle(
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color:
+                                                              Colors.red[700],
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                Icon(
+                                                  Icons.arrow_forward,
+                                                  color: Colors.blue[600],
+                                                  size: 20,
+                                                ),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment.end,
+                                                    children: [
+                                                      Text(
+                                                        'Replacement',
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          color:
+                                                              Colors.grey[600],
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        'QAR ${_getDisplayPrice(state.selectedReplacement)}',
+                                                        style: TextStyle(
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color:
+                                                              Colors.green[700],
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                       SizedBox(height: 16),
                                       Row(
@@ -498,6 +678,100 @@ class _ItemReplacementPageState extends State<ItemReplacementPage> {
                                 ),
                               ),
                             ),
+                            SizedBox(height: 16),
+                            // Total Cost Summary
+                            if (state is ItemReplacementLoaded) ...[
+                              Container(
+                                padding: EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[50],
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.orange[200]!,
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Replacement Summary',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: Colors.orange[700],
+                                      ),
+                                    ),
+                                    SizedBox(height: 12),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Original Total:',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                        Text(
+                                          'QAR ${(widget.item.price ?? 0) * _replacementQuantity}',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.red[700],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Replacement Total:',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                        Text(
+                                          'QAR ${(double.tryParse(_getDisplayPrice(state.selectedReplacement)) ?? 0) * _replacementQuantity}',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.green[700],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Divider(height: 16),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Price Difference:',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.orange[700],
+                                          ),
+                                        ),
+                                        Text(
+                                          'QAR ${((double.tryParse(_getDisplayPrice(state.selectedReplacement)) ?? 0) - (widget.item.price ?? 0)) * _replacementQuantity}',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.orange[700],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                             SizedBox(height: 24),
                             Row(
                               children: [
@@ -573,7 +847,11 @@ class _ItemReplacementPageState extends State<ItemReplacementPage> {
                                                     widget.orderDetailsCubit,
                                                   );
                                             },
-                                    child: const Text('Confirm Replacement'),
+                                    child: Text(
+                                      state is ItemReplacementLoaded
+                                          ? 'Confirm Replacement (QAR ${_getDisplayPrice(state.selectedReplacement)})'
+                                          : 'Confirm Replacement',
+                                    ),
                                   ),
                                 ),
                               ],

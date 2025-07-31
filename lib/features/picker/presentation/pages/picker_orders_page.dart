@@ -17,8 +17,64 @@ class PickerOrdersPage extends StatefulWidget {
 class _PickerOrdersPageState extends State<PickerOrdersPage> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearchVisible = false;
+  bool _isFilterVisible = false;
   List<dynamic> _filteredOrders = [];
   bool _isSearching = false;
+  bool _isFiltering = false;
+  String? _selectedStatus;
+
+  // Define available statuses for filtering
+  static const Map<String, String> _statusOptions = {
+    'all': 'All Orders',
+    'assigned_picker': 'Assigned to Picker',
+    'start_picking': 'Start Picking',
+    'end_picking': 'End Picking',
+    'material_request': 'Material Request',
+  };
+
+  // Helper method to get status color
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'assigned_picker':
+        return Colors.orange;
+      case 'start_picking':
+        return Colors.green;
+      case 'end_picking':
+        return Colors.purple;
+      case 'material_request':
+        return Colors.teal;
+      case 'pending':
+        return Colors.blue;
+      case 'completed':
+        return Colors.green[700]!;
+      case 'cancelled':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  // Helper method to get status icon
+  IconData _getStatusIcon(String status) {
+    switch (status.toLowerCase()) {
+      case 'assigned_picker':
+        return Icons.assignment;
+      case 'start_picking':
+        return Icons.play_circle;
+      case 'end_picking':
+        return Icons.check_circle;
+      case 'material_request':
+        return Icons.inventory;
+      case 'pending':
+        return Icons.schedule;
+      case 'completed':
+        return Icons.done_all;
+      case 'cancelled':
+        return Icons.cancel;
+      default:
+        return Icons.circle;
+    }
+  }
 
   @override
   void initState() {
@@ -33,33 +89,66 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
   }
 
   void _onSearchChanged() {
-    final query = _searchController.text.toLowerCase();
-    if (query.isEmpty) {
-      setState(() {
-        _isSearching = false;
-        _filteredOrders = [];
-      });
-      return;
-    }
+    _applyFilters();
+  }
 
+  void _onStatusChanged(String? status) {
     setState(() {
-      _isSearching = true;
+      _selectedStatus = status;
+      _isFiltering = status != null && status != 'all';
+      // Auto-hide filter bar after selection
+      _isFilterVisible = false;
     });
+    _applyFilters();
+  }
+
+  void _applyFilters() {
+    final query = _searchController.text.toLowerCase();
+    final hasSearchQuery = query.isNotEmpty;
+    final hasStatusFilter = _selectedStatus != null && _selectedStatus != 'all';
 
     // Get current orders from cubit
     final currentState = context.read<PickerOrdersCubit>().state;
     if (currentState is PickerOrdersLoaded) {
-      final filtered =
-          currentState.orders.where((order) {
-            return order.preparationId.toLowerCase().contains(query) ||
-                order.status.toLowerCase().contains(query) ||
-                (order.timerange?.toLowerCase().contains(query) ?? false);
-          }).toList();
+      List<dynamic> filtered = currentState.orders;
+
+      // Apply status filter
+      if (hasStatusFilter) {
+        filtered =
+            filtered.where((order) {
+              return order.status.toLowerCase() ==
+                  _selectedStatus!.toLowerCase();
+            }).toList();
+      }
+
+      // Apply search filter
+      if (hasSearchQuery) {
+        filtered =
+            filtered.where((order) {
+              return order.preparationId.toLowerCase().contains(query) ||
+                  order.status.toLowerCase().contains(query) ||
+                  (order.timerange?.toLowerCase().contains(query) ?? false) ||
+                  order.customerFirstname.toLowerCase().contains(query) ||
+                  order.customerEmail.toLowerCase().contains(query);
+            }).toList();
+      }
 
       setState(() {
         _filteredOrders = filtered;
+        _isSearching = hasSearchQuery;
+        _isFiltering = hasStatusFilter;
       });
     }
+  }
+
+  void _clearAllFilters() {
+    setState(() {
+      _searchController.clear();
+      _selectedStatus = null;
+      _isSearching = false;
+      _isFiltering = false;
+      _filteredOrders = [];
+    });
   }
 
   void _toggleSearch() {
@@ -68,7 +157,18 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
       if (!_isSearchVisible) {
         _searchController.clear();
         _isSearching = false;
-        _filteredOrders = [];
+        _applyFilters();
+      }
+    });
+  }
+
+  void _toggleFilter() {
+    setState(() {
+      _isFilterVisible = !_isFilterVisible;
+      if (!_isFilterVisible) {
+        _selectedStatus = null;
+        _isFiltering = false;
+        _applyFilters();
       }
     });
   }
@@ -86,6 +186,12 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
             // Search Bar (when visible)
             if (_isSearchVisible) _buildSearchBar(),
 
+            // Filter Bar (when visible)
+            if (_isFilterVisible) _buildFilterBar(),
+
+            // Active Filters Indicator
+            if (_isSearching || _isFiltering) _buildActiveFiltersIndicator(),
+
             // Main Content
             Expanded(
               child: BlocBuilder<PickerOrdersCubit, PickerOrdersState>(
@@ -100,13 +206,23 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
 
                   if (state is PickerOrdersLoaded) {
                     final ordersToShow =
-                        _isSearching ? _filteredOrders : state.orders;
+                        (_isSearching || _isFiltering)
+                            ? _filteredOrders
+                            : state.orders;
 
                     if (ordersToShow.isEmpty) {
-                      return _buildEmptyState(state.orders.isEmpty);
+                      return _buildEmptyState(
+                        state.orders.isEmpty && !_isSearching && !_isFiltering,
+                      );
                     }
 
-                    return _buildOrdersList(ordersToShow);
+                    return Column(
+                      children: [
+                        Expanded(child: _buildOrdersList(ordersToShow)),
+                        // Version Footer
+                        // Removed version footer as per edit hint
+                      ],
+                    );
                   }
 
                   return _buildInitialState();
@@ -122,7 +238,7 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
   // Custom Modern App Bar
   Widget _buildCustomAppBar() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -151,23 +267,35 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Welcome back,',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        Text(
-                          username.isNotEmpty ? username : 'Picker',
-                          style: const TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Welcome back,',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    username.isNotEmpty ? username : 'Picker',
+                                    style: const TextStyle(
+                                      fontSize: 19,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Removed version text as per edit hint
+                          ],
                         ),
                       ],
                     );
@@ -201,6 +329,31 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
                     ),
                   ),
                   const SizedBox(width: 8),
+                  // Filter Button
+                  Container(
+                    decoration: BoxDecoration(
+                      color:
+                          _isFilterVisible
+                              ? Colors.green[100]
+                              : Colors.grey[200],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        _isFilterVisible ? Icons.close : Icons.filter_list,
+                        color:
+                            _isFilterVisible
+                                ? Colors.green[700]
+                                : Colors.grey[600],
+                      ),
+                      onPressed: _toggleFilter,
+                      tooltip:
+                          _isFilterVisible
+                              ? 'Close Filter'
+                              : 'Filter by Status',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   // Refresh Button
                   Container(
                     decoration: BoxDecoration(
@@ -220,7 +373,7 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
             ],
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
 
           // Stats Row
           _buildStatsRow(),
@@ -234,39 +387,50 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
     return BlocBuilder<PickerOrdersCubit, PickerOrdersState>(
       builder: (context, state) {
         if (state is PickerOrdersLoaded) {
-          final totalOrders = state.orders.length;
-          final assignedOrders =
-              state.orders.where((o) => o.status == 'assigned_picker').length;
-          final inProgressOrders =
-              state.orders.where((o) => o.status == 'start_picking').length;
+          final ordersToCount =
+              (_isSearching || _isFiltering) ? _filteredOrders : state.orders;
 
-          return Row(
+          final totalOrders = ordersToCount.length;
+          final assignedOrders =
+              ordersToCount.where((o) => o.status == 'assigned_picker').length;
+          final inProgressOrders =
+              ordersToCount.where((o) => o.status == 'start_picking').length;
+          final endPickingOrders =
+              ordersToCount.where((o) => o.status == 'end_picking').length;
+          final materialRequestOrders =
+              ordersToCount.where((o) => o.status == 'material_request').length;
+
+          return Column(
             children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Total Orders',
-                  totalOrders.toString(),
-                  Icons.shopping_cart,
-                  Colors.blue,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  'Assigned',
-                  assignedOrders.toString(),
-                  Icons.assignment,
-                  Colors.orange,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  'In Progress',
-                  inProgressOrders.toString(),
-                  Icons.play_circle,
-                  Colors.green,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      'Total Orders',
+                      totalOrders.toString(),
+                      Icons.shopping_cart,
+                      Colors.blue,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      'Assigned',
+                      assignedOrders.toString(),
+                      _getStatusIcon('assigned_picker'),
+                      _getStatusColor('assigned_picker'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      'In Progress',
+                      inProgressOrders.toString(),
+                      _getStatusIcon('start_picking'),
+                      _getStatusColor('start_picking'),
+                    ),
+                  ),
+                ],
               ),
             ],
           );
@@ -361,6 +525,233 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
     );
   }
 
+  // Filter Bar
+  Widget _buildFilterBar() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.filter_list, color: Colors.green[700], size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Filter by Status',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green[700],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children:
+                _statusOptions.entries.map((entry) {
+                  final isSelected = _selectedStatus == entry.key;
+                  final statusColor =
+                      entry.key == 'all'
+                          ? Colors.grey
+                          : _getStatusColor(entry.key);
+                  final statusIcon =
+                      entry.key == 'all'
+                          ? Icons.list
+                          : _getStatusIcon(entry.key);
+
+                  return GestureDetector(
+                    onTap: () => _onStatusChanged(entry.key),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            isSelected
+                                ? statusColor.withOpacity(0.2)
+                                : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected ? statusColor : Colors.grey[300]!,
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isSelected ? Icons.check_circle : statusIcon,
+                            size: 16,
+                            color: isSelected ? statusColor : Colors.grey[600],
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            entry.value,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight:
+                                  isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                              color:
+                                  isSelected ? statusColor : Colors.grey[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Selected: ${_selectedStatus != null ? _statusOptions[_selectedStatus]! : 'All Orders'}',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: _clearAllFilters,
+                icon: const Icon(Icons.clear_all, size: 16),
+                label: const Text('Clear All'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[100],
+                  foregroundColor: Colors.red[700],
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Active Filters Indicator
+  Widget _buildActiveFiltersIndicator() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blue[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                _isSearching && _isFiltering
+                    ? Icons.search
+                    : _isSearching
+                    ? Icons.search
+                    : Icons.filter_list,
+                color: Colors.blue[700],
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _isSearching && _isFiltering
+                      ? 'Search & Filter Active'
+                      : _isSearching
+                      ? 'Search Active'
+                      : 'Filter Active',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.blue[700],
+                  ),
+                ),
+              ),
+              Text(
+                'Status: ${_statusOptions[_selectedStatus] ?? 'Unknown'}',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.blue[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '${_filteredOrders.length} results',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.blue[600],
+                ),
+              ),
+            ],
+          ),
+
+          if (_isSearching) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Search: "${_searchController.text}"',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.blue[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+          const SizedBox(height: 5),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _clearAllFilters,
+                  icon: const Icon(Icons.clear_all, size: 16),
+                  label: const Text('Clear All'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[100],
+                    foregroundColor: Colors.blue[700],
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   // Loading State
   Widget _buildLoadingState() {
     return const Center(
@@ -433,6 +824,8 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
 
   // Empty State
   Widget _buildEmptyState(bool isNoOrders) {
+    final hasFilters = _isSearching || _isFiltering;
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -451,7 +844,11 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
           ),
           const SizedBox(height: 16),
           Text(
-            isNoOrders ? 'No Orders Available' : 'No Search Results',
+            isNoOrders
+                ? 'No Orders Available'
+                : hasFilters
+                ? 'No Matching Orders'
+                : 'No Search Results',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -464,30 +861,60 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
             child: Text(
               isNoOrders
                   ? 'You don\'t have any picker orders assigned yet. Check back later!'
+                  : hasFilters
+                  ? 'No orders match your current filters. Try adjusting your search criteria or status filter.'
                   : 'No orders match your search criteria. Try different keywords.',
               style: const TextStyle(fontSize: 16, color: Colors.grey),
               textAlign: TextAlign.center,
             ),
           ),
           const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () {
-              if (isNoOrders) {
-                context.read<PickerOrdersCubit>().refreshOrders();
-              } else {
-                _searchController.clear();
-              }
-            },
-            icon: Icon(isNoOrders ? Icons.refresh : Icons.clear),
-            label: Text(isNoOrders ? 'Refresh' : 'Clear Search'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isNoOrders ? Colors.grey[600] : Colors.blue[600],
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (hasFilters) ...[
+                ElevatedButton.icon(
+                  onPressed: _clearAllFilters,
+                  icon: const Icon(Icons.clear_all),
+                  label: const Text('Clear Filters'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[600],
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+              ],
+              ElevatedButton.icon(
+                onPressed: () {
+                  if (isNoOrders) {
+                    context.read<PickerOrdersCubit>().refreshOrders();
+                  } else {
+                    _clearAllFilters();
+                  }
+                },
+                icon: Icon(isNoOrders ? Icons.refresh : Icons.clear),
+                label: Text(isNoOrders ? 'Refresh' : 'Clear All'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      isNoOrders ? Colors.grey[600] : Colors.red[600],
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),

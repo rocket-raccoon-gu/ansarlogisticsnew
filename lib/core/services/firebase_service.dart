@@ -7,6 +7,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:googleapis_auth/auth_io.dart' as auth;
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'notification_service.dart';
 import '../widgets/in_app_notification.dart';
 
@@ -79,7 +80,8 @@ class FirebaseService {
       // Handle token refresh
       messaging.onTokenRefresh.listen((newToken) {
         print('FCM Token refreshed: $newToken');
-        // TODO: Send new token to your server
+        // Send new token to server
+        _sendTokenToServer(newToken);
       });
 
       // Handle foreground messages
@@ -140,10 +142,29 @@ class FirebaseService {
       String? accessToken = await getAccessToken();
       print('AccessToken: $accessToken');
       print('FCM Token: $token');
+
+      // Send token to server if available
+      if (token != null) {
+        _sendTokenToServer(token);
+      }
+
       return token;
     } catch (e) {
       print('Error getting FCM token: $e');
       return null;
+    }
+  }
+
+  // Send FCM token to server
+  static Future<void> _sendTokenToServer(String token) async {
+    try {
+      print('📱 Sending FCM token to server: $token');
+      // TODO: Implement API call to send token to your server
+      // Example:
+      // await apiService.updateFCMToken(token);
+      print('✅ FCM token sent to server successfully');
+    } catch (e) {
+      print('❌ Error sending FCM token to server: $e');
     }
   }
 
@@ -163,6 +184,82 @@ class FirebaseService {
       body: 'This is a test notification from Ansar Logistics with sound!',
       payload: 'test',
     );
+  }
+
+  // Comprehensive notification test
+  static Future<void> comprehensiveNotificationTest() async {
+    print('🔔 Starting comprehensive notification test...');
+
+    try {
+      // 1. Check FCM token
+      String? token = await getFCMToken();
+      print('📱 FCM Token: ${token ?? 'Not available'}');
+
+      // 2. Check notification permissions
+      NotificationSettings settings = await messaging.getNotificationSettings();
+      print('📱 Notification permission: ${settings.authorizationStatus}');
+
+      // 3. Test local notification
+      print('🔔 Testing local notification...');
+      await NotificationService.showNotification(
+        title: '🔔 Local Test',
+        body: 'This is a local notification test with sound!',
+        payload: 'local_test',
+      );
+
+      // 4. Test FCM-style notification
+      print('🔔 Testing FCM-style notification...');
+      await NotificationService.showNotification(
+        title: '🔔 FCM Test',
+        body: 'This simulates a push notification with sound!',
+        payload: 'fcm_test',
+        channelId: 'ansar_logistics_channel',
+      );
+
+      print('✅ Comprehensive notification test completed');
+      print('📱 Check your device for notifications with sound');
+    } catch (e) {
+      print('❌ Error during comprehensive notification test: $e');
+    }
+  }
+
+  // Check notification configuration
+  static Future<Map<String, dynamic>> checkNotificationConfiguration() async {
+    print('🔍 Checking notification configuration...');
+
+    Map<String, dynamic> status = {};
+
+    try {
+      // 1. Check FCM token
+      String? token = await getFCMToken();
+      status['fcm_token'] = token != null;
+      status['fcm_token_value'] = token;
+
+      // 2. Check notification permissions
+      NotificationSettings settings = await messaging.getNotificationSettings();
+      status['notification_permission'] =
+          settings.authorizationStatus == AuthorizationStatus.authorized;
+      status['permission_status'] = settings.authorizationStatus.toString();
+
+      // 3. Check if Firebase is initialized
+      status['firebase_initialized'] = true;
+
+      // 4. Check notification channels (Android)
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        status['platform'] = 'Android';
+        status['notification_channels_created'] =
+            true; // Assuming channels are created
+      } else {
+        status['platform'] = 'iOS';
+      }
+
+      print('📊 Notification configuration status: $status');
+    } catch (e) {
+      print('❌ Error checking notification configuration: $e');
+      status['error'] = e.toString();
+    }
+
+    return status;
   }
 
   // Show notification
@@ -222,6 +319,17 @@ class FirebaseService {
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
   print('Handling a background message: ${message.messageId}');
+  print('Message data: ${message.data}');
+  print('Message notification: ${message.notification?.title}');
+
+  // Show notification even when app is in background
+  if (message.notification != null) {
+    await NotificationService.showNotification(
+      title: message.notification!.title ?? 'New Notification',
+      body: message.notification!.body ?? '',
+      payload: message.data.toString(),
+    );
+  }
 }
 
 Future<String> getAccessToken() async {

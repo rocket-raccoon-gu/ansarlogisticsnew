@@ -14,6 +14,7 @@ import '../widgets/production_scanner_widget.dart';
 import '../widgets/stable_scanner_widget.dart';
 import '../widgets/product_found_dialog.dart';
 import '../widgets/product_not_matching_dialog.dart';
+import '../widgets/improved_product_dialog.dart';
 import 'package:api_gateway/services/api_service.dart';
 import 'package:api_gateway/http/http_client.dart';
 import 'package:api_gateway/ws/websockt_client.dart';
@@ -54,7 +55,7 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
   @override
   void initState() {
     super.initState();
-    _quantity = widget.item.quantity;
+    _quantity = 0; // Initialize to 0 as requested
     _manualBarcodeController = TextEditingController();
   }
 
@@ -302,6 +303,42 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                                     );
                                   },
                                 ),
+                                // Quantity update indicator
+                                if (_quantity > 0) ...[
+                                  SizedBox(width: 8),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green[100],
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.green[300]!,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.check_circle,
+                                          size: 16,
+                                          color: Colors.green[700],
+                                        ),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          'Updated',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.green[700],
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ],
@@ -351,10 +388,22 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                             children: [
                               Expanded(
                                 child: ElevatedButton.icon(
-                                  icon: const Icon(Icons.qr_code_scanner),
-                                  label: const Text('Scan Barcode to Pick'),
+                                  icon: Icon(
+                                    _quantity > 0
+                                        ? Icons.qr_code_scanner
+                                        : Icons.warning,
+                                    color: Colors.white,
+                                  ),
+                                  label: Text(
+                                    _quantity > 0
+                                        ? 'Scan Barcode to Pick'
+                                        : 'Update Quantity First',
+                                  ),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green,
+                                    backgroundColor:
+                                        _quantity > 0
+                                            ? Colors.green
+                                            : Colors.orange,
                                     foregroundColor: Colors.white,
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 16,
@@ -368,9 +417,22 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                                     ),
                                   ),
                                   onPressed: () {
-                                    setState(() {
-                                      _isProcessing = true;
-                                    });
+                                    // Check if quantity is updated
+                                    if (_quantity > 0) {
+                                      // Quantity has been updated, allow scanning
+                                      setState(() {
+                                        _isProcessing = true;
+                                      });
+                                    } else {
+                                      // Show toast message that quantity needs to be updated
+                                      Fluttertoast.showToast(
+                                        msg: "update quantity first",
+                                        toastLength: Toast.LENGTH_SHORT,
+                                        gravity: ToastGravity.BOTTOM,
+                                        backgroundColor: Colors.orange,
+                                        textColor: Colors.white,
+                                      );
+                                    }
                                   },
                                 ),
                               ),
@@ -910,18 +972,93 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
     return price;
   }
 
-  Future<void> _handleBarcodeScanned(
+  void _handleBarcodeScanned(BuildContext context, String barcode) async {
+    if (!mounted) return;
+
+    setState(() => _isProcessing = false);
+
+    // Direct API call after barcode scan - no separate submit button needed
+    await _processBarcodeImproved(context, barcode);
+  }
+
+  Future<void> _processBarcodeImproved(
     BuildContext context,
     String barcode,
   ) async {
-    // Show scanned barcode in text field for editing
-    setState(() {
-      _manualBarcodeController.text = barcode;
-      _isProcessing = false; // Close scanner
-    });
+    try {
+      setState(() => _isLoading = true);
 
-    // Show confirmation dialog with scanned barcode
-    _showScannedBarcodeDialog(context, barcode);
+      // Get user token
+      final userData = await UserStorageService.getUserData();
+      final token = userData?.token;
+
+      if (token == null) {
+        if (!context.mounted) return;
+        setState(() => _isLoading = false);
+        Fluttertoast.showToast(
+          msg: 'Authentication token not found',
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.CENTER,
+          backgroundColor: Colors.red,
+        );
+        return;
+      }
+
+      // Call API to scan barcode and get product information
+      final apiService = ApiService(HttpClient(), WebSocketClient());
+      log(
+        '🔍 Calling scanBarcodeAndPickItem with barcode: $barcode, token: ${token.substring(0, 10)}..., expected SKU: ${widget.item.sku}',
+      );
+
+      final response = await apiService.scanBarcodeAndPickItem(
+        barcode,
+        token,
+        widget.item.sku ?? '',
+      );
+
+      log('🔍 API Response received: ${response.data}');
+      log('🔍 Response statusCode: ${response.statusCode}');
+
+      if (!context.mounted) return;
+      setState(() => _isLoading = false);
+
+      // Show the improved product dialog with all the information
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (dialogContext) => ImprovedProductDialog(
+              responseData: response.data ?? {},
+              item: widget.item,
+              cubit: widget.cubit,
+              parentContext: context,
+              barcode: barcode,
+              preparationId: widget.preparationId,
+              order: widget.order,
+              onCancel: () {
+                setState(() => _isLoading = false);
+              },
+              onSuccess: () {
+                setState(() => _isLoading = false);
+                // Navigate back to item listing page
+                if (mounted) {
+                  Navigator.of(context).pop('updated');
+                }
+              },
+            ),
+      );
+    } catch (e) {
+      log('Error in improved barcode processing: $e');
+      if (!context.mounted) return;
+      setState(() => _isLoading = false);
+
+      Fluttertoast.showToast(
+        msg: 'Error: ${e.toString()}',
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.CENTER,
+        backgroundColor: Colors.red,
+      );
+    }
   }
 
   void _showScannedBarcodeDialog(BuildContext context, String scannedBarcode) {
@@ -1324,9 +1461,9 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
       );
       return;
     }
-    setState(() => _isLoading = true);
-    await _processBarcode(context, barcode);
-    setState(() => _isLoading = false);
+
+    // Use the same improved process for manual barcode submission
+    await _processBarcodeImproved(context, barcode);
   }
 
   void _showProductFoundDialog(

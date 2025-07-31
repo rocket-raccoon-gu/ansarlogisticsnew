@@ -181,117 +181,192 @@ class _BillUploadPageState extends State<BillUploadPage> {
           },
           child: BlocBuilder<BillUploadCubit, BillUploadState>(
             builder: (context, state) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Order Info Card
-                    Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+              return Stack(
+                children: [
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Order Info Card
+                        Card(
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue.shade100,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Icon(
-                                    Icons.receipt,
-                                    color: Colors.blue.shade700,
-                                    size: 24,
-                                  ),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.shade100,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        Icons.receipt,
+                                        color: Colors.blue.shade700,
+                                        size: 24,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Order #${widget.order.id}',
+                                            style: const TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Total: QAR ${widget.order.totalOrderValue.toStringAsFixed(2)}',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              color: Colors.green.shade700,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Order #${widget.order.id}',
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.person,
+                                      color: Colors.grey.shade600,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      widget.order.customer.name,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
                                       ),
-                                      Text(
-                                        'Total: QAR ${widget.order.totalOrderValue.toStringAsFixed(2)}',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: Colors.green.shade700,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.location_on,
+                                      color: Colors.grey.shade600,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        widget.order.dropoff.zone,
+                                        style: const TextStyle(fontSize: 16),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 16),
-                            Row(
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Image Selection Section
+                        if (state is BillUploadInitial)
+                          _buildImageSelectionSection()
+                        else if (state is BillUploadLoading)
+                          _buildLoadingSection('Processing image...')
+                        else if (state is BillUploadImageSelected)
+                          _buildImagePreviewSection(state.imageFile)
+                        else if (state is BillUploadUploading)
+                          _buildUploadingSection(state.message, state.progress)
+                        else if (state is BillUploadSuccess)
+                          _buildSuccessSection()
+                        else if (state is BillUploadDelivering)
+                          _buildLoadingSection(state.message)
+                        else if (state is BillUploadError)
+                          _buildErrorSection(state.message),
+                      ],
+                    ),
+                  ),
+                  // Loading overlay for uploading and delivering states
+                  if (state is BillUploadUploading ||
+                      state is BillUploadDelivering)
+                    Container(
+                      color: Colors.black.withOpacity(0.3),
+                      child: Center(
+                        child: Card(
+                          elevation: 8,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
-                                  Icons.person,
-                                  color: Colors.grey.shade600,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 8),
+                                if (state is BillUploadUploading) ...[
+                                  SizedBox(
+                                    width: 60,
+                                    height: 60,
+                                    child: CircularProgressIndicator(
+                                      value: state.progress,
+                                      strokeWidth: 4,
+                                      backgroundColor: Colors.grey.shade300,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.blue,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    '${(state.progress * 100).toInt()}% Complete',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 8),
+                                ] else ...[
+                                  const CircularProgressIndicator(),
+                                  const SizedBox(height: 16),
+                                ],
                                 Text(
-                                  widget.order.customer.name,
+                                  state is BillUploadUploading
+                                      ? state.message
+                                      : (state as BillUploadDelivering).message,
                                   style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
                                   ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Please wait...',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  textAlign: TextAlign.center,
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.location_on,
-                                  color: Colors.grey.shade600,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    widget.order.dropoff.zone,
-                                    style: const TextStyle(fontSize: 16),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
-
-                    // Image Selection Section
-                    if (state is BillUploadInitial ||
-                        state is BillUploadLoading)
-                      _buildImageSelectionSection()
-                    else if (state is BillUploadImageSelected)
-                      _buildImagePreviewSection(state.imageFile)
-                    else if (state is BillUploadUploading)
-                      _buildUploadingSection()
-                    else if (state is BillUploadSuccess)
-                      _buildSuccessSection()
-                    else if (state is BillUploadError)
-                      _buildErrorSection(state.message),
-                  ],
-                ),
+                ],
               );
             },
           ),
@@ -404,11 +479,12 @@ class _BillUploadPageState extends State<BillUploadPage> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      if (_token != null) {
-                        _cubit.uploadBill(widget.order.id, _token!);
-                      }
-                    },
+                    onPressed:
+                        _token != null
+                            ? () {
+                              _cubit.uploadBill(widget.order.id, _token!);
+                            }
+                            : null,
                     icon: const Icon(Icons.upload),
                     label: const Text('Upload Bill'),
                     style: ElevatedButton.styleFrom(
@@ -429,7 +505,7 @@ class _BillUploadPageState extends State<BillUploadPage> {
     );
   }
 
-  Widget _buildUploadingSection() {
+  Widget _buildLoadingSection(String message) {
     return Center(
       child: Card(
         elevation: 4,
@@ -437,17 +513,71 @@ class _BillUploadPageState extends State<BillUploadPage> {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               const CircularProgressIndicator(),
               const SizedBox(height: 16),
-              const Text(
-                'Uploading Bill...',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                message,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                'Please wait while we upload your bill image',
+                'Please wait...',
                 style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUploadingSection(String message, double progress) {
+    return Center(
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 60,
+                height: 60,
+                child: CircularProgressIndicator(
+                  value: progress,
+                  strokeWidth: 4,
+                  backgroundColor: Colors.grey.shade300,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${(progress * 100).toInt()}% Complete',
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              LinearProgressIndicator(
+                value: progress,
+                backgroundColor: Colors.grey.shade300,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
               ),
             ],
           ),
@@ -492,11 +622,12 @@ class _BillUploadPageState extends State<BillUploadPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  if (_token != null) {
-                    _cubit.markAsDelivered(widget.order.id, _token!);
-                  }
-                },
+                onPressed:
+                    _token != null
+                        ? () {
+                          _cubit.markAsDelivered(widget.order.id, _token!);
+                        }
+                        : null,
                 icon: const Icon(Icons.done_all),
                 label: const Text(
                   'Mark as Delivered',

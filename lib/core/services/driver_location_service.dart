@@ -19,7 +19,7 @@ class DriverLocationService {
 
   Timer? _timer;
   Position? _currentPosition;
-  late SharedWebSocketService _sharedWebSocket;
+  SharedWebSocketService? _sharedWebSocket;
   static const String _trackingPreferenceKey =
       'driver_location_tracking_enabled';
   bool _isInitialized = false;
@@ -50,7 +50,7 @@ class DriverLocationService {
       _sharedWebSocket = getIt<SharedWebSocketService>();
 
       // Initialize WebSocket with timeout
-      await _sharedWebSocket.initialize().timeout(
+      await _sharedWebSocket?.initialize().timeout(
         const Duration(seconds: 8),
         onTimeout: () {
           log(
@@ -193,9 +193,9 @@ class DriverLocationService {
     }
 
     // Ensure WebSocket is connected before starting tracking
-    if (!_sharedWebSocket.isConnected) {
+    if (_sharedWebSocket != null && !_sharedWebSocket!.isConnected) {
       log("Connecting to WebSocket before starting tracking...");
-      await _sharedWebSocket.initialize();
+      await _sharedWebSocket!.initialize();
       // Wait for connection to establish
       await Future.delayed(Duration(seconds: 3));
     }
@@ -227,11 +227,13 @@ class DriverLocationService {
     // Send first location immediately
     log("🚀 Sending first location immediately");
     final user = await UserStorageService.getUserData();
-    await _sharedWebSocket.sendLocationUpdate(
-      user?.user?.id ?? 18,
-      firstPosition.latitude,
-      firstPosition.longitude,
-    );
+    if (_sharedWebSocket != null) {
+      await _sharedWebSocket!.sendLocationUpdate(
+        user?.user?.id ?? 18,
+        firstPosition.latitude,
+        firstPosition.longitude,
+      );
+    }
     log(
       "✅ First location sent: ${firstPosition.latitude}, ${firstPosition.longitude}",
     );
@@ -260,11 +262,13 @@ class DriverLocationService {
 
       // Send location update via WebSocket with proper format
       final user = await UserStorageService.getUserData();
-      await _sharedWebSocket.sendLocationUpdate(
-        user?.user?.id ?? 18,
-        position.latitude,
-        position.longitude,
-      );
+      if (_sharedWebSocket != null) {
+        await _sharedWebSocket!.sendLocationUpdate(
+          user?.user?.id ?? 18,
+          position.latitude,
+          position.longitude,
+        );
+      }
 
       log(
         "✅ Location sent via timer: ${position.latitude}, ${position.longitude}",
@@ -282,17 +286,19 @@ class DriverLocationService {
   }
 
   // Check WebSocket connection status
-  bool get isWebSocketConnected => _sharedWebSocket.isConnected;
+  bool get isWebSocketConnected => _sharedWebSocket?.isConnected ?? false;
 
   // Force reconnect WebSocket
   Future<void> reconnectWebSocket() async {
     log("Force reconnecting WebSocket...");
-    _sharedWebSocket.disconnect();
-    await Future.delayed(Duration(seconds: 1));
-    await _sharedWebSocket.initialize();
-    await Future.delayed(Duration(seconds: 2));
-    log(
-      "WebSocket reconnection attempt completed. Connected: ${_sharedWebSocket.isConnected}",
-    );
+    if (_sharedWebSocket != null) {
+      _sharedWebSocket!.disconnect();
+      await Future.delayed(Duration(seconds: 1));
+      await _sharedWebSocket!.initialize();
+      await Future.delayed(Duration(seconds: 2));
+      log(
+        "WebSocket reconnection attempt completed. Connected: ${_sharedWebSocket!.isConnected}",
+      );
+    }
   }
 }

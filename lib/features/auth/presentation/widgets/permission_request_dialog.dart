@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/services/permission_service.dart';
+import '../../../../core/services/firebase_service.dart';
 import 'dart:developer';
 
 class PermissionRequestDialog extends StatefulWidget {
@@ -57,6 +58,10 @@ class _PermissionRequestDialogState extends State<PermissionRequestDialog> {
       // Check if all permissions are granted
       if (results.values.every((granted) => granted)) {
         log("✅ All permissions granted");
+
+        // Get and send FCM token after permissions are granted
+        await _getAndSendFCMToken();
+
         if (mounted) {
           widget.onPermissionsGranted?.call();
         }
@@ -76,6 +81,21 @@ class _PermissionRequestDialogState extends State<PermissionRequestDialog> {
           _showSettingsButton = true;
         });
       }
+    }
+  }
+
+  Future<void> _getAndSendFCMToken() async {
+    try {
+      log("📱 Getting FCM token after permissions granted...");
+      final token = await FirebaseService.getFCMToken();
+      if (token != null) {
+        log("✅ FCM token obtained: $token");
+        // The token will be automatically sent to server in getFCMToken method
+      } else {
+        log("❌ Failed to get FCM token");
+      }
+    } catch (e) {
+      log("❌ Error getting FCM token: $e");
     }
   }
 

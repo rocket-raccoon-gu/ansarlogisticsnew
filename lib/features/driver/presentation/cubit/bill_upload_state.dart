@@ -17,9 +17,25 @@ class BillUploadImageSelected extends BillUploadState {
   List<Object?> get props => [imageFile];
 }
 
-class BillUploadUploading extends BillUploadState {}
+class BillUploadUploading extends BillUploadState {
+  final String message;
+  final double progress;
+  const BillUploadUploading({
+    this.message = 'Uploading bill image...',
+    this.progress = 0.0,
+  });
+  @override
+  List<Object?> get props => [message, progress];
+}
 
 class BillUploadSuccess extends BillUploadState {}
+
+class BillUploadDelivering extends BillUploadState {
+  final String message;
+  const BillUploadDelivering({this.message = 'Marking order as delivered...'});
+  @override
+  List<Object?> get props => [message];
+}
 
 class BillUploadDelivered extends BillUploadState {}
 

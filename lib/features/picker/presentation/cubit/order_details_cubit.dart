@@ -51,7 +51,9 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
         ),
       );
     } else {
-      emit(OrderDetailsLoading(preparationId: _parseOrderId(orderId)));
+      if (!isClosed) {
+        emit(OrderDetailsLoading(preparationId: _parseOrderId(orderId)));
+      }
     }
 
     try {
@@ -59,7 +61,9 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
       final token = userData?.token;
 
       if (token == null) {
-        emit(OrderDetailsError('No authentication token found'));
+        if (!isClosed) {
+          emit(OrderDetailsError('No authentication token found'));
+        }
         return;
       }
 
@@ -91,21 +95,23 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
                 )
                 .toList();
 
-        emit(
-          OrderDetailsLoaded(
-            toPick: toPick,
-            picked: picked,
-            canceled: canceled,
-            notAvailable: notAvailable,
-            categories: orderDetails.categories,
-            preparationLabel: orderDetails.preparationLabel,
-            deliveryNote: orderDetails.deliveryNote,
-            expressItems: orderDetails.expressItems,
-            normalItems: orderDetails.normalItems,
-            expressCategories: orderDetails.expressCategories,
-            normalCategories: orderDetails.normalCategories,
-          ),
-        );
+        if (!isClosed) {
+          emit(
+            OrderDetailsLoaded(
+              toPick: toPick,
+              picked: picked,
+              canceled: canceled,
+              notAvailable: notAvailable,
+              categories: orderDetails.categories,
+              preparationLabel: orderDetails.preparationLabel,
+              deliveryNote: orderDetails.deliveryNote,
+              expressItems: orderDetails.expressItems,
+              normalItems: orderDetails.normalItems,
+              expressCategories: orderDetails.expressCategories,
+              normalCategories: orderDetails.normalCategories,
+            ),
+          );
+        }
 
         // Debug logging for cubit state
         print('🔍 OrderDetailsCubit - State populated:');
@@ -120,10 +126,14 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
         print('  - Total picked: ${picked.length}');
         print('  - Total toPick: ${toPick.length}');
       } else {
-        emit(OrderDetailsError('No data received from server'));
+        if (!isClosed) {
+          emit(OrderDetailsError('No data received from server'));
+        }
       }
     } catch (e) {
-      emit(OrderDetailsError(e.toString()));
+      if (!isClosed) {
+        emit(OrderDetailsError(e.toString()));
+      }
     }
   }
 
@@ -140,7 +150,9 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
       final token = userData?.token;
 
       if (token == null) {
-        emit(OrderDetailsError('No authentication token found'));
+        if (!isClosed) {
+          emit(OrderDetailsError('No authentication token found'));
+        }
         return false;
       }
 
@@ -200,11 +212,15 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
         updateState();
         return true;
       } else {
-        emit(OrderDetailsError('Failed to update item status'));
+        if (!isClosed) {
+          emit(OrderDetailsError('Failed to update item status'));
+        }
         return false;
       }
     } catch (e) {
-      emit(OrderDetailsError(e.toString()));
+      if (!isClosed) {
+        emit(OrderDetailsError(e.toString()));
+      }
       return false;
     }
   }
@@ -299,21 +315,23 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
       }
 
       // Emit updated state
-      emit(
-        OrderDetailsLoaded(
-          toPick: currentState.toPick,
-          picked: currentState.picked,
-          canceled: currentState.canceled,
-          notAvailable: currentState.notAvailable,
-          categories: currentState.categories,
-          preparationLabel: currentState.preparationLabel,
-          deliveryNote: currentState.deliveryNote,
-          expressItems: currentState.expressItems,
-          normalItems: currentState.normalItems,
-          expressCategories: currentState.expressCategories,
-          normalCategories: currentState.normalCategories,
-        ),
-      );
+      if (!isClosed) {
+        emit(
+          OrderDetailsLoaded(
+            toPick: currentState.toPick,
+            picked: currentState.picked,
+            canceled: currentState.canceled,
+            notAvailable: currentState.notAvailable,
+            categories: currentState.categories,
+            preparationLabel: currentState.preparationLabel,
+            deliveryNote: currentState.deliveryNote,
+            expressItems: currentState.expressItems,
+            normalItems: currentState.normalItems,
+            expressCategories: currentState.expressCategories,
+            normalCategories: currentState.normalCategories,
+          ),
+        );
+      }
     }
   }
 
@@ -345,21 +363,23 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
               .where((item) => item.status == OrderItemStatus.itemNotAvailable)
               .toList();
 
-      emit(
-        OrderDetailsLoaded(
-          toPick: toPick,
-          picked: picked,
-          canceled: canceled,
-          notAvailable: notAvailable,
-          categories: currentState.categories,
-          preparationLabel: currentState.preparationLabel,
-          deliveryNote: currentState.deliveryNote,
-          expressItems: currentState.expressItems,
-          normalItems: currentState.normalItems,
-          expressCategories: currentState.expressCategories,
-          normalCategories: currentState.normalCategories,
-        ),
-      );
+      if (!isClosed) {
+        emit(
+          OrderDetailsLoaded(
+            toPick: toPick,
+            picked: picked,
+            canceled: canceled,
+            notAvailable: notAvailable,
+            categories: currentState.categories,
+            preparationLabel: currentState.preparationLabel,
+            deliveryNote: currentState.deliveryNote,
+            expressItems: currentState.expressItems,
+            normalItems: currentState.normalItems,
+            expressCategories: currentState.expressCategories,
+            normalCategories: currentState.normalCategories,
+          ),
+        );
+      }
     }
   }
 

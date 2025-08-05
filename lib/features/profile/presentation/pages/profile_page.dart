@@ -23,31 +23,32 @@ class ProfilePage extends StatelessWidget {
       create: (_) => ProfileCubit()..fetchUserData(),
       child: Scaffold(
         backgroundColor: Colors.grey[50],
-        body: Column(
-          children: [
-            // const CustomAppBar(title: AppStrings.profile),
-            const SizedBox(height: 10),
-            const ProfileHeaderCard(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 16,
-                  horizontal: 16,
-                ),
-                child: Column(
-                  children: [
-                    const UserInfoCard(),
-                    const SizedBox(height: 20),
-                    const SettingsCard(),
-                    const SizedBox(height: 20),
-                    const AppVersionCard(),
-                    const SizedBox(height: 20),
-                    // const TestButtonsCard(),
-                  ],
+        body: SafeArea(
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              const ProfileHeaderCard(),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 16,
+                  ),
+                  child: Column(
+                    children: [
+                      const UserInfoCard(),
+                      const SizedBox(height: 20),
+                      const SettingsCard(),
+                      const SizedBox(height: 20),
+                      const AppVersionCard(),
+                      const SizedBox(height: 20),
+                      // const TestButtonsCard(),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -31,14 +31,20 @@ class _MainNavigationView extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<BottomNavigationCubit, BottomNavigationState>(
       builder: (context, state) {
-        return Scaffold(
-          body: _buildBody(context, state.currentIndex),
-          bottomNavigationBar: CustomBottomNavigationBar(
-            currentIndex: state.currentIndex,
-            role: state.role,
-            onTap: (index) {
-              context.read<BottomNavigationCubit>().changeTab(index);
-            },
+        return SafeArea(
+          child: Scaffold(
+            appBar: PreferredSize(
+              preferredSize: const Size.fromHeight(kToolbarHeight),
+              child: AppBar(elevation: 0, backgroundColor: Colors.white),
+            ),
+            body: _buildBody(context, state.currentIndex),
+            bottomNavigationBar: CustomBottomNavigationBar(
+              currentIndex: state.currentIndex,
+              role: state.role,
+              onTap: (index) {
+                context.read<BottomNavigationCubit>().changeTab(index);
+              },
+            ),
           ),
         );
       },
@@ -52,9 +58,9 @@ class _MainNavigationView extends StatelessWidget {
       case 0:
         return role == UserRole.picker
             ? BlocProvider(
-                create: (context) => getIt<PickerOrdersCubit>(),
-                child: const PickerOrdersPage(),
-              )
+              create: (context) => getIt<PickerOrdersCubit>(),
+              child: const PickerOrdersPage(),
+            )
             : DriverBlocWrapper(child: const DriverOrdersPage());
       case 1:
         return role == UserRole.picker
@@ -67,9 +73,9 @@ class _MainNavigationView extends StatelessWidget {
       default:
         return role == UserRole.picker
             ? BlocProvider(
-                create: (context) => getIt<PickerOrdersCubit>(),
-                child: const PickerOrdersPage(),
-              )
+              create: (context) => getIt<PickerOrdersCubit>(),
+              child: const PickerOrdersPage(),
+            )
             : DriverBlocWrapper(child: const DriverOrdersPage());
     }
   }

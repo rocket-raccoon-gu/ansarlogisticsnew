@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../../../../core/widgets/safe_app_bar.dart';
 
 class BarcodeScannerWidget extends StatefulWidget {
   final Function(String) onBarcodeScanned;
@@ -522,8 +523,8 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget>
   Widget build(BuildContext context) {
     if (!_isInitialized) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Initializing Scanner'),
+        appBar: SafeAppBar(
+          title: 'Initializing Scanner',
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,
           elevation: 0,
@@ -543,8 +544,8 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget>
 
     if (!_hasPermission) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Camera Permission'),
+        appBar: SafeAppBar(
+          title: 'Camera Permission',
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,
           elevation: 0,
@@ -579,8 +580,8 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget>
 
     if (controller == null) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Scanner Error'),
+        appBar: SafeAppBar(
+          title: 'Scanner Error',
           backgroundColor: Colors.white,
           foregroundColor: Colors.black,
           elevation: 0,
@@ -639,8 +640,8 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget>
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title ?? 'Scan Barcode'),
+      appBar: SafeAppBar(
+        title: widget.title ?? 'Scan Barcode',
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,

@@ -17,12 +17,20 @@ class PickerOrdersCubit extends Cubit<PickerOrdersState> {
   }
 
   Future<void> fetchOrders() async {
-    emit(PickerOrdersLoading());
+    if (!isClosed) {
+      emit(PickerOrdersLoading());
+    }
     await _loadOrders();
   }
 
   Future<void> refreshOrders() async {
-    // Don't emit loading state for refresh to avoid UI flicker
+    // Emit refreshing state to show refresh loader
+    final currentState = state;
+    if (currentState is PickerOrdersLoaded) {
+      if (!isClosed) {
+        emit(PickerOrdersRefreshing(currentState.orders));
+      }
+    }
     await _loadOrders();
   }
 
@@ -32,7 +40,9 @@ class PickerOrdersCubit extends Cubit<PickerOrdersState> {
       final token = userData?.token;
 
       if (token == null) {
-        emit(PickerOrdersError('No authentication token found'));
+        if (!isClosed) {
+          emit(PickerOrdersError('No authentication token found'));
+        }
         return;
       }
 
@@ -48,12 +58,15 @@ class PickerOrdersCubit extends Cubit<PickerOrdersState> {
             (data['data'] as List)
                 .map((orderJson) => OrderModel.fromJson(orderJson))
                 .toList();
-        emit(PickerOrdersLoaded(orders));
+        if (!isClosed) {
+          emit(PickerOrdersLoaded(orders));
+        }
       } else {
         // For demo purposes, create some sample orders
         final List<OrderModel> sampleOrders = [
           OrderModel(
-            preparationId: 'ORD001',
+            // preparationId: 'ORD001',
+            preparationLabel: 'ORD001',
             status: 'pending',
             deliveryFrom: DateTime.now().add(const Duration(days: 2)),
             customerFirstname: 'John Doe',
@@ -71,10 +84,14 @@ class PickerOrdersCubit extends Cubit<PickerOrdersState> {
             items: [],
           ),
         ];
-        emit(PickerOrdersLoaded(sampleOrders));
+        if (!isClosed) {
+          emit(PickerOrdersLoaded(sampleOrders));
+        }
       }
     } catch (e) {
-      emit(PickerOrdersError(e.toString()));
+      if (!isClosed) {
+        emit(PickerOrdersError(e.toString()));
+      }
     }
   }
 }

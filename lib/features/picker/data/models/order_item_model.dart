@@ -1,5 +1,37 @@
 enum OrderItemStatus { toPick, picked, holded, canceled, itemNotAvailable }
 
+class SubgroupDetail {
+  final String subgroupIdentifier;
+  final String status;
+  final String? deliveryDate;
+  final String? deliveryTime;
+
+  SubgroupDetail({
+    required this.subgroupIdentifier,
+    required this.status,
+    this.deliveryDate,
+    this.deliveryTime,
+  });
+
+  factory SubgroupDetail.fromJson(Map<String, dynamic> json) {
+    return SubgroupDetail(
+      subgroupIdentifier: json['subgroup_identifier']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      deliveryDate: json['delivery_date']?.toString(),
+      deliveryTime: json['delivery_time']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'subgroup_identifier': subgroupIdentifier,
+      'status': status,
+      'delivery_date': deliveryDate,
+      'delivery_time': deliveryTime,
+    };
+  }
+}
+
 class OrderItemModel {
   final String id;
   final String name;
@@ -15,6 +47,8 @@ class OrderItemModel {
   final String? isProduceRaw;
   final String? subgroupIdentifier;
   final String? deliveryNote; // Customer delivery note
+  final List<SubgroupDetail>
+  subgroupDetails; // New field for subgroup_details array
 
   OrderItemModel({
     required this.id,
@@ -31,9 +65,53 @@ class OrderItemModel {
     this.isProduceRaw,
     this.subgroupIdentifier,
     this.deliveryNote,
+    this.subgroupDetails = const [], // Default to empty list
   });
 
   bool get isProduce => isProduceRaw == '1';
+
+  // Method to get status based on subgroup_identifier
+  String? getStatusBySubgroupIdentifier(String identifier) {
+    print(
+      '🔍 OrderItemModel.getStatusBySubgroupIdentifier - Looking for: $identifier',
+    );
+    print(
+      '🔍 OrderItemModel.getStatusBySubgroupIdentifier - Subgroup details count: ${subgroupDetails.length}',
+    );
+
+    try {
+      final subgroup = subgroupDetails.firstWhere(
+        (detail) => detail.subgroupIdentifier.startsWith(identifier),
+      );
+      print(
+        '🔍 OrderItemModel.getStatusBySubgroupIdentifier - Found subgroup: ${subgroup.subgroupIdentifier} with status: ${subgroup.status}',
+      );
+      return subgroup.status;
+    } catch (e) {
+      print(
+        '🔍 OrderItemModel.getStatusBySubgroupIdentifier - No subgroup found for identifier: $identifier',
+      );
+      return null;
+    }
+  }
+
+  // Method to get EXP status
+  String? get expStatus => getStatusBySubgroupIdentifier('EXP');
+
+  // Method to get NOL status
+  String? get nolStatus => getStatusBySubgroupIdentifier('NOL');
+
+  // Method to get WAR status
+  String? get warStatus => getStatusBySubgroupIdentifier('WAR');
+
+  // Method to get SUP status
+  String? get supStatus => getStatusBySubgroupIdentifier('SUP');
+
+  // Method to get VPO status
+  String? get vpoStatus => getStatusBySubgroupIdentifier('VPO');
+
+  // Method to get ABY status
+  String? get abyStatus => getStatusBySubgroupIdentifier('ABY');
 
   // Method to update item with new price and produce status
   OrderItemModel copyWith({
@@ -51,6 +129,7 @@ class OrderItemModel {
     String? isProduceRaw,
     String? subgroupIdentifier,
     String? deliveryNote,
+    List<SubgroupDetail>? subgroupDetails,
   }) {
     return OrderItemModel(
       id: id ?? this.id,
@@ -67,6 +146,7 @@ class OrderItemModel {
       isProduceRaw: isProduceRaw ?? this.isProduceRaw,
       subgroupIdentifier: subgroupIdentifier ?? this.subgroupIdentifier,
       deliveryNote: deliveryNote ?? this.deliveryNote,
+      subgroupDetails: subgroupDetails ?? this.subgroupDetails,
     );
   }
 
@@ -109,6 +189,15 @@ class OrderItemModel {
       }
     }
 
+    // Parse subgroup details
+    List<SubgroupDetail> subgroupDetails = [];
+    if (json['subgroup_details'] != null && json['subgroup_details'] is List) {
+      subgroupDetails =
+          (json['subgroup_details'] as List)
+              .map((detail) => SubgroupDetail.fromJson(detail))
+              .toList();
+    }
+
     // Map API item_status to enum
     String apiStatus =
         (json['item_status'] ?? json['status'] ?? 'toPick').toString();
@@ -149,6 +238,7 @@ class OrderItemModel {
       isProduceRaw: json['is_produce']?.toString(),
       subgroupIdentifier: json['subgroup_identifier']?.toString(),
       deliveryNote: json['delivery_note']?.toString(),
+      subgroupDetails: subgroupDetails,
     );
   }
 
@@ -167,6 +257,8 @@ class OrderItemModel {
       'product_images': productImages.join(','),
       'subgroup_identifier': subgroupIdentifier,
       'delivery_note': deliveryNote,
+      'subgroup_details':
+          subgroupDetails.map((detail) => detail.toJson()).toList(),
     };
   }
 }

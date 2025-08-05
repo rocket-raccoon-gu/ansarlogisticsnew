@@ -8,7 +8,7 @@ import 'package:api_gateway/http/http_client.dart';
 import 'package:api_gateway/ws/websockt_client.dart';
 import '../../../../core/services/user_storage_service.dart';
 
-class OrderListItemWidget extends StatelessWidget {
+class OrderListItemWidget extends StatefulWidget {
   final OrderModel order;
   final VoidCallback? onTap;
   final VoidCallback? onStatusUpdated;
@@ -21,9 +21,23 @@ class OrderListItemWidget extends StatelessWidget {
   });
 
   @override
+  State<OrderListItemWidget> createState() => _OrderListItemWidgetState();
+}
+
+class _OrderListItemWidgetState extends State<OrderListItemWidget> {
+  ScaffoldMessengerState? _scaffoldMessenger;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Store reference to ScaffoldMessenger to avoid deactivated widget issues
+    _scaffoldMessenger = ScaffoldMessenger.of(context);
+  }
+
+  @override
   Widget build(BuildContext context) {
     // Only show Slidable if status is assigned_picker
-    if (order.status == 'assigned_picker') {
+    if (widget.order.status == 'assigned_picker') {
       return Slidable(
         endActionPane: ActionPane(
           motion: const DrawerMotion(),
@@ -96,9 +110,9 @@ class OrderListItemWidget extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '#${order.preparationLabel}',
+                                '#${widget.order.preparationLabel}',
                                 style: const TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.black87,
                                 ),
@@ -125,18 +139,20 @@ class OrderListItemWidget extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: getStatusColor(order.status),
+                      color: getStatusColor(widget.order.status),
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: getStatusColor(order.status).withOpacity(0.3),
+                          color: getStatusColor(
+                            widget.order.status,
+                          ).withOpacity(0.3),
                           blurRadius: 4,
                           offset: const Offset(0, 1),
                         ),
                       ],
                     ),
                     child: Text(
-                      getStatusText(order.status),
+                      getStatusText(widget.order.status),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -178,7 +194,9 @@ class OrderListItemWidget extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          DateFormat('MMM dd, yyyy').format(order.deliveryFrom),
+                          DateFormat(
+                            'MMM dd, yyyy',
+                          ).format(widget.order.deliveryFrom),
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -192,7 +210,8 @@ class OrderListItemWidget extends StatelessWidget {
               ),
 
               // Time Range (if available)
-              if (order.timerange != null && order.timerange!.isNotEmpty) ...[
+              if (widget.order.timerange != null &&
+                  widget.order.timerange!.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -223,7 +242,7 @@ class OrderListItemWidget extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            order.timerange!,
+                            widget.order.timerange!,
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -240,7 +259,7 @@ class OrderListItemWidget extends StatelessWidget {
               ],
 
               // Warning for assigned but not started orders
-              if (order.status == 'assigned_picker') ...[
+              if (widget.order.status == 'assigned_picker') ...[
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -304,8 +323,8 @@ class OrderListItemWidget extends StatelessWidget {
 
   void _handleOrderTap(BuildContext context) {
     // Check if order is assigned but not started
-    if (order.status == 'assigned_picker') {
-      ScaffoldMessenger.of(context).showSnackBar(
+    if (widget.order.status == 'assigned_picker') {
+      _scaffoldMessenger?.showSnackBar(
         SnackBar(
           content: Row(
             children: [
@@ -328,60 +347,104 @@ class OrderListItemWidget extends StatelessWidget {
     }
 
     // Allow navigation if status is not assigned_picker
-    onTap?.call();
+    widget.onTap?.call();
   }
 
   Future<void> _handleStartPicking(BuildContext context) async {
     try {
-      // Show loading dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder:
-            (context) => Dialog(
-              backgroundColor: Colors.transparent,
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.blue[600]!,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Starting picking process...',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+      // Optimistic update - immediately notify parent to refresh orders
+      widget.onStatusUpdated?.call();
+
+      // Show quick success feedback
+      if (mounted) {
+        _scaffoldMessenger?.showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Starting picking process...'),
+              ],
             ),
-      );
+            backgroundColor: Colors.green[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
 
       // Get user token
       final userData = await UserStorageService.getUserData();
       final token = userData?.token;
 
       if (token == null) {
-        Navigator.pop(context); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (mounted) {
+          _scaffoldMessenger?.showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.white),
+                  SizedBox(width: 12),
+                  Text('Authentication token not found'),
+                ],
+              ),
+              backgroundColor: Colors.red[600],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              margin: EdgeInsets.all(16),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Call API to update status in background
+      final apiService = ApiService(HttpClient(), WebSocketClient());
+      await apiService.updateOrderStatus(
+        'start_picking',
+        widget.order.preparationLabel ?? '0',
+        token,
+      );
+
+      // Show final success message
+      if (mounted) {
+        _scaffoldMessenger?.showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Order status updated successfully!'),
+              ],
+            ),
+            backgroundColor: Colors.green[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (e) {
+      // Show error message
+      if (mounted) {
+        _scaffoldMessenger?.showSnackBar(
           SnackBar(
             content: Row(
               children: [
                 Icon(Icons.error_outline, color: Colors.white),
                 SizedBox(width: 12),
-                Text('Authentication token not found'),
+                Expanded(
+                  child: Text('Failed to update order status: ${e.toString()}'),
+                ),
               ],
             ),
             backgroundColor: Colors.red[600],
@@ -392,61 +455,7 @@ class OrderListItemWidget extends StatelessWidget {
             margin: EdgeInsets.all(16),
           ),
         );
-        return;
       }
-
-      // Call API to update status
-      final apiService = ApiService(HttpClient(), WebSocketClient());
-      await apiService.updateOrderStatus(
-        'start_picking',
-        int.parse(order.preparationId),
-        token,
-      );
-
-      // Close loading dialog
-      Navigator.pop(context);
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 12),
-              Text('Order status updated successfully!'),
-            ],
-          ),
-          backgroundColor: Colors.green[600],
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          margin: EdgeInsets.all(16),
-        ),
-      );
-
-      // Notify parent to refresh orders
-      onStatusUpdated?.call();
-    } catch (e) {
-      // Close loading dialog
-      Navigator.pop(context);
-
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.error_outline, color: Colors.white),
-              SizedBox(width: 12),
-              Expanded(
-                child: Text('Failed to update order status: ${e.toString()}'),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.red[600],
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          margin: EdgeInsets.all(16),
-        ),
-      );
     }
   }
 }

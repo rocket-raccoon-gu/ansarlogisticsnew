@@ -501,7 +501,7 @@ class _DriverOrdersPageContentState extends State<_DriverOrdersPageContent>
         cubit.loadOrders();
       },
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        // padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: orders.length,
         itemBuilder: (context, index) {
           final order = orders[index];

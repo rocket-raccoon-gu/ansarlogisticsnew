@@ -2,7 +2,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'order_item_model.dart';
 
 class OrderModel {
-  final String preparationId;
+  // final String preparationId;
   final String? preparationLabel;
   final int itemCount;
   final String branchCode;
@@ -22,7 +22,7 @@ class OrderModel {
   final List<OrderItemModel> items;
 
   OrderModel({
-    required this.preparationId,
+    // required this.preparationId,
     this.preparationLabel,
     required this.itemCount,
     required this.branchCode,
@@ -65,7 +65,7 @@ class OrderModel {
       }
     }
     return OrderModel(
-      preparationId: json['preparation_id']?.toString() ?? '',
+      // preparationId: json['preparation_id']?.toString() ?? '',
       preparationLabel: json['preparation_label']?.toString(),
       itemCount:
           json['item_count'] is int
@@ -109,7 +109,7 @@ class OrderModel {
 
   Map<String, dynamic> toJson() {
     return {
-      'preparation_id': preparationId,
+      // 'preparation_id': preparationId,
       'preparation_label': preparationLabel,
       'item_count': itemCount,
       'branch_code': branchCode,

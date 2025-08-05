@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import '../../data/models/order_item_model.dart';
+import '../../data/models/order_model.dart';
 import '../cubit/order_details_cubit.dart';
 import '../pages/item_listing_page.dart';
 import 'package:ansarlogisticsnew/core/routes/app_router.dart';
@@ -14,6 +15,7 @@ class ConfirmationDialog extends StatefulWidget {
   final OrderDetailsCubit cubit;
   final String status;
   final String reason;
+  final int quantity;
 
   const ConfirmationDialog({
     super.key,
@@ -25,6 +27,7 @@ class ConfirmationDialog extends StatefulWidget {
     required this.cubit,
     required this.status,
     required this.reason,
+    required this.quantity,
   });
 
   @override
@@ -92,6 +95,7 @@ class _ConfirmationDialogState extends State<ConfirmationDialog> {
         status: widget.status,
         scannedSku: widget.item.sku ?? '',
         reason: widget.reason,
+        quantity: widget.quantity,
       );
 
       if (!mounted) return;
@@ -164,6 +168,23 @@ class _ConfirmationDialogState extends State<ConfirmationDialog> {
                       : [],
               'title': 'Item Listing',
               'cubit': widget.cubit,
+              'preparationId': widget.cubit.orderId,
+              'orderNumber': widget.cubit.orderId,
+              'order': OrderModel(
+                preparationLabel: widget.cubit.orderId,
+                itemCount: 0,
+                branchCode: '',
+                customerId: 0,
+                customerFirstname: '',
+                customerEmail: '',
+                customerZone: '',
+                phone: '',
+                status: 'start_picking',
+                createdAt: DateTime.now(),
+                deliveryFrom: DateTime.now(),
+                pickerId: 0,
+                items: [],
+              ),
             },
           );
 

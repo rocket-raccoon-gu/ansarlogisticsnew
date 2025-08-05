@@ -7,13 +7,15 @@ class CustomAppBar2 extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppBar(
-      title: Text(title),
-      backgroundColor: Colors.blue,
-      centerTitle: true,
+    return SafeArea(
+      child: AppBar(
+        title: Text(title),
+        backgroundColor: Colors.blue,
+        centerTitle: true,
+      ),
     );
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight + 50); // Increased height to accommodate safe area
 }

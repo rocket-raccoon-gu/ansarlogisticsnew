@@ -125,7 +125,9 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
       if (hasSearchQuery) {
         filtered =
             filtered.where((order) {
-              return order.preparationId.toLowerCase().contains(query) ||
+              return (order.preparationLabel ?? '').toLowerCase().contains(
+                    query,
+                  ) ||
                   order.status.toLowerCase().contains(query) ||
                   (order.timerange?.toLowerCase().contains(query) ?? false) ||
                   order.customerFirstname.toLowerCase().contains(query) ||
@@ -189,15 +191,16 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
             // Filter Bar (when visible)
             if (_isFilterVisible) _buildFilterBar(),
 
-            // Active Filters Indicator
-            if (_isSearching || _isFiltering) _buildActiveFiltersIndicator(),
-
             // Main Content
             Expanded(
               child: BlocBuilder<PickerOrdersCubit, PickerOrdersState>(
                 builder: (context, state) {
                   if (state is PickerOrdersLoading) {
                     return _buildLoadingState();
+                  }
+
+                  if (state is PickerOrdersRefreshing) {
+                    return _buildRefreshingState(state);
                   }
 
                   if (state is PickerOrdersError) {
@@ -216,13 +219,7 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
                       );
                     }
 
-                    return Column(
-                      children: [
-                        Expanded(child: _buildOrdersList(ordersToShow)),
-                        // Version Footer
-                        // Removed version footer as per edit hint
-                      ],
-                    );
+                    return _buildOrdersList(ordersToShow);
                   }
 
                   return _buildInitialState();
@@ -238,7 +235,7 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
   // Custom Modern App Bar
   Widget _buildCustomAppBar() {
     return Container(
-      padding: const EdgeInsets.all(15),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -355,25 +352,54 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
                   ),
                   const SizedBox(width: 8),
                   // Refresh Button
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.refresh, color: Colors.grey),
-                      onPressed: () {
-                        context.read<PickerOrdersCubit>().refreshOrders();
-                      },
-                      tooltip: 'Refresh Orders',
-                    ),
+                  BlocBuilder<PickerOrdersCubit, PickerOrdersState>(
+                    builder: (context, state) {
+                      final isRefreshing = state is PickerOrdersRefreshing;
+                      return Container(
+                        decoration: BoxDecoration(
+                          color:
+                              isRefreshing
+                                  ? Colors.blue[100]
+                                  : Colors.grey[200],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: IconButton(
+                          icon:
+                              isRefreshing
+                                  ? SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.blue[700]!,
+                                      ),
+                                    ),
+                                  )
+                                  : const Icon(
+                                    Icons.refresh,
+                                    color: Colors.grey,
+                                  ),
+                          onPressed:
+                              isRefreshing
+                                  ? null
+                                  : () {
+                                    context
+                                        .read<PickerOrdersCubit>()
+                                        .refreshOrders();
+                                  },
+                          tooltip:
+                              isRefreshing ? 'Refreshing...' : 'Refresh Orders',
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
             ],
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
 
           // Stats Row
           _buildStatsRow(),
@@ -412,7 +438,7 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
                       Colors.blue,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: _buildStatCard(
                       'Assigned',
@@ -421,7 +447,7 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
                       _getStatusColor('assigned_picker'),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: _buildStatCard(
                       'In Progress',
@@ -448,7 +474,7 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
     Color color,
   ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -462,21 +488,21 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
+          Icon(icon, color: color, size: 16),
+          const SizedBox(height: 4),
           Text(
             value,
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
               color: color,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 1),
           Text(
             title,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 10,
               color: Colors.grey[600],
               fontWeight: FontWeight.w500,
             ),
@@ -769,6 +795,56 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
     );
   }
 
+  // Refreshing State
+  Widget _buildRefreshingState(PickerOrdersRefreshing state) {
+    final ordersToShow =
+        (_isSearching || _isFiltering) ? _filteredOrders : state.orders;
+
+    if (ordersToShow.isEmpty) {
+      return _buildEmptyState(
+        state.orders.isEmpty && !_isSearching && !_isFiltering,
+      );
+    }
+
+    return Column(
+      children: [
+        // Refresh indicator at the top
+        Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.blue[50],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.blue[200]!),
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[700]!),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Refreshing orders...',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.blue[700],
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Orders list with existing data
+        Expanded(child: _buildOrdersList(ordersToShow)),
+      ],
+    );
+  }
+
   // Error State
   Widget _buildErrorState(PickerOrdersError state) {
     return Center(
@@ -923,31 +999,35 @@ class _PickerOrdersPageState extends State<PickerOrdersPage> {
 
   // Orders List
   Widget _buildOrdersList(List<dynamic> orders) {
-    return RefreshIndicator(
-      onRefresh: () async {
-        context.read<PickerOrdersCubit>().refreshOrders();
-      },
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        itemCount: orders.length,
-        itemBuilder: (context, index) {
-          final order = orders[index];
-          return OrderListItemWidget(
-            order: order,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => OrderDetailsPage(order: order),
-                ),
+    return BlocBuilder<PickerOrdersCubit, PickerOrdersState>(
+      builder: (context, state) {
+        return RefreshIndicator(
+          onRefresh: () async {
+            context.read<PickerOrdersCubit>().refreshOrders();
+          },
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            itemCount: orders.length,
+            itemBuilder: (context, index) {
+              final order = orders[index];
+              return OrderListItemWidget(
+                order: order,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => OrderDetailsPage(order: order),
+                    ),
+                  );
+                },
+                onStatusUpdated: () {
+                  context.read<PickerOrdersCubit>().refreshOrders();
+                },
               );
             },
-            onStatusUpdated: () {
-              context.read<PickerOrdersCubit>().refreshOrders();
-            },
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 

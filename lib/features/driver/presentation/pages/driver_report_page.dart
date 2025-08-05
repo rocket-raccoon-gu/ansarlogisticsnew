@@ -91,62 +91,62 @@ class DriverReportPage extends StatelessWidget {
                     child: Column(
                       children: [
                         // Debug info widget
-                        Container(
-                          margin: const EdgeInsets.all(16),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.blue[50],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.blue[200]!),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Driver Report Debug:',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue[700],
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text('State: ${state.runtimeType}'),
-                              Text(
-                                'Role: ${context.read<ReportCubit>().selectedRole}',
-                              ),
-                              Text(
-                                'From Date: ${DateFormat('yyyy-MM-dd').format(context.read<ReportCubit>().fromDate)}',
-                              ),
-                              Text(
-                                'To Date: ${DateFormat('yyyy-MM-dd').format(context.read<ReportCubit>().toDate)}',
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: ElevatedButton(
-                                      onPressed: () {
-                                        context.read<ReportCubit>().testCubit();
-                                      },
-                                      child: const Text('Test Cubit'),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: ElevatedButton(
-                                      onPressed: () {
-                                        context
-                                            .read<ReportCubit>()
-                                            .fetchReport();
-                                      },
-                                      child: const Text('Fetch Report'),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
+                        // Container(
+                        //   margin: const EdgeInsets.all(16),
+                        //   padding: const EdgeInsets.all(16),
+                        //   decoration: BoxDecoration(
+                        //     color: Colors.blue[50],
+                        //     borderRadius: BorderRadius.circular(8),
+                        //     border: Border.all(color: Colors.blue[200]!),
+                        //   ),
+                        //   child: Column(
+                        //     crossAxisAlignment: CrossAxisAlignment.start,
+                        //     children: [
+                        //       Text(
+                        //         'Driver Report Debug:',
+                        //         style: TextStyle(
+                        //           fontWeight: FontWeight.bold,
+                        //           color: Colors.blue[700],
+                        //         ),
+                        //       ),
+                        //       const SizedBox(height: 8),
+                        //       Text('State: ${state.runtimeType}'),
+                        //       Text(
+                        //         'Role: ${context.read<ReportCubit>().selectedRole}',
+                        //       ),
+                        //       Text(
+                        //         'From Date: ${DateFormat('yyyy-MM-dd').format(context.read<ReportCubit>().fromDate)}',
+                        //       ),
+                        //       Text(
+                        //         'To Date: ${DateFormat('yyyy-MM-dd').format(context.read<ReportCubit>().toDate)}',
+                        //       ),
+                        //       const SizedBox(height: 12),
+                        //       Row(
+                        //         children: [
+                        //           Expanded(
+                        //             child: ElevatedButton(
+                        //               onPressed: () {
+                        //                 context.read<ReportCubit>().testCubit();
+                        //               },
+                        //               child: const Text('Test Cubit'),
+                        //             ),
+                        //           ),
+                        //           const SizedBox(width: 8),
+                        //           Expanded(
+                        //             child: ElevatedButton(
+                        //               onPressed: () {
+                        //                 context
+                        //                     .read<ReportCubit>()
+                        //                     .fetchReport();
+                        //               },
+                        //               child: const Text('Fetch Report'),
+                        //             ),
+                        //           ),
+                        //         ],
+                        //       ),
+                        //     ],
+                        //   ),
+                        // ),
                         const DateRangeFilterCard(),
                         if (state is ReportLoaded) ...[
                           Padding(
@@ -383,7 +383,7 @@ class SummaryCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       const Text(
-                        'Driver Performance Summary',
+                        'Driver Summary',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,

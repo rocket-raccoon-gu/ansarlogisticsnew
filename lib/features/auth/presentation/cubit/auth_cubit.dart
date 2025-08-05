@@ -16,7 +16,9 @@ class AuthCubit extends Cubit<AuthState> {
   AuthCubit({required this.loginCases}) : super(AuthInitial());
 
   Future<void> login(LoginRequestModel loginRequestModel) async {
-    emit(AuthLoading());
+    if (!isClosed) {
+      emit(AuthLoading());
+    }
     try {
       final loginResponseModel = await loginCases.login(loginRequestModel);
 
@@ -40,18 +42,26 @@ class AuthCubit extends Cubit<AuthState> {
           DriverLocationService().startTracking();
         }
 
-        emit(
-          AuthSuccess(
-            loginResponseModel: loginResponseModel,
-            userRole: userRole,
-          ),
-        );
+        if (!isClosed) {
+          emit(
+            AuthSuccess(
+              loginResponseModel: loginResponseModel,
+              userRole: userRole,
+            ),
+          );
+        }
       } else {
         // API returned success: false with an error message
-        emit(AuthFailure(error: loginResponseModel.message ?? 'Login failed'));
+        if (!isClosed) {
+          emit(
+            AuthFailure(error: loginResponseModel.message ?? 'Login failed'),
+          );
+        }
       }
     } catch (e) {
-      emit(AuthFailure(error: e.toString()));
+      if (!isClosed) {
+        emit(AuthFailure(error: e.toString()));
+      }
     }
   }
 }

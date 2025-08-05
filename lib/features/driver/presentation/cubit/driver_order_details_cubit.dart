@@ -15,13 +15,19 @@ class DriverOrderDetailsCubit extends Cubit<DriverOrderDetailsState> {
       super(DriverOrderDetailsInitial());
 
   Future<void> fetchOrderDetails(String orderId, String token) async {
-    emit(DriverOrderDetailsLoading());
+    if (!isClosed) {
+      emit(DriverOrderDetailsLoading());
+    }
     try {
       final response = await _apiService.getDriverOrderDetails(orderId, token);
       final details = DriverOrderDetailsModel.fromJson(response.data);
-      emit(DriverOrderDetailsLoaded(details));
+      if (!isClosed) {
+        emit(DriverOrderDetailsLoaded(details));
+      }
     } catch (e) {
-      emit(DriverOrderDetailsError(e.toString()));
+      if (!isClosed) {
+        emit(DriverOrderDetailsError(e.toString()));
+      }
     }
   }
 
@@ -30,7 +36,9 @@ class DriverOrderDetailsCubit extends Cubit<DriverOrderDetailsState> {
     String preparationId,
     String orderStatus,
   ) async {
-    emit(DriverOrderDetailsLoading());
+    if (!isClosed) {
+      emit(DriverOrderDetailsLoading());
+    }
     final startTime = DateTime.now();
     try {
       print('Starting API call for order status update...');
@@ -46,12 +54,16 @@ class DriverOrderDetailsCubit extends Cubit<DriverOrderDetailsState> {
       final endTime = DateTime.now();
       final duration = endTime.difference(startTime);
       print('API call completed in ${duration.inMilliseconds}ms');
-      emit(DriverOrderOnTheWaySuccess(orderStatus));
+      if (!isClosed) {
+        emit(DriverOrderOnTheWaySuccess(orderStatus));
+      }
     } catch (e) {
       final endTime = DateTime.now();
       final duration = endTime.difference(startTime);
       print('API call failed after ${duration.inMilliseconds}ms: $e');
-      emit(DriverOrderDetailsError(e.toString()));
+      if (!isClosed) {
+        emit(DriverOrderDetailsError(e.toString()));
+      }
     }
   }
 }

@@ -9,7 +9,7 @@ import 'package:ansarlogisticsnew/core/constants/app_colors.dart';
 class CategoryItemList extends StatefulWidget {
   final List<CategoryItemModel> categories;
   final OrderDetailsCubit? cubit;
-  final int preparationId;
+  final String preparationId;
   final OrderModel order;
 
   const CategoryItemList({

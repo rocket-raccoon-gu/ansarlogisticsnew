@@ -6,9 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ansarlogisticsnew/features/picker/presentation/cubit/item_add_page_cubit.dart';
 import 'package:ansarlogisticsnew/features/picker/presentation/cubit/order_details_cubit.dart';
+import 'package:ansarlogisticsnew/core/widgets/network_image_with_loader.dart';
 
 class ItemAddPage extends StatefulWidget {
-  final int preparationId;
+  final String preparationId;
   final OrderDetailsCubit? cubit;
   final String orderNumber;
   ItemAddPage({
@@ -190,30 +191,15 @@ class _ItemAddPageState extends State<ItemAddPage> {
                                     Divider(height: 32),
                                     Row(
                                       children: [
-                                        ClipRRect(
+                                        NetworkImageWithLoader(
+                                          imageUrl: getFullImageUrl(
+                                            state.product.firstImageUrl,
+                                          ),
+                                          width: 80,
+                                          height: 80,
+                                          fit: BoxFit.cover,
                                           borderRadius: BorderRadius.circular(
                                             8,
-                                          ),
-                                          child: Image.network(
-                                            getFullImageUrl(
-                                              state.product.firstImageUrl,
-                                            ),
-                                            width: 80,
-                                            height: 80,
-                                            fit: BoxFit.cover,
-                                            errorBuilder:
-                                                (context, error, stackTrace) =>
-                                                    Container(
-                                                      width: 80,
-                                                      height: 80,
-                                                      color:
-                                                          Colors.grey.shade200,
-                                                      child: Icon(
-                                                        Icons.image,
-                                                        size: 40,
-                                                        color: Colors.grey,
-                                                      ),
-                                                    ),
                                           ),
                                         ),
                                         SizedBox(width: 16),
@@ -256,7 +242,7 @@ class _ItemAddPageState extends State<ItemAddPage> {
                                           MainAxisAlignment.spaceBetween,
                                       children: [
                                         Text(
-                                          'Price: ${double.parse(state.product.regularPrice).toStringAsFixed(2)} QAR',
+                                          'Price: ${_getDisplayPrice(state.product)} QAR',
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 16,
@@ -445,6 +431,20 @@ class _ItemAddPageState extends State<ItemAddPage> {
         ),
       ),
     );
+  }
+
+  String _getDisplayPrice(dynamic replacementProduct) {
+    if (replacementProduct.specialPrice != null &&
+        replacementProduct.specialPrice.toString() != 'null' &&
+        replacementProduct.specialPrice.toString().isNotEmpty) {
+      return double.parse(
+        replacementProduct.specialPrice.toString(),
+      ).toStringAsFixed(2);
+    } else {
+      return double.parse(
+        replacementProduct.regularPrice.toString(),
+      ).toStringAsFixed(2);
+    }
   }
 
   String getFullImageUrl(String? path) {

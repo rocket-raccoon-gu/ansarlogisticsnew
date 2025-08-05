@@ -31,7 +31,7 @@ class _LoginFormState extends State<LoginForm> {
           username: userIdController.text,
           password: passwordController.text,
           device_token: fcmToken,
-          version: '2.0.17',
+          version: '2.0.19',
         ),
       );
     }

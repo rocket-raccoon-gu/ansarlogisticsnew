@@ -15,12 +15,16 @@ class ProfileCubit extends Cubit<ProfileState> {
   }
 
   Future<void> fetchUserData() async {
-    emit(ProfileLoading());
+    if (!isClosed) {
+      emit(ProfileLoading());
+    }
     try {
       final userData = await UserStorageService.getUserData();
       if (userData != null && userData.user != null) {
         final isOnline = userData.user!.availabilityStatus == "1";
-        emit(ProfileLoaded(user: userData.user!, isOnline: isOnline));
+        if (!isClosed) {
+          emit(ProfileLoaded(user: userData.user!, isOnline: isOnline));
+        }
         // Initialize shared WebSocket after loading user data
         await _sharedWebSocket.initialize();
         // Add message listener
@@ -29,10 +33,14 @@ class ProfileCubit extends Cubit<ProfileState> {
         // Fetch current status from server to ensure UI reflects actual status
         await _refreshUserProfile();
       } else {
-        emit(ProfileError('No user data found.'));
+        if (!isClosed) {
+          emit(ProfileError('No user data found.'));
+        }
       }
     } catch (e) {
-      emit(ProfileError('Failed to load user data.'));
+      if (!isClosed) {
+        emit(ProfileError('Failed to load user data.'));
+      }
     }
   }
 
@@ -81,7 +89,9 @@ class ProfileCubit extends Cubit<ProfileState> {
       final userData = await UserStorageService.getUserData();
       if (userData != null && userData.user != null) {
         // Use the actual response status, not local storage
-        emit(ProfileLoaded(user: userData.user!, isOnline: isOnline));
+        if (!isClosed) {
+          emit(ProfileLoaded(user: userData.user!, isOnline: isOnline));
+        }
 
         log(
           "✅ User status updated to: ${isOnline ? 'Online' : 'Offline'} (from WebSocket response)",
@@ -105,7 +115,9 @@ class ProfileCubit extends Cubit<ProfileState> {
       final updatedUserData = await UserStorageService.getUserData();
       if (updatedUserData != null && updatedUserData.user != null) {
         final isOnline = availabilityStatus == "1";
-        emit(ProfileLoaded(user: updatedUserData.user!, isOnline: isOnline));
+        if (!isClosed) {
+          emit(ProfileLoaded(user: updatedUserData.user!, isOnline: isOnline));
+        }
       }
 
       log(

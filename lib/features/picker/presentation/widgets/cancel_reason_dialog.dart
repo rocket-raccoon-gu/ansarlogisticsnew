@@ -220,9 +220,8 @@ class _CancelReasonDialogState extends State<CancelReasonDialog> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed:
-                          selectedReason != null &&
-                                  (selectedReason != 'other' ||
-                                      _customReasonController.text.isNotEmpty)
+                          selectedReason != null ||
+                                  _customReasonController.text.isNotEmpty
                               ? () => _submitCancelRequest()
                               : null,
                       style: ElevatedButton.styleFrom(
@@ -235,7 +234,7 @@ class _CancelReasonDialogState extends State<CancelReasonDialog> {
                         elevation: 0,
                       ),
                       child: const Text(
-                        'Submit Request',
+                        'Submit',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

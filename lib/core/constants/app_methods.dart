@@ -37,6 +37,8 @@ Color getStatusColor(String status) {
       return AppColors.picked;
     case 'material_request':
       return AppColors.materialRequest;
+    case 'customer_not_answer':
+      return const Color.fromARGB(255, 243, 18, 18);
     default:
       return AppColors.notAvailable;
   }
@@ -80,6 +82,8 @@ String getStatusText(String status) {
       return 'Delivered';
     case 'material_request':
       return 'Material Request';
+    case 'customer_not_answer':
+      return 'Customer Not Answer';
     default:
       return status;
   }

@@ -14,7 +14,7 @@ class ProductNotMatchingDialog extends StatelessWidget {
   final OrderDetailsCubit cubit;
   final VoidCallback? onSuccess;
   final void Function()? onCancel;
-  final int preparationId;
+  final String preparationId;
   final OrderModel order;
   const ProductNotMatchingDialog({
     Key? key,
@@ -39,7 +39,10 @@ class ProductNotMatchingDialog extends StatelessWidget {
             children: [
               Icon(Icons.warning, color: Colors.orange, size: 28),
               SizedBox(width: 8),
-              Text('Product Not Matching'),
+              Text(
+                'Product Not Matching',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              ),
             ],
           ),
           content:
@@ -217,6 +220,9 @@ class ProductNotMatchingDialog extends StatelessWidget {
           ],
           'title': 'Item Listing',
           'cubit': cubit,
+          'preparationId': preparationId,
+          'orderNumber': preparationId,
+          'order': order,
         },
       );
     } catch (e) {
@@ -225,7 +231,14 @@ class ProductNotMatchingDialog extends StatelessWidget {
       Navigator.pushReplacementNamed(
         parentContext,
         AppRoutes.itemListing,
-        arguments: {'items': [], 'title': 'Item Listing', 'cubit': cubit},
+        arguments: {
+          'items': [],
+          'title': 'Item Listing',
+          'cubit': cubit,
+          'preparationId': preparationId,
+          'orderNumber': preparationId,
+          'order': order,
+        },
       );
     }
   }

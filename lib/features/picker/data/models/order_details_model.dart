@@ -46,24 +46,28 @@ class DeliveryTypeGroup {
 }
 
 class OrderDetailsModel {
-  final int preparationId;
+  // final int preparationId;
   final String preparationLabel;
-  final int? parentPreparationId;
+  // final int? parentPreparationId;
   final String status;
   final DateTime createdAt;
   final String subgroupIdentifier;
   final List<DeliveryTypeGroup> deliveryTypeGroups;
   final String? deliveryNote;
+  final List<dynamic> subgroupDetails;
+  final String? paymentMethod;
 
   OrderDetailsModel({
-    required this.preparationId,
+    // required this.preparationId,
     required this.preparationLabel,
-    this.parentPreparationId,
+    // this.parentPreparationId,
     required this.status,
     required this.createdAt,
     required this.subgroupIdentifier,
     required this.deliveryTypeGroups,
     this.deliveryNote,
+    required this.subgroupDetails,
+    this.paymentMethod,
   });
 
   factory OrderDetailsModel.fromJson(Map<String, dynamic> json) {
@@ -144,28 +148,32 @@ class OrderDetailsModel {
       }
 
       return OrderDetailsModel(
-        preparationId: _parsePreparationId(json['preparation_id']),
+        // preparationId: _parsePreparationId(json['preparation_id']),
         preparationLabel: json['preparation_label'] ?? '',
-        parentPreparationId: json['parent_preparation_id'],
+        // parentPreparationId: json['parent_preparation_id'],
         status: json['status'] ?? '',
         createdAt:
             DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
         subgroupIdentifier: json['subgroup_identifier'] ?? '',
         deliveryTypeGroups: parsedDeliveryTypeGroups,
         deliveryNote: json['delivery_note'] ?? '',
+        subgroupDetails: json['subgroup_details'] ?? [],
+        paymentMethod: json['payment_method'] ?? '',
       );
     } catch (e) {
       print('Error parsing OrderDetailsModel: $e');
       print('JSON data: $json');
       // Return a default model with empty data
       return OrderDetailsModel(
-        preparationId: 0,
+        // preparationId: 0,
         preparationLabel: '',
         status: '',
         createdAt: DateTime.now(),
         subgroupIdentifier: '',
         deliveryTypeGroups: [],
         deliveryNote: '',
+        subgroupDetails: [],
+        paymentMethod: '',
       );
     }
   }
@@ -241,11 +249,91 @@ class OrderDetailsModel {
     return [];
   }
 
+  // Helper method to get warehouse items
+  List<OrderItemModel> get warehouseItems {
+    for (var group in deliveryTypeGroups) {
+      if (group.deliveryType == 'war') {
+        return group.allItems;
+      }
+    }
+    return [];
+  }
+
+  // Helper method to get warehouse categories
+  List<CategoryItemModel> get warehouseCategories {
+    for (var group in deliveryTypeGroups) {
+      if (group.deliveryType == 'war') {
+        return group.categories;
+      }
+    }
+    return [];
+  }
+
+  // Helper method to get supplier items
+  List<OrderItemModel> get supplierItems {
+    for (var group in deliveryTypeGroups) {
+      if (group.deliveryType == 'sup') {
+        return group.allItems;
+      }
+    }
+    return [];
+  }
+
+  // Helper method to get supplier categories
+  List<CategoryItemModel> get supplierCategories {
+    for (var group in deliveryTypeGroups) {
+      if (group.deliveryType == 'sup') {
+        return group.categories;
+      }
+    }
+    return [];
+  }
+
+  // Helper method to get vendor pickup items
+  List<OrderItemModel> get vendorPickupItems {
+    for (var group in deliveryTypeGroups) {
+      if (group.deliveryType == 'vpo') {
+        return group.allItems;
+      }
+    }
+    return [];
+  }
+
+  // Helper method to get vendor pickup categories
+  List<CategoryItemModel> get vendorPickupCategories {
+    for (var group in deliveryTypeGroups) {
+      if (group.deliveryType == 'vpo') {
+        return group.categories;
+      }
+    }
+    return [];
+  }
+
+  // Helper method to get abaya items
+  List<OrderItemModel> get abayaItems {
+    for (var group in deliveryTypeGroups) {
+      if (group.deliveryType == 'aby') {
+        return group.allItems;
+      }
+    }
+    return [];
+  }
+
+  // Helper method to get abaya categories
+  List<CategoryItemModel> get abayaCategories {
+    for (var group in deliveryTypeGroups) {
+      if (group.deliveryType == 'aby') {
+        return group.categories;
+      }
+    }
+    return [];
+  }
+
   Map<String, dynamic> toJson() {
     return {
-      'preparation_id': preparationId,
+      // 'preparation_id': preparationId,
       'preparation_label': preparationLabel,
-      'parent_preparation_id': parentPreparationId,
+      // 'parent_preparation_id': parentPreparationId,
       'status': status,
       'created_at': createdAt.toIso8601String(),
       'subgroup_identifier': subgroupIdentifier,
@@ -262,6 +350,8 @@ class OrderDetailsModel {
               )
               .toList(),
       'delivery_note': deliveryNote,
+      'subgroup_details': subgroupDetails,
+      'payment_method': paymentMethod,
     };
   }
 }

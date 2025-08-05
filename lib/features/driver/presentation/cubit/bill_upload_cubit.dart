@@ -39,7 +39,9 @@ class BillUploadCubit extends Cubit<BillUploadState> {
   }
 
   Future<void> pickImageFromCamera() async {
-    emit(BillUploadLoading());
+    if (!isClosed) {
+      emit(BillUploadLoading());
+    }
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.camera,
@@ -50,20 +52,30 @@ class BillUploadCubit extends Cubit<BillUploadState> {
       if (image != null) {
         final compressed = await _compressImage(File(image.path));
         if (compressed != null) {
-          emit(BillUploadImageSelected(compressed));
+          if (!isClosed) {
+            emit(BillUploadImageSelected(compressed));
+          }
         } else {
-          emit(BillUploadError('Failed to compress image.'));
+          if (!isClosed) {
+            emit(BillUploadError('Failed to compress image.'));
+          }
         }
       } else {
-        emit(BillUploadInitial());
+        if (!isClosed) {
+          emit(BillUploadInitial());
+        }
       }
     } catch (e) {
-      emit(BillUploadError('Failed to capture image: ${e.toString()}'));
+      if (!isClosed) {
+        emit(BillUploadError('Failed to capture image: ${e.toString()}'));
+      }
     }
   }
 
   Future<void> pickImageFromGallery() async {
-    emit(BillUploadLoading());
+    if (!isClosed) {
+      emit(BillUploadLoading());
+    }
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -74,41 +86,59 @@ class BillUploadCubit extends Cubit<BillUploadState> {
       if (image != null) {
         final compressed = await _compressImage(File(image.path));
         if (compressed != null) {
-          emit(BillUploadImageSelected(compressed));
+          if (!isClosed) {
+            emit(BillUploadImageSelected(compressed));
+          }
         } else {
-          emit(BillUploadError('Failed to compress image.'));
+          if (!isClosed) {
+            emit(BillUploadError('Failed to compress image.'));
+          }
         }
       } else {
-        emit(BillUploadInitial());
+        if (!isClosed) {
+          emit(BillUploadInitial());
+        }
       }
     } catch (e) {
-      emit(BillUploadError('Failed to pick image: ${e.toString()}'));
+      if (!isClosed) {
+        emit(BillUploadError('Failed to pick image: ${e.toString()}'));
+      }
     }
   }
 
   Future<void> uploadBill(String orderId, String token) async {
     final currentState = state;
     if (currentState is! BillUploadImageSelected) {
-      emit(BillUploadError('No image selected'));
+      if (!isClosed) {
+        emit(BillUploadError('No image selected'));
+      }
       return;
     }
 
-    emit(BillUploadUploading(progress: 0.0));
+    if (!isClosed) {
+      emit(BillUploadUploading(progress: 0.0));
+    }
 
     try {
       // Simulate progress updates
       await Future.delayed(Duration(milliseconds: 500));
-      emit(BillUploadUploading(progress: 0.3));
+      if (!isClosed) {
+        emit(BillUploadUploading(progress: 0.3));
+      }
 
       await Future.delayed(Duration(milliseconds: 500));
-      emit(BillUploadUploading(progress: 0.6));
+      if (!isClosed) {
+        emit(BillUploadUploading(progress: 0.6));
+      }
 
       final location = await Geolocator.getCurrentPosition();
       final latitude = location.latitude;
       final longitude = location.longitude;
 
       await Future.delayed(Duration(milliseconds: 500));
-      emit(BillUploadUploading(progress: 0.8));
+      if (!isClosed) {
+        emit(BillUploadUploading(progress: 0.8));
+      }
 
       await _apiService.uploadBill(
         orderId,
@@ -118,26 +148,40 @@ class BillUploadCubit extends Cubit<BillUploadState> {
         longitude,
       );
 
-      emit(BillUploadUploading(progress: 1.0));
+      if (!isClosed) {
+        emit(BillUploadUploading(progress: 1.0));
+      }
       await Future.delayed(Duration(milliseconds: 300));
 
-      emit(BillUploadSuccess());
+      if (!isClosed) {
+        emit(BillUploadSuccess());
+      }
     } catch (e) {
-      emit(BillUploadError('Failed to upload bill: ${e.toString()}'));
+      if (!isClosed) {
+        emit(BillUploadError('Failed to upload bill: ${e.toString()}'));
+      }
     }
   }
 
   Future<void> markAsDelivered(String orderId, String token) async {
-    emit(BillUploadDelivering());
+    if (!isClosed) {
+      emit(BillUploadDelivering());
+    }
     try {
       await _apiService.updateOrderStatusDriver(token, orderId, 'complete');
-      emit(BillUploadDelivered());
+      if (!isClosed) {
+        emit(BillUploadDelivered());
+      }
     } catch (e) {
-      emit(BillUploadError('Failed to mark as delivered: ${e.toString()}'));
+      if (!isClosed) {
+        emit(BillUploadError('Failed to mark as delivered: ${e.toString()}'));
+      }
     }
   }
 
   void reset() {
-    emit(BillUploadInitial());
+    if (!isClosed) {
+      emit(BillUploadInitial());
+    }
   }
 }

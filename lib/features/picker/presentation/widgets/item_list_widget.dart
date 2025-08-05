@@ -9,7 +9,7 @@ import '../pages/order_item_details_page.dart';
 class ItemListWidget extends StatelessWidget {
   final List<OrderItemModel> items;
   final String emptyText;
-  final int preparationId;
+  final String preparationId;
   final OrderModel order;
   const ItemListWidget({
     super.key,

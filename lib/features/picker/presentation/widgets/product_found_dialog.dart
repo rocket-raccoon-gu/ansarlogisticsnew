@@ -11,7 +11,7 @@ class ProductFoundDialog extends StatefulWidget {
   final VoidCallback? onSuccess;
   final BuildContext parentContext;
   final VoidCallback? onCancel;
-
+  final int quantity;
   const ProductFoundDialog({
     Key? key,
     required this.responseData,
@@ -20,6 +20,7 @@ class ProductFoundDialog extends StatefulWidget {
     required this.parentContext,
     this.onSuccess,
     this.onCancel,
+    required this.quantity,
   }) : super(key: key);
 
   @override
@@ -75,15 +76,14 @@ class _ProductFoundDialogState extends State<ProductFoundDialog> {
                       ),
                     ],
                     // Handle price display - check for final_price first
-                    if (widget.responseData['final_price'] != null ||
-                        widget.responseData['price'] != null) ...[
+                    if (widget.responseData['regular_price'] != null ||
+                        widget.responseData['current_promotion_price'] !=
+                            null) ...[
                       SizedBox(height: 8),
-                      if (widget.responseData['final_price'] != null &&
-                          widget.responseData['price'] != null &&
-                          widget.responseData['final_price'].toString() !=
-                              "0.0000") ...[
+                      if (widget.responseData['special_price'] != null &&
+                          widget.responseData['erp_current_price'] != null) ...[
                         Text(
-                          'Base Price: QAR ${widget.responseData['price']}',
+                          'Base Price: QAR ${double.parse(widget.responseData['regular_price']).toStringAsFixed(2)}',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
@@ -91,33 +91,32 @@ class _ProductFoundDialogState extends State<ProductFoundDialog> {
                           ),
                         ),
                         Text(
-                          'Final Price: QAR ${widget.responseData['final_price']}',
+                          'Final Price: QAR ${double.parse(widget.responseData['special_price']).toStringAsFixed(2)}',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: Colors.green[700],
                           ),
                         ),
-                      ] else if (widget.responseData['final_price'] != null &&
-                          widget.responseData['final_price'].toString() ==
-                              "0.0000" &&
-                          widget.responseData['price'] != null) ...[
+                      ] else if (widget.responseData['special_price'] == null &&
+                          widget.responseData['current_promotion_price'] !=
+                              null) ...[
                         Text(
-                          'Price: QAR ${widget.responseData['price']}',
+                          'Price: QAR ${double.parse(widget.responseData['current_promotion_price']).toStringAsFixed(2)}',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: Colors.orange[700],
                           ),
                         ),
-                        Text(
-                          'Using Base Price (Final Price is 0)',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.orange[600],
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
+                        // Text(
+                        //   'Using Base Price (Final Price is 0)',
+                        //   style: TextStyle(
+                        //     fontSize: 12,
+                        //     color: Colors.orange[600],
+                        //     fontStyle: FontStyle.italic,
+                        //   ),
+                        // ),
                       ] else ...[
                         Text(
                           'Price: QAR ${widget.responseData['final_price'] ?? widget.responseData['price']}',
@@ -191,6 +190,7 @@ class _ProductFoundDialogState extends State<ProductFoundDialog> {
                                       priceOverride:
                                           apiPrice.isNotEmpty ? apiPrice : null,
                                       isProduceOverride: 1,
+                                      quantity: widget.quantity,
                                     );
 
                                 if (success) {
@@ -259,87 +259,4 @@ class _ProductFoundDialogState extends State<ProductFoundDialog> {
       ),
     );
   }
-
-  // Fallback navigation method when context is not mounted
-  void _navigateToItemListingFallback() {
-    print('Using fallback navigation method');
-    Fluttertoast.showToast(
-      msg: 'Navigation failed. Please go back manually.',
-      toastLength: Toast.LENGTH_LONG,
-      gravity: ToastGravity.CENTER,
-      timeInSecForIosWeb: 1,
-      backgroundColor: Colors.orange,
-    );
-  }
-
-  // New method to handle navigation with fallback
-  // Future<void> _navigateToItemListingWithFallback(
-  //   BuildContext currentContext,
-  //   BuildContext parentContext,
-  // ) async {
-  //   print('Attempting to navigate to item listing page...');
-  //   try {
-  //     await Future.delayed(const Duration(milliseconds: 500));
-  //     if (widget.cubit.state is OrderDetailsLoaded) {
-  //       final loadedState = widget.cubit.state as OrderDetailsLoaded;
-  //       print(
-  //         'Cubit state loaded, items count:  [39m${loadedState.toPick.length + loadedState.picked.length + loadedState.canceled.length + loadedState.notAvailable.length}',
-  //       );
-  //       try {
-  //         Navigator.of(
-  //           currentContext,
-  //           rootNavigator: true,
-  //         ).pushReplacementNamed(
-  //           AppRoutes.itemListing,
-  //           arguments: {
-  //             'items': [
-  //               ...loadedState.toPick,
-  //               ...loadedState.picked,
-  //               ...loadedState.canceled,
-  //               ...loadedState.notAvailable,
-  //             ],
-  //             'title': 'Item Listing',
-  //             'cubit': widget.cubit,
-  //           },
-  //         );
-  //         print('Navigation to item listing page successful');
-  //       } catch (e) {
-  //         print('Navigation error: $e');
-  //         Navigator.of(
-  //           currentContext,
-  //           rootNavigator: true,
-  //         ).pushReplacementNamed(
-  //           AppRoutes.itemListing,
-  //           arguments: {
-  //             'items': [],
-  //             'title': 'Item Listing',
-  //             'cubit': widget.cubit,
-  //           },
-  //         );
-  //       }
-  //     } else {
-  //       print(
-  //         'Cubit state is not loaded:  [39m${widget.cubit.state.runtimeType}',
-  //       );
-  //       Navigator.of(currentContext, rootNavigator: true).pushReplacementNamed(
-  //         AppRoutes.itemListing,
-  //         arguments: {
-  //           'items': [],
-  //           'title': 'Item Listing',
-  //           'cubit': widget.cubit,
-  //         },
-  //       );
-  //     }
-  //   } catch (e) {
-  //     print('Navigation error during fallback: $e');
-  //     Navigator.of(parentContext, rootNavigator: true).pushReplacementNamed(
-  //       AppRoutes.itemListing,
-  //       arguments: {
-  //         'items': [],
-  //         'title': 'Item Listing',
-  //         'cubit': widget.cubit,
-  //       },
-  //     );
-  //   }
-  // }
 }

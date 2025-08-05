@@ -105,7 +105,7 @@ class CustomerCardWidget extends StatelessWidget {
   void _handleCall() async {
     CallLogs c1 = CallLogs();
     await c1.handleCall(order.phone, () async {
-      log("📞 Call initiated for order: ${order.preparationId}");
+      log("📞 Call initiated for order: ${order.preparationLabel}");
     });
   }
 
@@ -139,11 +139,11 @@ class CustomerCardWidget extends StatelessWidget {
         if (userRole == 1) {
           // Picker role
           message =
-              "Hello, this is $userName Your *Ansar Gallery Order Picker*. I am here to assist with Preparing your order ${order.preparationId}";
+              "Hello, this is $userName Your *Ansar Gallery Order Picker*. I am here to assist with Preparing your order ${order.preparationLabel}";
         } else {
           // Driver role
           message =
-              "Hello, this is $userName Your *Ansar Gallery Order Driver*. I am here to assist with Deliver your order ${order.preparationId}";
+              "Hello, this is $userName Your *Ansar Gallery Order Driver*. I am here to assist with Deliver your order ${order.preparationLabel}";
         }
 
         androidUrl =

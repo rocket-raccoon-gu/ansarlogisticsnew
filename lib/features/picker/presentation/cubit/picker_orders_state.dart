@@ -4,6 +4,11 @@ abstract class PickerOrdersState {}
 
 class PickerOrdersLoading extends PickerOrdersState {}
 
+class PickerOrdersRefreshing extends PickerOrdersState {
+  final List<OrderModel> orders;
+  PickerOrdersRefreshing(this.orders);
+}
+
 class PickerOrdersLoaded extends PickerOrdersState {
   final List<OrderModel> orders;
   PickerOrdersLoaded(this.orders);

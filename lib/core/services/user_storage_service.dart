@@ -19,79 +19,110 @@ class UserStorageService {
     String username,
     String password,
   ) async {
-    final prefs = await SharedPreferences.getInstance();
+    try {
+      final prefs = await SharedPreferences.getInstance();
 
-    // Save user data as JSON string
-    await prefs.setString(_userKey, jsonEncode(loginResponse.toJson()));
+      // Save user data as JSON string
+      await prefs.setString(_userKey, jsonEncode(loginResponse.toJson()));
 
-    // Save auth token
-    if (loginResponse.token != null) {
-      await prefs.setString(_tokenKey, loginResponse.token!);
+      // Save auth token
+      if (loginResponse.token != null) {
+        await prefs.setString(_tokenKey, loginResponse.token!);
+      }
+
+      // Save username and password for auto-login
+      await prefs.setString(_usernameKey, username);
+      await prefs.setString(_passwordKey, password);
+
+      // Save user role
+      final userRole = RoleUtils.getUserRoleFromApi(
+        loginResponse.user?.role ?? 0,
+        loginResponse.user?.driverType ?? '',
+      );
+      await prefs.setString(_roleKey, userRole.name);
+
+      // Set logged in status
+      await prefs.setBool(_isLoggedInKey, true);
+    } catch (e) {
+      print('⚠️ Error saving user data: $e');
+      // Re-throw the error so the calling code can handle it
+      rethrow;
     }
-
-    // Save username and password for auto-login
-    await prefs.setString(_usernameKey, username);
-    await prefs.setString(_passwordKey, password);
-
-    // Save user role
-    final userRole = RoleUtils.getUserRoleFromApi(
-      loginResponse.user?.role ?? 0,
-      loginResponse.user?.driverType ?? '',
-    );
-    await prefs.setString(_roleKey, userRole.name);
-
-    // Set logged in status
-    await prefs.setBool(_isLoggedInKey, true);
   }
 
   // Get user data from SharedPreferences
   static Future<LoginResponseModel?> getUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userDataString = prefs.getString(_userKey);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString(_userKey);
 
-    if (userDataString != null) {
-      try {
-        final userData = jsonDecode(userDataString);
-        return LoginResponseModel.fromJson(userData);
-      } catch (e) {
-        print('Error parsing user data: $e');
-        return null;
+      if (userDataString != null) {
+        try {
+          final userData = jsonDecode(userDataString);
+          return LoginResponseModel.fromJson(userData);
+        } catch (e) {
+          print('Error parsing user data: $e');
+          return null;
+        }
       }
+      return null;
+    } catch (e) {
+      print('⚠️ Error getting user data from SharedPreferences: $e');
+      return null;
     }
-    return null;
   }
 
   // Get auth token from SharedPreferences
   static Future<String?> getAuthToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_tokenKey);
+    } catch (e) {
+      print('⚠️ Error getting auth token: $e');
+      return null;
+    }
   }
 
   // Get user role from SharedPreferences
   static Future<UserRole?> getUserRole() async {
-    final prefs = await SharedPreferences.getInstance();
-    final roleString = prefs.getString(_roleKey);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final roleString = prefs.getString(_roleKey);
 
-    if (roleString != null) {
-      return UserRole.values.firstWhere(
-        (role) => role.name == roleString,
-        orElse: () => UserRole.picker,
-      );
+      if (roleString != null) {
+        return UserRole.values.firstWhere(
+          (role) => role.name == roleString,
+          orElse: () => UserRole.picker,
+        );
+      }
+      return null;
+    } catch (e) {
+      print('⚠️ Error getting user role: $e');
+      return null;
     }
-    return null;
   }
 
   // Check if user is logged in
   static Future<bool> isLoggedIn() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_isLoggedInKey) ?? false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(_isLoggedInKey) ?? false;
+    } catch (e) {
+      print('⚠️ Error checking login status: $e');
+      return false;
+    }
   }
 
   // Clear all user data (logout)
   static Future<void> clearUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    print('✅ All user data cleared from SharedPreferences');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+      print('✅ All user data cleared from SharedPreferences');
+    } catch (e) {
+      print('⚠️ Error clearing user data: $e');
+      // Continue with logout even if clearing fails
+    }
   }
 
   // Centralized logout method that handles offline status update
@@ -137,8 +168,12 @@ class UserStorageService {
 
   // Save only user role
   static Future<void> saveUserRole(UserRole role) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_roleKey, role.name);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_roleKey, role.name);
+    } catch (e) {
+      print('⚠️ Error saving user role: $e');
+    }
   }
 
   // Get user name
@@ -161,21 +196,43 @@ class UserStorageService {
 
   // Update user availability status in SharedPreferences
   static Future<void> updateAvailabilityStatus(String status) async {
-    final prefs = await SharedPreferences.getInstance();
-    final userDataString = prefs.getString(_userKey);
-    if (userDataString != null) {
-      final userData = jsonDecode(userDataString);
-      if (userData['user'] != null) {
-        userData['user']['availabilityStatus'] = status;
-        await prefs.setString(_userKey, jsonEncode(userData));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString(_userKey);
+      if (userDataString != null) {
+        final userData = jsonDecode(userDataString);
+        if (userData['user'] != null) {
+          userData['user']['availabilityStatus'] = status;
+          await prefs.setString(_userKey, jsonEncode(userData));
+        }
       }
+    } catch (e) {
+      print('⚠️ Error updating availability status: $e');
     }
   }
 
   // Get saved username
   static Future<String?> getSavedUsername() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_usernameKey);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_usernameKey);
+    } catch (e) {
+      print('⚠️ Error getting saved username: $e');
+      return null;
+    }
+  }
+
+  // Check if SharedPreferences is available and working
+  static Future<bool> isSharedPreferencesAvailable() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      // Try to read a test value to ensure it's working
+      await prefs.getKeys();
+      return true;
+    } catch (e) {
+      print('⚠️ SharedPreferences is not available: $e');
+      return false;
+    }
   }
 
   // Get saved password

@@ -12,8 +12,9 @@ class ImprovedProductDialog extends StatelessWidget {
   final OrderDetailsCubit cubit;
   final BuildContext parentContext;
   final String barcode;
-  final int preparationId;
+  final String preparationId;
   final OrderModel order;
+  final int quantity;
   final VoidCallback onCancel;
   final VoidCallback onSuccess;
 
@@ -28,6 +29,7 @@ class ImprovedProductDialog extends StatelessWidget {
     required this.order,
     required this.onCancel,
     required this.onSuccess,
+    required this.quantity,
   });
 
   @override
@@ -127,7 +129,10 @@ class ImprovedProductDialog extends StatelessWidget {
             color: isMatch ? Colors.orange : Colors.green,
           ),
           SizedBox(width: 8),
-          Text(isMatch ? 'Product Not Matching' : 'Product Found'),
+          Text(
+            isMatch ? 'Product Not Matching' : 'Product Found',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          ),
         ],
       ),
       content: Column(
@@ -154,32 +159,32 @@ class ImprovedProductDialog extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 8),
+                // Text(
+                //   responseData['sku_name'] ?? 'Unknown Product',
+                //   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                // ),
+                // SizedBox(height: 4),
                 Text(
-                  responseData['sku_name'] ?? 'Unknown Product',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'SKU: ${responseData['sku'] ?? 'N/A'}',
+                  'SKU: ${barcode ?? 'N/A'}',
                   style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
                 SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(
-                      'Type: ${responseData['product_type'] ?? 'N/A'}',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                    ),
-                    if (responseData['priority'] != null) ...[
-                      SizedBox(width: 16),
-                      Text(
-                        'Priority: ${responseData['priority']}',
-                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                      ),
-                    ],
-                  ],
-                ),
-                SizedBox(height: 8),
+                // Row(
+                //   children: [
+                //     Text(
+                //       'Type: ${responseData['product_type'] ?? 'N/A'}',
+                //       style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                //     ),
+                //     if (responseData['priority'] != null) ...[
+                //       SizedBox(width: 16),
+                //       Text(
+                //         'Priority: ${responseData['priority']}',
+                //         style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                //       ),
+                //     ],
+                //   ],
+                // ),
+                // SizedBox(height: 8),
                 Row(
                   children: [
                     Text(
@@ -307,7 +312,7 @@ class ImprovedProductDialog extends StatelessWidget {
           ),
           // No Button for non-matching products
           ElevatedButton(
-            onPressed: () => _handleNo(context),
+            onPressed: () => _handleNo(context, quantity),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
@@ -317,7 +322,7 @@ class ImprovedProductDialog extends StatelessWidget {
         ] else ...[
           // Pick Button for matching products
           ElevatedButton(
-            onPressed: () => _handlePick(context),
+            onPressed: () => _handlePick(context, quantity),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green,
               foregroundColor: Colors.white,
@@ -370,7 +375,7 @@ class ImprovedProductDialog extends StatelessWidget {
     return 'Unknown';
   }
 
-  Future<void> _handlePick(BuildContext context) async {
+  Future<void> _handlePick(BuildContext context, int quantity) async {
     try {
       Navigator.of(context).pop();
 
@@ -380,7 +385,9 @@ class ImprovedProductDialog extends StatelessWidget {
         scannedSku: barcode,
         reason: '',
         priceOverride: _getDisplayPrice(),
-        isProduceOverride: 0,
+        isProduceOverride:
+            item.isProduce ? 1 : 0, // Set correct produce override value
+        quantity: quantity,
       );
 
       if (success) {
@@ -456,7 +463,7 @@ class ImprovedProductDialog extends StatelessWidget {
     }
   }
 
-  Future<void> _handleNo(BuildContext context) async {
+  Future<void> _handleNo(BuildContext context, int quantity) async {
     try {
       Navigator.of(context).pop();
 
@@ -467,6 +474,7 @@ class ImprovedProductDialog extends StatelessWidget {
         reason: 'Product not matching - picker declined',
         priceOverride: '0.00',
         isProduceOverride: 0,
+        quantity: quantity,
       );
 
       if (success) {

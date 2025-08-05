@@ -247,7 +247,7 @@ class _DriverOrderDetailsPageState extends State<DriverOrderDetailsPage> {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    details.customer.name,
+                                    details.customer.name ?? 'No Name',
                                     style: TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w500,

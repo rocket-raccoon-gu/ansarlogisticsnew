@@ -27,11 +27,14 @@ import '../widgets/notfound_dialog.dart';
 import 'dart:developer';
 import '../../../../core/services/barcode_scanner_service.dart';
 import '../../../../core/di/injector.dart';
+import '../../../../core/widgets/safe_app_bar.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:ansarlogisticsnew/core/widgets/network_image_with_loader.dart';
 
 class OrderItemDetailsPage extends StatefulWidget {
   final OrderItemModel item;
   final OrderDetailsCubit cubit;
-  final int preparationId;
+  final String preparationId;
   final OrderModel order;
 
   const OrderItemDetailsPage({
@@ -48,9 +51,9 @@ class OrderItemDetailsPage extends StatefulWidget {
 
 class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
   late int _quantity;
-  bool _isLoading = false;
   bool _isProcessing = false;
   late TextEditingController _manualBarcodeController;
+  int selectedindex = 0; // Track selected image index
 
   @override
   void initState() {
@@ -65,6 +68,50 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
     super.dispose();
   }
 
+  // Function to get API data (placeholder - you may need to implement this based on your API structure)
+  Future<Map<String, dynamic>> getData() async {
+    // This should return your API configuration data
+    // For now, returning a placeholder structure
+    return {'mediapath': ApiConfig.imageUrl};
+  }
+
+  // Function to search item on Google
+  Future<void> _searchOnGoogle(String itemName) async {
+    final searchUrl = Uri.parse(
+      "https://www.google.com/search?q=${Uri.encodeQueryComponent(itemName)}",
+    );
+    try {
+      if (await canLaunchUrl(searchUrl)) {
+        final launched = await launchUrl(
+          searchUrl,
+          mode: LaunchMode.externalApplication,
+        );
+        if (!launched) {
+          Fluttertoast.showToast(
+            msg: 'Could not open browser',
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.BOTTOM,
+            backgroundColor: Colors.red,
+          );
+        }
+      } else {
+        Fluttertoast.showToast(
+          msg: 'No browser app found',
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.red,
+        );
+      }
+    } catch (e) {
+      Fluttertoast.showToast(
+        msg: 'Error opening browser: ${e.toString()}',
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isProcessing) {
@@ -74,886 +121,940 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
         onBarcodeScanned: (barcode) => _handleBarcodeScanned(context, barcode),
       );
     } else {
-      return Stack(
-        children: [
-          Scaffold(
-            appBar: AppBar(title: Text("Item Details")),
-            body: Padding(
-              padding: const EdgeInsets.all(16),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Product Info Card
-                    Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Product Images - Made more responsive
-                            if (widget.item.productImages.isNotEmpty)
-                              LayoutBuilder(
-                                builder: (context, constraints) {
-                                  final imageHeight =
-                                      constraints.maxWidth < 400
-                                          ? 140.0
-                                          : 180.0;
-                                  final imageWidth =
-                                      constraints.maxWidth < 400
-                                          ? 140.0
-                                          : 180.0;
+      return Scaffold(
+        appBar: SafeAppBar(
+          title: "Item Details",
+          titleTextStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          actions: [
+            // Google Search Button
+            Padding(
+              padding: const EdgeInsets.only(right: 22.0),
+              child: IconButton(
+                icon: Icon(Icons.search, color: Colors.blue, size: 30),
+                onPressed: () => _searchOnGoogle(widget.item.name),
+                tooltip: 'Search on Google',
+              ),
+            ),
+          ],
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(12),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Product Info Card
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Enhanced Product Images Section
+                        if (widget.item.productImages.isNotEmpty)
+                          Container(
+                            color: Colors.white,
+                            child: Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 6.0),
+                                  child: FutureBuilder<Map<String, dynamic>>(
+                                    future: getData(),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.hasData) {
+                                        Map<String, dynamic> data =
+                                            snapshot.data!;
 
-                                  return SizedBox(
-                                    height: imageHeight,
-                                    child: ListView.builder(
-                                      scrollDirection: Axis.horizontal,
-                                      itemCount:
-                                          widget.item.productImages.length,
-                                      itemBuilder: (context, index) {
-                                        return Container(
-                                          width: imageWidth,
-                                          margin: const EdgeInsets.only(
-                                            right: 12,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                            border: Border.all(
-                                              color: Colors.grey.shade200,
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                            child: Image.network(
-                                              '${ApiConfig.imageUrl}${widget.item.productImages[index]}',
-                                              width: imageWidth,
-                                              height: imageHeight,
+                                        return SizedBox(
+                                          height: 250.0,
+                                          width: 250.0,
+                                          child: Center(
+                                            child: NetworkImageWithLoader(
+                                              imageUrl:
+                                                  widget
+                                                              .item
+                                                              .productImages
+                                                              .isNotEmpty &&
+                                                          selectedindex <
+                                                              widget
+                                                                  .item
+                                                                  .productImages
+                                                                  .length &&
+                                                          widget
+                                                              .item
+                                                              .productImages[selectedindex]
+                                                              .isNotEmpty
+                                                      ? "${data['mediapath']}${widget.item.productImages[selectedindex]}"
+                                                      : widget
+                                                          .item
+                                                          .imageUrl
+                                                          .isNotEmpty
+                                                      ? "${data['mediapath']}${widget.item.imageUrl}"
+                                                      : "",
                                               fit: BoxFit.cover,
-                                              errorBuilder: (
-                                                context,
-                                                error,
-                                                stackTrace,
-                                              ) {
-                                                return Container(
-                                                  width: imageWidth,
-                                                  height: imageHeight,
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.grey.shade100,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          12,
-                                                        ),
-                                                  ),
-                                                  child: const Icon(
-                                                    Icons.image_not_supported,
-                                                    size: 36,
-                                                    color: Colors.grey,
-                                                  ),
-                                                );
-                                              },
-                                              loadingBuilder: (
-                                                context,
-                                                child,
-                                                loadingProgress,
-                                              ) {
-                                                if (loadingProgress == null)
-                                                  return child;
-                                                return Container(
-                                                  width: imageWidth,
-                                                  height: imageHeight,
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.grey.shade100,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          12,
-                                                        ),
-                                                  ),
-                                                  child: const Center(
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                          strokeWidth: 2,
-                                                        ),
-                                                  ),
-                                                );
-                                              },
                                             ),
                                           ),
                                         );
+                                      } else {
+                                        return SizedBox(
+                                          height: 250.0,
+                                          width: 250.0,
+                                          child: Center(
+                                            child: NetworkImageWithLoader(
+                                              imageUrl:
+                                                  widget
+                                                          .item
+                                                          .imageUrl
+                                                          .isNotEmpty
+                                                      ? "${ApiConfig.imageUrl}${widget.item.imageUrl}"
+                                                      : "",
+                                              fit: BoxFit.cover,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                                Divider(color: Colors.grey.shade300),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0,
+                                  ),
+                                  child: SizedBox(
+                                    height: 40,
+                                    child: FutureBuilder(
+                                      future: getData(),
+                                      builder: (context, snapshot) {
+                                        if (snapshot.hasData) {
+                                          Map<String, dynamic> data =
+                                              snapshot.data!;
+                                          return ListView.builder(
+                                            shrinkWrap: true,
+                                            scrollDirection: Axis.horizontal,
+                                            itemCount:
+                                                widget
+                                                    .item
+                                                    .productImages
+                                                    .length,
+                                            itemBuilder: (context, index) {
+                                              return Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8.0,
+                                                    ),
+                                                child: InkWell(
+                                                  onTap: () {
+                                                    setState(() {
+                                                      selectedindex = index;
+                                                    });
+                                                  },
+                                                  child: Container(
+                                                    height: 60.0,
+                                                    width: 60.0,
+                                                    decoration: BoxDecoration(
+                                                      border: Border(
+                                                        bottom: BorderSide(
+                                                          width: 3.0,
+                                                          color:
+                                                              selectedindex ==
+                                                                      index
+                                                                  ? Color.fromRGBO(
+                                                                    183,
+                                                                    214,
+                                                                    53,
+                                                                    1,
+                                                                  )
+                                                                  : Colors
+                                                                      .transparent,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    child: Center(
+                                                      child: NetworkImageWithLoader(
+                                                        imageUrl:
+                                                            widget
+                                                                        .item
+                                                                        .productImages
+                                                                        .isNotEmpty &&
+                                                                    index <
+                                                                        widget
+                                                                            .item
+                                                                            .productImages
+                                                                            .length &&
+                                                                    widget
+                                                                        .item
+                                                                        .productImages[index]
+                                                                        .isNotEmpty
+                                                                ? "${data['mediapath']}${widget.item.productImages[index]}"
+                                                                : "",
+                                                        fit: BoxFit.cover,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          );
+                                        } else {
+                                          return ListView.builder(
+                                            shrinkWrap: true,
+                                            scrollDirection: Axis.horizontal,
+                                            itemCount:
+                                                widget
+                                                    .item
+                                                    .productImages
+                                                    .length,
+                                            itemBuilder: (context, index) {
+                                              return Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8.0,
+                                                    ),
+                                                child: InkWell(
+                                                  onTap: () {
+                                                    setState(() {
+                                                      selectedindex = index;
+                                                    });
+                                                  },
+                                                  child: Container(
+                                                    height: 60.0,
+                                                    width: 60.0,
+                                                    decoration: BoxDecoration(
+                                                      border: Border(
+                                                        bottom: BorderSide(
+                                                          width: 3.0,
+                                                          color:
+                                                              selectedindex ==
+                                                                      index
+                                                                  ? Color.fromRGBO(
+                                                                    183,
+                                                                    214,
+                                                                    53,
+                                                                    1,
+                                                                  )
+                                                                  : Colors
+                                                                      .transparent,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    child: Center(
+                                                      child: NetworkImageWithLoader(
+                                                        imageUrl:
+                                                            widget
+                                                                    .item
+                                                                    .imageUrl
+                                                                    .isNotEmpty
+                                                                ? "${ApiConfig.imageUrl}${widget.item.imageUrl}"
+                                                                : "",
+                                                        fit: BoxFit.cover,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          );
+                                        }
                                       },
                                     ),
-                                  );
-                                },
-                              ),
-                            // Fallback image if no product images
-                            if (widget.item.productImages.isEmpty)
-                              Center(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(
-                                    widget.item.imageUrl,
-                                    width: 120,
-                                    height: 120,
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            const Icon(
-                                              Icons.image,
-                                              size: 80,
-                                              color: Colors.grey,
-                                            ),
                                   ),
                                 ),
+                              ],
+                            ),
+                          ),
+                        // Fallback image if no product images
+                        if (widget.item.productImages.isEmpty)
+                          Center(
+                            child: NetworkImageWithLoader(
+                              imageUrl:
+                                  widget.item.imageUrl.isNotEmpty
+                                      ? "${ApiConfig.imageUrl}${widget.item.imageUrl}"
+                                      : "",
+                              width: 300,
+                              height: 300,
+                              fit: BoxFit.cover,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        const SizedBox(height: 12),
+                        Text(
+                          widget.item.name,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Chip(
+                              label: Text(
+                                widget.item.deliveryType == 'exp'
+                                    ? 'Express'
+                                    : 'Normal',
+                                style: const TextStyle(fontSize: 12),
                               ),
-                            const SizedBox(height: 16),
-                            Text(
-                              widget.item.name,
-                              style: const TextStyle(
-                                fontSize: 22,
+                              backgroundColor: Colors.blue.shade50,
+                              labelStyle: const TextStyle(color: Colors.blue),
+                            ),
+                            const SizedBox(width: 8),
+                            Chip(
+                              label: Text('SKU: ${widget.item.sku ?? '-'}'),
+                              labelStyle: const TextStyle(
+                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Chip(
-                                  label: Text(
-                                    widget.item.deliveryType == 'exp'
-                                        ? 'Express'
-                                        : 'Normal Local',
-                                    style: const TextStyle(fontSize: 13),
-                                  ),
-                                  backgroundColor: Colors.blue.shade50,
-                                  labelStyle: const TextStyle(
-                                    color: Colors.blue,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Chip(
-                                  label: Text('SKU: ${widget.item.sku ?? '-'}'),
-                                  backgroundColor: Colors.grey.shade100,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'QAR ${widget.item.price?.toStringAsFixed(2) ?? '0.00'}',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.green,
-                              ),
-                            ),
-                            if (widget.item.description != null &&
-                                widget.item.description!.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
-                                child: Text(
-                                  widget.item.description!,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                const Text(
-                                  AppStrings.quantity,
-                                  style: TextStyle(fontSize: 16),
-                                ),
-                                const SizedBox(width: 16),
-                                IconButton(
-                                  icon: const Icon(Icons.remove_circle_outline),
-                                  onPressed:
-                                      _quantity > 1
-                                          ? () {
-                                            setState(() {
-                                              _quantity--;
-                                            });
-                                            widget.cubit.updateQuantity(
-                                              widget.item,
-                                              _quantity,
-                                            );
-                                          }
-                                          : null,
-                                ),
-                                Text(
-                                  '$_quantity',
-                                  style: const TextStyle(fontSize: 18),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.add_circle_outline),
-                                  onPressed: () {
-                                    setState(() {
-                                      _quantity++;
-                                    });
-                                    widget.cubit.updateQuantity(
-                                      widget.item,
-                                      _quantity,
-                                    );
-                                  },
-                                ),
-                                // Quantity update indicator
-                                if (_quantity > 0) ...[
-                                  SizedBox(width: 8),
-                                  Container(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green[100],
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: Colors.green[300]!,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.check_circle,
-                                          size: 16,
-                                          color: Colors.green[700],
-                                        ),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          'Updated',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.green[700],
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ],
+                              backgroundColor: Colors.grey.shade100,
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Divider(height: 1, thickness: 1, color: Color(0xFFE0E0E0)),
-                    const SizedBox(height: 20),
-                    // Section: Pick Item
-                    if (widget.item.status == OrderItemStatus.picked)
-                      Text(
-                        'Picked Item',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade700,
+                        if (widget.item.isProduce) ...[
+                          Chip(
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.eco,
+                                  size: 12,
+                                  color: Colors.green[700],
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Produce',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.green[700],
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: Colors.green.shade50,
+                            side: BorderSide(color: Colors.green.shade200),
+                          ),
+                        ],
+                        Text(
+                          'QAR ${widget.item.price?.toStringAsFixed(2) ?? '0.00'}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green,
+                          ),
                         ),
-                      ),
-                    if (widget.item.status == OrderItemStatus.itemNotAvailable)
-                      Text(
-                        'Item Not Available',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.red.shade700,
-                        ),
-                      ),
-                    if (widget.item.status == OrderItemStatus.holded)
-                      Text(
-                        'Holded Item',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.amber.shade700,
-                        ),
-                      ),
-                    const SizedBox(height: 12),
-                    if (widget.item.status != OrderItemStatus.picked &&
-                        widget.item.status !=
-                            OrderItemStatus.itemNotAvailable &&
-                        widget.item.status != OrderItemStatus.holded)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                        const SizedBox(height: 8),
+                        // Customer Order Quantity Display
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Row(
                             children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  icon: Icon(
-                                    _quantity > 0
-                                        ? Icons.qr_code_scanner
-                                        : Icons.warning,
-                                    color: Colors.white,
-                                  ),
-                                  label: Text(
-                                    _quantity > 0
-                                        ? 'Scan Barcode to Pick'
-                                        : 'Update Quantity First',
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        _quantity > 0
-                                            ? Colors.green
-                                            : Colors.orange,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    textStyle: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  onPressed: () {
-                                    // Check if quantity is updated
-                                    if (_quantity > 0) {
-                                      // Quantity has been updated, allow scanning
-                                      setState(() {
-                                        _isProcessing = true;
-                                      });
-                                    } else {
-                                      // Show toast message that quantity needs to be updated
-                                      Fluttertoast.showToast(
-                                        msg: "update quantity first",
-                                        toastLength: Toast.LENGTH_SHORT,
-                                        gravity: ToastGravity.BOTTOM,
-                                        backgroundColor: Colors.orange,
-                                        textColor: Colors.white,
-                                      );
-                                    }
-                                  },
+                              Icon(
+                                Icons.shopping_cart,
+                                color: Colors.blue.shade700,
+                                size: 16,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Order Quantity: ',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.blue.shade700,
+                                ),
+                              ),
+                              Text(
+                                '${widget.item.quantity}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue.shade800,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
-                          // Barcode Input Section - Made more responsive
-                          Container(
-                            decoration: BoxDecoration(
-                              color:
-                                  _manualBarcodeController.text.isNotEmpty
-                                      ? Colors.green.shade50
-                                      : Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(10),
-                              border:
-                                  _manualBarcodeController.text.isNotEmpty
-                                      ? Border.all(
-                                        color: Colors.green.shade200,
-                                        width: 2,
-                                      )
+                        ),
+                        Row(
+                          children: [
+                            const Text(
+                              AppStrings.quantity,
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            const SizedBox(width: 16),
+                            IconButton(
+                              icon: const Icon(Icons.remove_circle_outline),
+                              onPressed:
+                                  _quantity > 1
+                                      ? () {
+                                        setState(() {
+                                          _quantity--;
+                                        });
+                                        widget.cubit.updateQuantity(
+                                          widget.item,
+                                          _quantity,
+                                        );
+                                      }
                                       : null,
                             ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
+                            Text(
+                              '$_quantity',
+                              style: const TextStyle(fontSize: 16),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Barcode input row
-                                Row(
+                            IconButton(
+                              icon: const Icon(Icons.add_circle_outline),
+                              onPressed: () {
+                                setState(() {
+                                  _quantity++;
+                                });
+                                widget.cubit.updateQuantity(
+                                  widget.item,
+                                  _quantity,
+                                );
+                              },
+                            ),
+                            // Quantity update indicator
+                            if (_quantity > 0) ...[
+                              SizedBox(width: 8),
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green[100],
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.green[300]!),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    if (_manualBarcodeController
-                                        .text
-                                        .isNotEmpty)
-                                      Icon(
-                                        Icons.qr_code_scanner,
-                                        color: Colors.green,
-                                        size: 20,
-                                      ),
-                                    if (_manualBarcodeController
-                                        .text
-                                        .isNotEmpty)
-                                      SizedBox(width: 8),
-                                    Expanded(
-                                      child: TextField(
-                                        enabled:
-                                            widget.item.status !=
-                                                OrderItemStatus.picked &&
-                                            !_isLoading,
-                                        controller: _manualBarcodeController,
-                                        decoration: InputDecoration(
-                                          labelText:
-                                              _manualBarcodeController
-                                                      .text
-                                                      .isNotEmpty
-                                                  ? 'Scanned Barcode'
-                                                  : 'Enter Barcode',
-                                          border: InputBorder.none,
-                                          labelStyle: TextStyle(
-                                            color:
-                                                _manualBarcodeController
-                                                        .text
-                                                        .isNotEmpty
-                                                    ? Colors.green.shade700
-                                                    : Colors.grey.shade600,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontFamily:
-                                              _manualBarcodeController
-                                                      .text
-                                                      .isNotEmpty
-                                                  ? 'monospace'
-                                                  : null,
-                                          fontWeight:
-                                              _manualBarcodeController
-                                                      .text
-                                                      .isNotEmpty
-                                                  ? FontWeight.w600
-                                                  : FontWeight.normal,
-                                        ),
-                                        onChanged: (value) {
-                                          setState(() {
-                                            // Trigger rebuild to update UI
-                                          });
-                                        },
-                                        onSubmitted:
-                                            (value) =>
-                                                _handleManualBarcodeSubmit(),
+                                    Icon(
+                                      Icons.check_circle,
+                                      size: 16,
+                                      color: Colors.green[700],
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Updated',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.green[700],
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ],
                                 ),
-                                // Action buttons row - responsive layout
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Divider(height: 1, thickness: 1, color: Color(0xFFE0E0E0)),
+                const SizedBox(height: 8),
+
+                // Section: Pick Item - Simplified and faster
+                if (widget.item.status == OrderItemStatus.picked)
+                  Text(
+                    'Picked Item',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade700,
+                    ),
+                  ),
+                if (widget.item.status == OrderItemStatus.itemNotAvailable)
+                  Text(
+                    'Item Not Available',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red.shade700,
+                    ),
+                  ),
+                if (widget.item.status == OrderItemStatus.holded)
+                  Text(
+                    'Holded Item',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.amber.shade700,
+                    ),
+                  ),
+
+                if (widget.item.status != OrderItemStatus.picked &&
+                    widget.item.status != OrderItemStatus.itemNotAvailable &&
+                    widget.item.status != OrderItemStatus.holded)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Fast Pickup Button - No loading, direct action
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          icon: Icon(
+                            _quantity > 0
+                                ? Icons.qr_code_scanner
+                                : Icons.warning,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          label: Text(
+                            _quantity > 0
+                                ? 'Scan Barcode to Pick'
+                                : 'Update Quantity First',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                _quantity > 0 ? Colors.green : Colors.orange,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: () {
+                            if (_quantity > 0) {
+                              setState(() {
+                                _isProcessing = true;
+                              });
+                            } else {
+                              Fluttertoast.showToast(
+                                msg: "Update quantity first",
+                                toastLength: Toast.LENGTH_SHORT,
+                                gravity: ToastGravity.BOTTOM,
+                                backgroundColor: Colors.orange,
+                                textColor: Colors.white,
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Barcode Input Section - Simplified
+                      Container(
+                        decoration: BoxDecoration(
+                          color:
+                              _manualBarcodeController.text.isNotEmpty
+                                  ? Colors.green.shade50
+                                  : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(10),
+                          border:
+                              _manualBarcodeController.text.isNotEmpty
+                                  ? Border.all(
+                                    color: Colors.green.shade200,
+                                    width: 2,
+                                  )
+                                  : null,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
                                 if (_manualBarcodeController.text.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 8.0),
-                                    child: Row(
-                                      children: [
-                                        IconButton(
-                                          onPressed: () {
-                                            setState(() {
-                                              _manualBarcodeController.clear();
-                                            });
-                                          },
-                                          icon: Icon(
-                                            Icons.clear,
-                                            color: Colors.red,
-                                            size: 20,
-                                          ),
-                                          tooltip: 'Clear barcode',
-                                          padding: EdgeInsets.zero,
-                                          constraints: BoxConstraints(
-                                            minWidth: 40,
-                                            minHeight: 40,
-                                          ),
-                                        ),
-                                        SizedBox(width: 8),
-                                        Expanded(
-                                          child: ElevatedButton(
-                                            onPressed:
-                                                (widget.item.status ==
-                                                            OrderItemStatus
-                                                                .picked ||
-                                                        _isLoading)
-                                                    ? null
-                                                    : _handleManualBarcodeSubmit,
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.green,
-                                              foregroundColor: Colors.white,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 16,
-                                                    vertical: 12,
-                                                  ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                            ),
-                                            child: Text(
-                                              'Submit Scanned',
-                                              style: TextStyle(fontSize: 14),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                  Icon(
+                                    Icons.qr_code_scanner,
+                                    color: Colors.green,
+                                    size: 20,
                                   ),
+                                if (_manualBarcodeController.text.isNotEmpty)
+                                  SizedBox(width: 8),
+                                Expanded(
+                                  child: TextField(
+                                    enabled:
+                                        widget.item.status !=
+                                        OrderItemStatus.picked,
+                                    controller: _manualBarcodeController,
+                                    decoration: InputDecoration(
+                                      labelText:
+                                          _manualBarcodeController
+                                                  .text
+                                                  .isNotEmpty
+                                              ? 'Scanned Barcode'
+                                              : 'Enter Barcode',
+                                      border: InputBorder.none,
+                                      labelStyle: TextStyle(
+                                        color:
+                                            _manualBarcodeController
+                                                    .text
+                                                    .isNotEmpty
+                                                ? Colors.green.shade700
+                                                : Colors.grey.shade600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontFamily:
+                                          _manualBarcodeController
+                                                  .text
+                                                  .isNotEmpty
+                                              ? 'monospace'
+                                              : null,
+                                      fontWeight:
+                                          _manualBarcodeController
+                                                  .text
+                                                  .isNotEmpty
+                                              ? FontWeight.w600
+                                              : FontWeight.normal,
+                                    ),
+                                    onChanged: (value) {
+                                      setState(() {});
+                                    },
+                                    onSubmitted:
+                                        (value) => _handleManualBarcodeSubmit(),
+                                  ),
+                                ),
                               ],
+                            ),
+                            if (_manualBarcodeController.text.isNotEmpty &&
+                                _quantity > 0)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8.0),
+                                child: Row(
+                                  children: [
+                                    IconButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          _manualBarcodeController.clear();
+                                        });
+                                      },
+                                      icon: Icon(
+                                        Icons.clear,
+                                        color: Colors.red,
+                                        size: 20,
+                                      ),
+                                      tooltip: 'Clear barcode',
+                                      padding: EdgeInsets.zero,
+                                      constraints: BoxConstraints(
+                                        minWidth: 40,
+                                        minHeight: 40,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: ElevatedButton(
+                                        onPressed:
+                                            (widget.item.status ==
+                                                    OrderItemStatus.picked)
+                                                ? null
+                                                : _handleManualBarcodeSubmit,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.green,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 12,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Submit Scanned',
+                                          style: TextStyle(fontSize: 14),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 16),
+                Divider(height: 1, thickness: 1, color: Color(0xFFE0E0E0)),
+                const SizedBox(height: 16),
+
+                // Section: Other Actions - Simplified
+                Text(
+                  'Other Actions',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue.shade700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Responsive action buttons layout
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth < 600) {
+                      return Column(
+                        children: [
+                          // Not Available Button
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              icon: const Icon(
+                                Icons.remove_circle_outline,
+                                size: 20,
+                              ),
+                              label: Text(
+                                AppStrings.notAvailable,
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.red,
+                                side: const BorderSide(color: Colors.red),
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              onPressed:
+                                  widget.item.status ==
+                                          OrderItemStatus.itemNotAvailable
+                                      ? null
+                                      : () => _showNotAvailableDialog(),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          // Canceled Button
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.cancel_outlined, size: 20),
+                              label: Text(
+                                AppStrings.canceled,
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.grey,
+                                side: const BorderSide(color: Colors.grey),
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              onPressed:
+                                  widget.item.status == OrderItemStatus.canceled
+                                      ? null
+                                      : () => _showCancelDialog(),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          // Hold Button
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              icon: const Icon(
+                                Icons.pause_circle_outline,
+                                size: 20,
+                              ),
+                              label: Text(
+                                'Hold',
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.amber,
+                                side: const BorderSide(color: Colors.amber),
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              onPressed:
+                                  widget.item.status == OrderItemStatus.holded
+                                      ? null
+                                      : () => _handleHoldAction(),
                             ),
                           ),
                         ],
-                      ),
-                    const SizedBox(height: 24),
-                    Divider(height: 1, thickness: 1, color: Color(0xFFE0E0E0)),
-                    const SizedBox(height: 20),
-                    // Section: Other Actions
-                    // Other Actions - Made responsive for smaller screens
-                    Text(
-                      'Other Actions',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue.shade700,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Responsive action buttons layout
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        // Use column layout for smaller screens, row for larger screens
-                        if (constraints.maxWidth < 600) {
-                          return Column(
-                            children: [
-                              // Not Available Button
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  icon: const Icon(
-                                    Icons.remove_circle_outline,
-                                    size: 20,
-                                  ),
-                                  label: Text(
-                                    AppStrings.notAvailable,
-                                    style: TextStyle(fontSize: 14),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.red,
-                                    side: const BorderSide(color: Colors.red),
-                                    textStyle: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  onPressed:
-                                      widget.item.status ==
-                                              OrderItemStatus.itemNotAvailable
-                                          ? null
-                                          : () {
-                                            showDialog(
-                                              context: context,
-                                              builder:
-                                                  (
-                                                    context,
-                                                  ) => ConfirmationDialog(
-                                                    title:
-                                                        'Mark as Not Available',
-                                                    message:
-                                                        'Are you sure you want to mark "${widget.item.name}" as not available?',
-                                                    confirmText:
-                                                        'Mark Not Available',
-                                                    confirmColor: Colors.orange,
-                                                    item: widget.item,
-                                                    cubit: widget.cubit,
-                                                    status:
-                                                        'item_not_available',
-                                                    reason:
-                                                        'Manually marked as not available',
-                                                  ),
-                                            );
-                                          },
+                      );
+                    } else {
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(
+                                Icons.remove_circle_outline,
+                                size: 20,
+                              ),
+                              label: Text(
+                                AppStrings.notAvailable,
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.red,
+                                side: const BorderSide(color: Colors.red),
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
-                              const SizedBox(height: 12),
-                              // Canceled Button
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  icon: const Icon(
-                                    Icons.cancel_outlined,
-                                    size: 20,
-                                  ),
-                                  label: Text(
-                                    AppStrings.canceled,
-                                    style: TextStyle(fontSize: 14),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.grey,
-                                    side: const BorderSide(color: Colors.grey),
-                                    textStyle: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  onPressed:
-                                      widget.item.status ==
-                                              OrderItemStatus.canceled
-                                          ? null
-                                          : () {
-                                            showDialog(
-                                              context: context,
-                                              builder:
-                                                  (
-                                                    context,
-                                                  ) => ConfirmationDialog(
-                                                    title: 'Cancel Item',
-                                                    message:
-                                                        'Are you sure you want to cancel "${widget.item.name}"?',
-                                                    confirmText: 'Cancel Item',
-                                                    confirmColor: Colors.grey,
-                                                    item: widget.item,
-                                                    cubit: widget.cubit,
-                                                    status: 'item_canceled',
-                                                    reason: 'Manually canceled',
-                                                  ),
-                                            );
-                                          },
+                              onPressed:
+                                  widget.item.status ==
+                                          OrderItemStatus.itemNotAvailable
+                                      ? null
+                                      : () => _showNotAvailableDialog(),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.cancel_outlined, size: 20),
+                              label: Text(
+                                AppStrings.canceled,
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.grey,
+                                side: const BorderSide(color: Colors.grey),
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
-                              const SizedBox(height: 12),
-                              // Hold Button
-                              SizedBox(
-                                width: double.infinity,
-                                child: OutlinedButton.icon(
-                                  icon: const Icon(
-                                    Icons.pause_circle_outline,
-                                    size: 20,
-                                  ),
-                                  label: Text(
-                                    'Hold',
-                                    style: TextStyle(fontSize: 14),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.amber,
-                                    side: const BorderSide(color: Colors.amber),
-                                    textStyle: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  onPressed:
-                                      widget.item.status ==
-                                              OrderItemStatus.holded
-                                          ? null
-                                          : () async {
-                                            await widget.cubit.updateItemStatus(
-                                              item: widget.item,
-                                              status: 'holded',
-                                              scannedSku: widget.item.sku ?? '',
-                                              reason: null,
-                                            );
-                                            if (mounted) {
-                                              Navigator.of(context).pop(
-                                                'holded',
-                                              ); // Will trigger reload and switch to On Hold tab
-                                            }
-                                          },
+                              onPressed:
+                                  widget.item.status == OrderItemStatus.canceled
+                                      ? null
+                                      : () => _showCancelDialog(),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(
+                                Icons.pause_circle_outline,
+                                size: 20,
+                              ),
+                              label: Text(
+                                'Hold',
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.amber,
+                                side: const BorderSide(color: Colors.amber),
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
-                            ],
-                          );
-                        } else {
-                          // Horizontal layout for larger screens
-                          return Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  icon: const Icon(
-                                    Icons.remove_circle_outline,
-                                    size: 20,
-                                  ),
-                                  label: Text(
-                                    AppStrings.notAvailable,
-                                    style: TextStyle(fontSize: 14),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.red,
-                                    side: const BorderSide(color: Colors.red),
-                                    textStyle: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  onPressed:
-                                      widget.item.status ==
-                                              OrderItemStatus.itemNotAvailable
-                                          ? null
-                                          : () {
-                                            showDialog(
-                                              context: context,
-                                              builder:
-                                                  (
-                                                    context,
-                                                  ) => ConfirmationDialog(
-                                                    title:
-                                                        'Mark as Not Available',
-                                                    message:
-                                                        'Are you sure you want to mark "${widget.item.name}" as not available?',
-                                                    confirmText:
-                                                        'Mark Not Available',
-                                                    confirmColor: Colors.orange,
-                                                    item: widget.item,
-                                                    cubit: widget.cubit,
-                                                    status:
-                                                        'item_not_available',
-                                                    reason:
-                                                        'Manually marked as not available',
-                                                  ),
-                                            );
-                                          },
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  icon: const Icon(
-                                    Icons.cancel_outlined,
-                                    size: 20,
-                                  ),
-                                  label: Text(
-                                    AppStrings.canceled,
-                                    style: TextStyle(fontSize: 14),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.grey,
-                                    side: const BorderSide(color: Colors.grey),
-                                    textStyle: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  onPressed:
-                                      widget.item.status ==
-                                              OrderItemStatus.canceled
-                                          ? null
-                                          : () {
-                                            showDialog(
-                                              context: context,
-                                              builder:
-                                                  (
-                                                    context,
-                                                  ) => ConfirmationDialog(
-                                                    title: 'Cancel Item',
-                                                    message:
-                                                        'Are you sure you want to cancel "${widget.item.name}"?',
-                                                    confirmText: 'Cancel Item',
-                                                    confirmColor: Colors.grey,
-                                                    item: widget.item,
-                                                    cubit: widget.cubit,
-                                                    status: 'item_canceled',
-                                                    reason: 'Manually canceled',
-                                                  ),
-                                            );
-                                          },
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  icon: const Icon(
-                                    Icons.pause_circle_outline,
-                                    size: 20,
-                                  ),
-                                  label: Text(
-                                    'Hold',
-                                    style: TextStyle(fontSize: 14),
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.amber,
-                                    side: const BorderSide(color: Colors.amber),
-                                    textStyle: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  onPressed:
-                                      widget.item.status ==
-                                              OrderItemStatus.holded
-                                          ? null
-                                          : () async {
-                                            await widget.cubit.updateItemStatus(
-                                              item: widget.item,
-                                              status: 'holded',
-                                              scannedSku: widget.item.sku ?? '',
-                                              reason: null,
-                                            );
-                                            if (mounted) {
-                                              Navigator.of(context).pop(
-                                                'holded',
-                                              ); // Will trigger reload and switch to On Hold tab
-                                            }
-                                          },
-                                ),
-                              ),
-                            ],
-                          );
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                  ],
+                              onPressed:
+                                  widget.item.status == OrderItemStatus.holded
+                                      ? null
+                                      : () => _handleHoldAction(),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                  },
                 ),
-              ),
+                const SizedBox(height: 24),
+              ],
             ),
           ),
-          if (_isLoading)
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: LinearProgressIndicator(minHeight: 4),
-            ),
-        ],
+        ),
       );
     }
   }
 
-  // void _openScanner(BuildContext context) {
-  //   // Show a brief message about scanning
-  //   Fluttertoast.showToast(
-  //     msg: 'Scanning barcode for: ${widget.item.name}',
-  //     toastLength: Toast.LENGTH_SHORT,
-  //     gravity: ToastGravity.CENTER,
-  //     backgroundColor: Colors.blue,
-  //   );
+  // Simplified dialog methods
+  void _showNotAvailableDialog() {
+    showDialog(
+      context: context,
+      builder:
+          (context) => ConfirmationDialog(
+            title: 'Mark as Not Available',
+            message:
+                'Are you sure you want to mark "${widget.item.name}" as not available?',
+            confirmText: 'Mark Not Available',
+            confirmColor: Colors.orange,
+            item: widget.item,
+            cubit: widget.cubit,
+            status: 'item_not_available',
+            reason: 'Manually marked as not available',
+            quantity: _quantity,
+          ),
+    );
+  }
 
-  //   Navigator.push(
-  //     context,
-  //     MaterialPageRoute(
-  //       builder:
-  //           (context) => BarcodeScannerWidget(
-  //             title: 'Scan Barcode',
-  //             subtitle: 'Scan the barcode for ${widget.item.name}',
-  //             onBarcodeScanned:
-  //                 (barcode) => _handleBarcodeScanned(context, barcode),
-  //           ),
-  //     ),
-  //   );
-  // }
+  void _showCancelDialog() {
+    showDialog(
+      context: context,
+      builder:
+          (context) => ConfirmationDialog(
+            title: 'Cancel Item',
+            message: 'Are you sure you want to cancel "${widget.item.name}"?',
+            confirmText: 'Cancel Item',
+            confirmColor: Colors.grey,
+            item: widget.item,
+            cubit: widget.cubit,
+            status: 'canceled',
+            reason: 'Manually canceled',
+            quantity: _quantity,
+          ),
+    );
+  }
+
+  Future<void> _handleHoldAction() async {
+    await widget.cubit.updateItemStatus(
+      item: widget.item,
+      status: 'holded',
+      scannedSku: widget.item.sku ?? '',
+      reason: null,
+      quantity: _quantity,
+    );
+    if (mounted) {
+      Navigator.of(context).pop('holded');
+    }
+  }
 
   String getPriceFromBarcode(String code) {
     String last = code;
@@ -978,23 +1079,23 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
     setState(() => _isProcessing = false);
 
     // Direct API call after barcode scan - no separate submit button needed
-    await _processBarcodeImproved(context, barcode);
+    await _processBarcode(context, barcode);
   }
 
-  Future<void> _processBarcodeImproved(
-    BuildContext context,
-    String barcode,
-  ) async {
-    try {
-      setState(() => _isLoading = true);
+  // Simplified barcode processing - no loading states
+  Future<void> _processBarcode(BuildContext context, String barcode) async {
+    if (widget.item.isProduce) {
+      await _handleProduceItemBarcode(context, barcode);
+      return;
+    }
 
+    try {
       // Get user token
       final userData = await UserStorageService.getUserData();
       final token = userData?.token;
 
       if (token == null) {
         if (!context.mounted) return;
-        setState(() => _isLoading = false);
         Fluttertoast.showToast(
           msg: 'Authentication token not found',
           toastLength: Toast.LENGTH_SHORT,
@@ -1006,409 +1107,19 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
 
       // Call API to scan barcode and get product information
       final apiService = ApiService(HttpClient(), WebSocketClient());
-      log(
-        '🔍 Calling scanBarcodeAndPickItem with barcode: $barcode, token: ${token.substring(0, 10)}..., expected SKU: ${widget.item.sku}',
-      );
-
       final response = await apiService.scanBarcodeAndPickItem(
         barcode,
         token,
         widget.item.sku ?? '',
       );
 
-      log('🔍 API Response received: ${response.data}');
-      log('🔍 Response statusCode: ${response.statusCode}');
-
       if (!context.mounted) return;
-      setState(() => _isLoading = false);
-
-      // Show the improved product dialog with all the information
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder:
-            (dialogContext) => ImprovedProductDialog(
-              responseData: response.data ?? {},
-              item: widget.item,
-              cubit: widget.cubit,
-              parentContext: context,
-              barcode: barcode,
-              preparationId: widget.preparationId,
-              order: widget.order,
-              onCancel: () {
-                setState(() => _isLoading = false);
-              },
-              onSuccess: () {
-                setState(() => _isLoading = false);
-                // Navigate back to item listing page
-                if (mounted) {
-                  Navigator.of(context).pop('updated');
-                }
-              },
-            ),
-      );
-    } catch (e) {
-      log('Error in improved barcode processing: $e');
-      if (!context.mounted) return;
-      setState(() => _isLoading = false);
-
-      Fluttertoast.showToast(
-        msg: 'Error: ${e.toString()}',
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.CENTER,
-        backgroundColor: Colors.red,
-      );
-    }
-  }
-
-  void _showScannedBarcodeDialog(BuildContext context, String scannedBarcode) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.qr_code_scanner, color: Colors.green),
-              SizedBox(width: 8),
-              Text('Barcode Scanned'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Barcode scanned successfully!',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-              ),
-              SizedBox(height: 12),
-              Text(
-                'Scanned Code:',
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              ),
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(12),
-                margin: EdgeInsets.only(top: 4),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: Text(
-                  scannedBarcode,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-              ),
-              SizedBox(height: 16),
-              Text(
-                'You can edit the barcode in the text field below before submitting.',
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                // Clear the text field if user cancels
-                setState(() {
-                  _manualBarcodeController.clear();
-                });
-              },
-              child: Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                // The barcode is already in the text field, user can edit and submit
-                // Focus on the text field for easy editing
-                FocusScope.of(context).requestFocus(FocusNode());
-                Future.delayed(Duration(milliseconds: 100), () {
-                  FocusScope.of(context).requestFocus(FocusNode());
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-              ),
-              child: Text('Continue'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _processBarcode(BuildContext context, String barcode) async {
-    if (widget.item.isProduce) {
-      final dialogContext = context;
-      String produceBarcode = barcode
-          .substring(0, 6)
-          .padRight(barcode.length, '0');
-      String price = getPriceFromBarcode(barcode.substring(barcode.length - 7));
-
-      // Close scanner page first
-      // if (dialogContext.mounted) {
-      //   Navigator.of(
-      //     dialogContext,
-      //     rootNavigator: true,
-      //   ).pop(); // Close scanner screen
-      // }
-      setState(() => _isProcessing = false);
-      setState(() => _isLoading = true);
-
-      try {
-        final userData = await UserStorageService.getUserData();
-        if (!dialogContext.mounted) {
-          setState(() => _isLoading = false);
-          return;
-        }
-        final token = userData?.token;
-        if (token == null) throw Exception('No token');
-
-        final apiService = ApiService(HttpClient(), WebSocketClient());
-        final response = await apiService.scanBarcodeAndPickItem(
-          produceBarcode,
-          token,
-          widget.item.sku ?? '',
-        );
-
-        // if (!dialogContext.mounted) {
-        //   setState(() => _isLoading = false);
-        //   // return;
-        // }
-        setState(() => _isLoading = false);
-
-        if (response.data != null && response.data['match'] == "0") {
-          // Handle price from API response - check for final_price first
-          String displayPrice = price; // Default to extracted price
-          String apiPrice = price; // Default for API call
-
-          // Check if API response has price information
-          if (response.data['final_price'] != null &&
-              response.data['final_price'].toString().isNotEmpty &&
-              response.data['final_price'].toString() != "0.0000") {
-            apiPrice = response.data['final_price'].toString();
-            displayPrice = apiPrice;
-          } else if (response.data['price'] != null &&
-              response.data['price'].toString().isNotEmpty) {
-            apiPrice = response.data['price'].toString();
-            displayPrice = apiPrice;
-          }
-
-          // Show confirmation dialog
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (priceDialogContext) {
-              return AlertDialog(
-                title: Text('Produce Item Found'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('Barcode: $produceBarcode'),
-                    SizedBox(height: 8),
-                    Text('Price: QAR $displayPrice'),
-                    if (response.data['final_price'] != null &&
-                        response.data['price'] != null &&
-                        response.data['final_price'].toString() !=
-                            "0.0000") ...[
-                      SizedBox(height: 4),
-                      Text(
-                        'Base Price: QAR ${response.data['price']}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                          decoration: TextDecoration.lineThrough,
-                        ),
-                      ),
-                      Text(
-                        'Final Price: QAR ${response.data['final_price']}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green[700],
-                        ),
-                      ),
-                    ] else if (response.data['final_price'] != null &&
-                        response.data['final_price'].toString() == "0.0000" &&
-                        response.data['price'] != null) ...[
-                      SizedBox(height: 4),
-                      Text(
-                        'Using Base Price (Final Price is 0)',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.orange[600],
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
-                    SizedBox(height: 16),
-                    Text('Do you want to pick this produce item?'),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(
-                        priceDialogContext,
-                      ).pop(); // Close price dialog
-                    },
-                    child: Text('Cancel'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () async {
-                      Navigator.of(priceDialogContext).pop(); // Close dialog
-
-                      if (!dialogContext.mounted) return;
-
-                      setState(() => _isLoading = true);
-                      try {
-                        final userData = await UserStorageService.getUserData();
-                        if (!dialogContext.mounted) {
-                          setState(() => _isLoading = false);
-                          return;
-                        }
-                        final token = userData?.token;
-                        if (token == null) throw Exception('No token');
-
-                        final success = await widget.cubit.updateItemStatus(
-                          item: widget.item,
-                          status: 'end_picking',
-                          scannedSku: barcode,
-                          reason: '',
-                          priceOverride:
-                              apiPrice, // Use the correct price from API
-                          isProduceOverride: 1,
-                        );
-
-                        if (!dialogContext.mounted) {
-                          setState(() => _isLoading = false);
-                          return;
-                        }
-                        setState(() => _isLoading = false);
-
-                        if (success) {
-                          Fluttertoast.showToast(
-                            msg: 'Produce item picked successfully',
-                            toastLength: Toast.LENGTH_LONG,
-                            gravity: ToastGravity.BOTTOM,
-                            backgroundColor: Colors.green,
-                          );
-                          // if (dialogContext.mounted) {
-                          //   Navigator.of(dialogContext).pop('updated');
-                          // }
-
-                          if (mounted) {
-                            // Navigator.of(context).pop(); // Close dialog
-                            Navigator.of(context).pop(
-                              'updated',
-                            ); // Pop item details page, return to item listing
-                          }
-                        } else {
-                          Fluttertoast.showToast(
-                            msg: 'Failed to update produce item status',
-                            toastLength: Toast.LENGTH_SHORT,
-                            gravity: ToastGravity.BOTTOM,
-                            backgroundColor: Colors.red,
-                          );
-                        }
-                      } catch (e) {
-                        log('Error during updateItemStatus: $e');
-                        setState(() => _isLoading = false);
-                        Fluttertoast.showToast(
-                          msg: 'Error: ${e.toString()}',
-                          toastLength: Toast.LENGTH_SHORT,
-                          gravity: ToastGravity.BOTTOM,
-                          backgroundColor: Colors.red,
-                        );
-                      }
-                    },
-                    child: Text('Confirm'),
-                  ),
-                ],
-              );
-            },
-          );
-        } else {
-          Fluttertoast.showToast(
-            msg: 'Produce barcode not matching',
-            toastLength: Toast.LENGTH_SHORT,
-            gravity: ToastGravity.BOTTOM,
-            backgroundColor: Colors.red,
-          );
-        }
-      } catch (e) {
-        log('Error in barcode processing: $e');
-        setState(() => _isLoading = false);
-        Fluttertoast.showToast(
-          msg: 'Error: ${e.toString()}',
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM,
-          backgroundColor: Colors.red,
-        );
-      }
-      return;
-    }
-
-    try {
-      // Show loading indicator
-      // showDialog(
-      //   context: context,
-      //   barrierDismissible: false,
-      //   builder: (context) => const Center(child: CircularProgressIndicator()),
-      // );
-      setState(() => _isLoading = true);
-
-      // Get user token
-      final userData = await UserStorageService.getUserData();
-      final token = userData?.token;
-
-      if (token == null) {
-        if (!context.mounted) return;
-        // Navigator.pop(context); // Close loading dialog
-        setState(() => _isLoading = false);
-        // Use Fluttertoast instead of ScaffoldMessenger
-        Fluttertoast.showToast(
-          msg: 'Authentication token not found',
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.CENTER,
-          timeInSecForIosWeb: 1,
-          backgroundColor: Colors.red,
-        );
-        return;
-      }
-
-      // Call API to scan barcode and pick item
-      final apiService = ApiService(HttpClient(), WebSocketClient());
-      final response = await apiService.scanBarcodeAndPickItem(
-        barcode,
-        token,
-        widget.item.sku ?? '',
-      );
-
-      // Close loading dialog
-      if (!context.mounted) return;
-      // Navigator.pop(context);
 
       // Check API response
       if (response.data != null && response.data['match'] == "0") {
-        // Close scanner on success
-        // Navigator.pop(context);
-        setState(() => _isProcessing = false);
         // Show product found dialog with pickup button
         _showProductFoundDialog(context, response.data, widget.preparationId);
       } else if (response.data != null && response.data['match'] == "1") {
-        // Close scanner
-        // Navigator.pop(context);
-        setState(() => _isProcessing = false);
-
         // Show product not matching dialog with replace button
         _showProductNotMatchingDialog(
           context,
@@ -1417,36 +1128,172 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
           widget.preparationId,
         );
       } else {
-        // Show error message from API but don't close scanner
+        // Show error message from API
         final errorMessage = response.data?['message'] ?? 'Failed to pick item';
-        // Use Fluttertoast instead of ScaffoldMessenger
         Fluttertoast.showToast(
           msg: errorMessage,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.CENTER,
-          timeInSecForIosWeb: 1,
           backgroundColor: Colors.red,
         );
-
-        // Don't close scanner - let user retry
-        // The scanner will automatically resume after 1 second due to the debounce mechanism
       }
     } catch (e) {
-      // Close loading dialog
       if (!context.mounted) return;
-      Navigator.pop(context);
 
-      // Show error message using Fluttertoast
       Fluttertoast.showToast(
         msg: 'Failed to pick item: ${e.toString()}',
         toastLength: Toast.LENGTH_SHORT,
         gravity: ToastGravity.CENTER,
-        timeInSecForIosWeb: 1,
         backgroundColor: Colors.red,
       );
+    }
+  }
 
-      // Don't close scanner - let user retry
-      // The scanner will automatically resume after 1 second due to the debounce mechanism
+  // Simplified produce item handling
+  Future<void> _handleProduceItemBarcode(
+    BuildContext context,
+    String barcode,
+  ) async {
+    String produceBarcode = barcode
+        .substring(0, 6)
+        .padRight(barcode.length, '0');
+    String price = getPriceFromBarcode(barcode.substring(barcode.length - 7));
+
+    setState(() => _isProcessing = false);
+
+    try {
+      final userData = await UserStorageService.getUserData();
+      if (!context.mounted) return;
+
+      final token = userData?.token;
+      if (token == null) throw Exception('No token');
+
+      log('🔍 Produce item barcode: $produceBarcode');
+
+      final apiService = ApiService(HttpClient(), WebSocketClient());
+      final response = await apiService.scanBarcodeAndPickItem(
+        produceBarcode,
+        token,
+        widget.item.sku ?? '',
+      );
+
+      if (response.data != null && response.data['match'] == "0") {
+        // Handle price from API response
+        String displayPrice = price;
+        String apiPrice = price;
+
+        if (response.data['final_price'] != null &&
+            response.data['final_price'].toString().isNotEmpty &&
+            response.data['final_price'].toString() != "0.0000") {
+          apiPrice = response.data['final_price'].toString();
+          displayPrice = apiPrice;
+        } else if (response.data['price'] != null &&
+            response.data['price'].toString().isNotEmpty) {
+          apiPrice = response.data['price'].toString();
+          displayPrice = apiPrice;
+        }
+
+        // Show confirmation dialog
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (priceDialogContext) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.eco, color: Colors.green),
+                  SizedBox(width: 8),
+                  Text(
+                    'Produce Item Found',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Barcode: $produceBarcode'),
+                  SizedBox(height: 8),
+                  Text('Price: QAR $displayPrice'),
+                  SizedBox(height: 16),
+                  Text('Do you want to pick this produce item?'),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(priceDialogContext).pop(),
+                  child: Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.of(priceDialogContext).pop();
+
+                    if (!context.mounted) return;
+
+                    try {
+                      final success = await widget.cubit.updateItemStatus(
+                        item: widget.item,
+                        status: 'end_picking',
+                        scannedSku: barcode,
+                        reason: '',
+                        priceOverride: apiPrice,
+                        isProduceOverride: 1,
+                        quantity: _quantity,
+                      );
+
+                      if (!context.mounted) return;
+
+                      if (success) {
+                        Fluttertoast.showToast(
+                          msg: 'Produce item picked successfully',
+                          toastLength: Toast.LENGTH_LONG,
+                          gravity: ToastGravity.BOTTOM,
+                          backgroundColor: Colors.green,
+                        );
+
+                        if (mounted) {
+                          Navigator.of(context).pop('updated');
+                        }
+                      } else {
+                        Fluttertoast.showToast(
+                          msg: 'Failed to update produce item status',
+                          toastLength: Toast.LENGTH_SHORT,
+                          gravity: ToastGravity.BOTTOM,
+                          backgroundColor: Colors.red,
+                        );
+                      }
+                    } catch (e) {
+                      log('Error during updateItemStatus: $e');
+                      Fluttertoast.showToast(
+                        msg: 'Error: ${e.toString()}',
+                        toastLength: Toast.LENGTH_SHORT,
+                        gravity: ToastGravity.BOTTOM,
+                        backgroundColor: Colors.red,
+                      );
+                    }
+                  },
+                  child: Text('Confirm'),
+                ),
+              ],
+            );
+          },
+        );
+      } else {
+        Fluttertoast.showToast(
+          msg: 'Produce barcode not matching',
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.red,
+        );
+      }
+    } catch (e) {
+      log('Error in produce barcode processing: $e');
+      Fluttertoast.showToast(
+        msg: 'Error: ${e.toString()}',
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+      );
     }
   }
 
@@ -1462,14 +1309,14 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
       return;
     }
 
-    // Use the same improved process for manual barcode submission
-    await _processBarcodeImproved(context, barcode);
+    // Use the same process for manual barcode submission
+    await _processBarcode(context, barcode);
   }
 
   void _showProductFoundDialog(
     BuildContext context,
     Map<String, dynamic> responseData,
-    int preparationId,
+    String preparationId,
   ) {
     showDialog(
       context: context,
@@ -1481,11 +1328,15 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
           cubit: widget.cubit,
           parentContext: context,
           onCancel: () {
-            setState(() => _isLoading = false);
+            // No loading state needed
           },
           onSuccess: () {
-            setState(() => _isLoading = false);
+            // Navigate back to item listing page
+            if (mounted) {
+              Navigator.of(context).pop('updated');
+            }
           },
+          quantity: _quantity,
         );
       },
     );
@@ -1495,7 +1346,7 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
     BuildContext context,
     Map<String, dynamic> responseData,
     String barcode,
-    int preparationId,
+    String preparationId,
   ) {
     showDialog(
       context: context,
@@ -1507,21 +1358,18 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
           item: widget.item,
           cubit: widget.cubit,
           preparationId: preparationId,
-          order: widget.order, // <-- pass the order here
+          order: widget.order,
           onCancel: () {
-            setState(() => _isLoading = false);
+            // No loading state needed
           },
           onSuccess: () {
-            setState(() => _isLoading = false);
+            // Navigate back to item listing page
+            if (mounted) {
+              Navigator.of(context).pop('updated');
+            }
           },
         );
       },
     );
-  }
-
-  void closeAllDialogs(BuildContext context) {
-    while (Navigator.canPop(context)) {
-      Navigator.of(context, rootNavigator: true).pop();
-    }
   }
 }

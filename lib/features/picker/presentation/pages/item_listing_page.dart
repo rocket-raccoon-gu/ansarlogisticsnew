@@ -20,7 +20,7 @@ class ItemListingPage extends StatefulWidget {
   final OrderDetailsCubit? cubit;
   final String? deliveryType;
   final int? tabIndex;
-  final int preparationId;
+  final String preparationId;
   final String orderNumber;
   final OrderModel order;
 
@@ -53,6 +53,16 @@ class _ItemListingPageState extends State<ItemListingPage> {
     if (widget.deliveryType != null) {
       _selectedDeliveryType = widget.deliveryType;
     }
+
+    // Debug logging for initialization
+    print('🔍 ItemListingPage - initState called:');
+    print('  - widget.deliveryType: ${widget.deliveryType}');
+    print('  - _selectedDeliveryType: $_selectedDeliveryType');
+    print('  - widget.items.length: ${widget.items.length}');
+    print('  - widget.items delivery type breakdown:');
+    for (var item in widget.items) {
+      print('    - ${item.name}: deliveryType = ${item.deliveryType}');
+    }
   }
 
   List<OrderItemModel> _getFilteredItems(List<OrderItemModel> allItems) {
@@ -64,13 +74,34 @@ class _ItemListingPageState extends State<ItemListingPage> {
           filtered
               .where((item) => item.deliveryType == widget.deliveryType)
               .toList();
+      print(
+        '🔍 ItemListingPage - After delivery type filtering: ${filtered.length} items',
+      );
+    }
+
+    // Debug logging for filtering
+    print('🔍 ItemListingPage - _getFilteredItems called:');
+    print('  - _selectedIndex: $_selectedIndex');
+    print('  - widget.deliveryType: ${widget.deliveryType}');
+    print('  - allItems.length: ${allItems.length}');
+    print('  - allItems status breakdown:');
+    for (var item in allItems) {
+      print(
+        '    - ${item.name}: ${item.status} (deliveryType: ${item.deliveryType})',
+      );
     }
 
     switch (_selectedIndex) {
       case 0:
-        return filtered
-            .where((item) => item.status == OrderItemStatus.toPick)
-            .toList();
+        final toPickItems =
+            filtered
+                .where((item) => item.status == OrderItemStatus.toPick)
+                .toList();
+        print('🔍 ItemListingPage - To Pick tab: ${toPickItems.length} items');
+        for (var item in toPickItems) {
+          print('    - ${item.name}: ${item.status}');
+        }
+        return toPickItems;
       case 1:
         return filtered
             .where((item) => item.status == OrderItemStatus.picked)
@@ -188,6 +219,24 @@ class _ItemListingPageState extends State<ItemListingPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Debug logging for items passed to ItemListingPage
+    print('🔍 ItemListingPage - build called:');
+    print('  - widget.items.length: ${widget.items.length}');
+    print('  - widget.deliveryType: ${widget.deliveryType}');
+    print('  - widget.title: ${widget.title}');
+    print('  - widget.order.status: ${widget.order.status}');
+    print('  - widget.cubit != null: ${widget.cubit != null}');
+    print('  - widget.deliveryType: ${widget.deliveryType}');
+    print(
+      '  - Should show FAB: ${widget.cubit != null && widget.order.status == 'start_picking'}',
+    );
+    print('  - widget.items status breakdown:');
+    for (var item in widget.items) {
+      print(
+        '    - ${item.name}: ${item.status} (deliveryType: ${item.deliveryType})',
+      );
+    }
+
     // If we have a cubit, use BlocBuilder to listen for state changes
     if (widget.cubit != null) {
       return BlocBuilder<OrderDetailsCubit, OrderDetailsState>(
@@ -198,33 +247,52 @@ class _ItemListingPageState extends State<ItemListingPage> {
             List<CategoryItemModel> filteredCategories = [];
 
             if (widget.deliveryType != null) {
-              // Filter categories to only include items of the specified delivery type
-              filteredCategories =
-                  state.categories
-                      .map((category) {
-                        // Filter items in this category to only include those matching the delivery type
-                        final filteredItems =
-                            category.items
-                                .where(
-                                  (item) =>
-                                      item.deliveryType == widget.deliveryType,
-                                )
-                                .toList();
+              // Use delivery-type-specific categories based on the delivery type
+              switch (widget.deliveryType) {
+                case 'exp':
+                  filteredCategories = state.expressCategories;
+                  break;
+                case 'nol':
+                  filteredCategories = state.normalCategories;
+                  break;
+                case 'war':
+                  filteredCategories = state.warehouseCategories;
+                  break;
+                case 'sup':
+                  filteredCategories = state.supplierCategories;
+                  break;
+                case 'vpo':
+                  filteredCategories = state.vendorPickupCategories;
+                  break;
+                case 'aby':
+                  filteredCategories = state.abayaCategories;
+                  break;
+                default:
+                  // Fallback to filtering general categories
+                  filteredCategories =
+                      state.categories
+                          .map((category) {
+                            final filteredItems =
+                                category.items
+                                    .where(
+                                      (item) =>
+                                          item.deliveryType ==
+                                          widget.deliveryType,
+                                    )
+                                    .toList();
 
-                        return CategoryItemModel(
-                          category: category.category,
-                          items: filteredItems,
-                        );
-                      })
-                      .where((category) => category.items.isNotEmpty)
-                      .toList();
+                            return CategoryItemModel(
+                              category: category.category,
+                              items: filteredItems,
+                            );
+                          })
+                          .where((category) => category.items.isNotEmpty)
+                          .toList();
+              }
 
               // Debug logging for category filtering
               print(
                 '🔍 ItemListingPage - Delivery Type: ${widget.deliveryType}',
-              );
-              print(
-                '🔍 ItemListingPage - Original categories: ${state.categories.length}',
               );
               print(
                 '🔍 ItemListingPage - Filtered categories: ${filteredCategories.length}',
@@ -249,12 +317,15 @@ class _ItemListingPageState extends State<ItemListingPage> {
 
             return Scaffold(
               appBar: AppBar(
-                title: Text(widget.title ?? 'Items'),
+                title: Text(
+                  widget.preparationId,
+                  style: TextStyle(fontSize: 14),
+                ),
                 actions: [
                   TextButton.icon(
                     icon: Icon(Icons.cancel_schedule_send, color: Colors.red),
                     label: Text(
-                      'Cancel Request',
+                      'Cancel Req',
                       style: TextStyle(
                         color: Colors.red,
                         fontWeight: FontWeight.bold,
@@ -291,9 +362,33 @@ class _ItemListingPageState extends State<ItemListingPage> {
                       );
                       if (confirmed == true) {
                         try {
-                          await widget.cubit!.cancelOrder(
-                            orderNumber: widget.orderNumber,
-                          );
+                          if (widget.cubit != null) {
+                            log(
+                              '🔍 ItemListingPage - cubit: ${widget.deliveryType}',
+                            );
+
+                            String modifiedOrderNumber = widget.orderNumber;
+
+                            // Check if order number starts with PREN
+                            if (widget.orderNumber.startsWith('PREN')) {
+                              // Modify order number based on delivery type
+                              if (widget.deliveryType == 'exp') {
+                                // Replace PREN with PREXP for express orders
+                                modifiedOrderNumber = widget.orderNumber
+                                    .replaceFirst('PREN', 'PREXP');
+                              } else if (widget.deliveryType == 'nol') {
+                                // Replace PREN with PRNOL for normal orders
+                                modifiedOrderNumber = widget.orderNumber
+                                    .replaceFirst('PREN', 'PRNOL');
+                              }
+                              // For other delivery types, keep the original PREN
+                            }
+                            // If order number doesn't start with PREN, use original order number
+
+                            await widget.cubit!.cancelOrder(
+                              orderNumber: modifiedOrderNumber,
+                            );
+                          }
                           if (mounted) {
                             // Show toast
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -310,6 +405,7 @@ class _ItemListingPageState extends State<ItemListingPage> {
                                     builder:
                                         (context) => OrderDetailsPage(
                                           order: widget.order,
+                                          existingCubit: widget.cubit,
                                         ),
                                   ),
                                 )
@@ -343,13 +439,19 @@ class _ItemListingPageState extends State<ItemListingPage> {
                         preparationId: widget.preparationId,
                         order: widget.order,
                       ),
-              floatingActionButton: FloatingActionButton.extended(
-                onPressed:
-                    () => _showAddItemSheet(widget.cubit!, widget.orderNumber),
-                icon: const Icon(Icons.add),
-                label: const Text('Add Item'),
-                backgroundColor: Colors.blue,
-              ),
+              floatingActionButton:
+                  widget.cubit != null && widget.order.status == 'start_picking'
+                      ? FloatingActionButton.extended(
+                        onPressed:
+                            () => _showAddItemSheet(
+                              widget.cubit!,
+                              widget.orderNumber,
+                            ),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Add Item'),
+                        backgroundColor: Colors.blue,
+                      )
+                      : null,
               bottomNavigationBar: BottomNavigationBar(
                 currentIndex: _selectedIndex,
                 onTap: (index) {
@@ -399,8 +501,121 @@ class _ItemListingPageState extends State<ItemListingPage> {
   }
 
   Widget _buildScaffoldWithItems(List<OrderItemModel> filteredItems) {
+    // Debug logging for fallback scaffold
+    print('🔍 ItemListingPage - _buildScaffoldWithItems called:');
+    print('  - widget.order.status: ${widget.order.status}');
+    print('  - widget.cubit != null: ${widget.cubit != null}');
+    print(
+      '  - Should show FAB: ${widget.cubit != null && widget.order.status == 'start_picking'}',
+    );
+
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title ?? 'Items')),
+      appBar: AppBar(
+        title: Text(
+          "#${widget.preparationId}",
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          TextButton.icon(
+            icon: Icon(Icons.cancel_schedule_send, color: Colors.red),
+            label: Text(
+              'Cancel Req',
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder:
+                    (context) => AlertDialog(
+                      title: Text('Cancel Request'),
+                      content: Text(
+                        'Are you sure you want to send a cancel request for this order?',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context, false);
+                            log(widget.orderNumber);
+                          },
+                          child: Text('No'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: Text('Yes'),
+                        ),
+                      ],
+                    ),
+              );
+              if (confirmed == true) {
+                try {
+                  if (widget.cubit != null) {
+                    String modifiedOrderNumber = widget.orderNumber;
+
+                    // Check if order number starts with PREN
+                    if (widget.orderNumber.startsWith('PREN')) {
+                      // Modify order number based on delivery type
+                      if (widget.deliveryType == 'exp') {
+                        // Replace PREN with PREXP for express orders
+                        modifiedOrderNumber = widget.orderNumber.replaceFirst(
+                          'PREN',
+                          'PREXP',
+                        );
+                      } else if (widget.deliveryType == 'nol') {
+                        // Replace PREN with PRNOL for normal orders
+                        modifiedOrderNumber = widget.orderNumber.replaceFirst(
+                          'PREN',
+                          'PRNOL',
+                        );
+                      }
+                      // For other delivery types, keep the original PREN
+                    }
+                    // If order number doesn't start with PREN, use original order number
+
+                    await widget.cubit!.cancelOrder(
+                      orderNumber: modifiedOrderNumber,
+                    );
+                  }
+                  if (mounted) {
+                    // Show toast
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Cancel request sent successfully.'),
+                      ),
+                    );
+                    // Navigate to OrderDetailsPage and on pop, go to PickerOrdersPage
+                    Navigator.of(context)
+                        .push(
+                          MaterialPageRoute(
+                            builder:
+                                (context) => OrderDetailsPage(
+                                  order: widget.order,
+                                  existingCubit: widget.cubit,
+                                ),
+                          ),
+                        )
+                        .then((_) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                              builder: (context) => const MainNavigationPage(),
+                            ),
+                            (route) => false,
+                          );
+                        });
+                  }
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: ${e.toString()}')),
+                  );
+                }
+              }
+            },
+          ),
+        ],
+      ),
       body:
           filteredItems.isEmpty
               ? Center(child: Text(_emptyText))
@@ -409,10 +624,8 @@ class _ItemListingPageState extends State<ItemListingPage> {
                 itemCount: filteredItems.length,
                 itemBuilder: (context, index) {
                   final item = filteredItems[index];
-                  final int prepId =
-                      widget.cubit!.orderId is int
-                          ? widget.cubit!.orderId as int
-                          : int.tryParse(widget.cubit!.orderId.toString()) ?? 0;
+                  final String prepId =
+                      widget.cubit?.orderId.toString() ?? widget.preparationId;
                   return OrderItemTile(
                     item: item,
                     onTap: () {
@@ -423,12 +636,16 @@ class _ItemListingPageState extends State<ItemListingPage> {
                   );
                 },
               ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddItemSheet(widget.cubit!, widget.orderNumber),
-        icon: const Icon(Icons.add),
-        label: const Text('Add Item'),
-        backgroundColor: Colors.blue,
-      ),
+      floatingActionButton:
+          widget.cubit != null && widget.order.status == 'start_picking'
+              ? FloatingActionButton.extended(
+                onPressed:
+                    () => _showAddItemSheet(widget.cubit!, widget.orderNumber),
+                icon: const Icon(Icons.add),
+                label: const Text('Add Item'),
+                backgroundColor: Colors.blue,
+              )
+              : null,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
@@ -482,58 +699,60 @@ class _ItemListingPageState extends State<ItemListingPage> {
   void _handleOrderItemTap(
     BuildContext context,
     OrderItemModel item,
-    int prepId,
+    String prepId,
   ) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder:
-            (context) => OrderItemDetailsPage(
-              item: item,
-              cubit: widget.cubit!,
-              preparationId: prepId,
-              order: widget.order, // <-- pass the order here
-            ),
-      ),
-    );
-    if (result == 'updated' ||
-        result == 'added' ||
-        result == 'replaced' ||
-        result == 'holded') {
-      await widget.cubit!.reloadItemsFromApi();
-      setState(() {
-        if (result == 'added' || result == 'replaced') {
-          _selectedIndex = 1; // Switch to Picked tab
-        }
-        if (result == 'holded') {
-          _selectedIndex = 2; // Switch to On Hold tab
-        }
-      });
+    if (widget.cubit != null) {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder:
+              (context) => OrderItemDetailsPage(
+                item: item,
+                cubit: widget.cubit!,
+                preparationId: prepId,
+                order: widget.order, // <-- pass the order here
+              ),
+        ),
+      );
+      if (result == 'updated' ||
+          result == 'added' ||
+          result == 'replaced' ||
+          result == 'holded') {
+        await widget.cubit!.reloadItemsFromApi();
+        setState(() {
+          if (result == 'added' || result == 'replaced') {
+            _selectedIndex = 1; // Switch to Picked tab
+          }
+          if (result == 'holded') {
+            _selectedIndex = 2; // Switch to On Hold tab
+          }
+        });
 
-      // Show success message for price updates
-      if (result == 'updated') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white, size: 20),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Item updated successfully! Price changes are reflected in the picked items.',
+        // Show success message for price updates
+        if (result == 'updated') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white, size: 20),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Item updated successfully! Price changes are reflected in the picked items.',
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
+              backgroundColor: Colors.green[600],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              margin: EdgeInsets.all(16),
+              duration: Duration(seconds: 3),
             ),
-            backgroundColor: Colors.green[600],
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            margin: EdgeInsets.all(16),
-            duration: Duration(seconds: 3),
-          ),
-        );
+          );
+        }
       }
     }
   }

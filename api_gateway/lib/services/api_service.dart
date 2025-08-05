@@ -190,7 +190,7 @@ class ApiService {
 
   Future<dynamic> updateOrderStatus(
     String status,
-    int preparationId,
+    String preparationId,
     String token, {
     String? orderNumber,
     String? cancelReason,
@@ -352,7 +352,7 @@ class ApiService {
     required String status,
     required String price,
     required String qty,
-    required int preparationId,
+    required String preparationId,
     required int isProduce,
     String? reason,
     required String token,

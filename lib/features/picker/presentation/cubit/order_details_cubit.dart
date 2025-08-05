@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:api_gateway/services/api_service.dart';
@@ -21,35 +23,60 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
     // If we have cached data, show it immediately
     if (_cachedOrderDetails != null) {
       final allItems = _cachedOrderDetails!.allItems;
-      emit(
-        OrderDetailsLoaded(
-          toPick:
-              allItems
-                  .where((item) => item.status == OrderItemStatus.toPick)
-                  .toList(),
-          picked:
-              allItems
-                  .where((item) => item.status == OrderItemStatus.picked)
-                  .toList(),
-          canceled:
-              allItems
-                  .where((item) => item.status == OrderItemStatus.canceled)
-                  .toList(),
-          notAvailable:
-              allItems
-                  .where(
-                    (item) => item.status == OrderItemStatus.itemNotAvailable,
-                  )
-                  .toList(),
-          categories: _cachedOrderDetails!.categories,
-          preparationLabel: _cachedOrderDetails!.preparationLabel,
-          deliveryNote: _cachedOrderDetails!.deliveryNote,
-          expressItems: _cachedOrderDetails!.expressItems,
-          normalItems: _cachedOrderDetails!.normalItems,
-          expressCategories: _cachedOrderDetails!.expressCategories,
-          normalCategories: _cachedOrderDetails!.normalCategories,
-        ),
-      );
+      if (!isClosed) {
+        print('🔍 OrderDetailsCubit - Using cached data:');
+        print(
+          '  - Cached EXP Status: ${_cachedOrderDetails!.subgroupDetails.firstWhere((item) => item['subgroup_identifier'].startsWith('EXP-'), orElse: () => null)['status']}',
+        );
+        print(
+          '  - Cached NOL Status: ${_cachedOrderDetails!.subgroupDetails.firstWhere((item) => item['subgroup_identifier'].startsWith('NOL-'), orElse: () => null)['status']}',
+        );
+
+        emit(
+          OrderDetailsLoaded(
+            toPick:
+                allItems
+                    .where((item) => item.status == OrderItemStatus.toPick)
+                    .toList(),
+            picked:
+                allItems
+                    .where((item) => item.status == OrderItemStatus.picked)
+                    .toList(),
+            canceled:
+                allItems
+                    .where((item) => item.status == OrderItemStatus.canceled)
+                    .toList(),
+            notAvailable:
+                allItems
+                    .where(
+                      (item) => item.status == OrderItemStatus.itemNotAvailable,
+                    )
+                    .toList(),
+            categories: _cachedOrderDetails!.categories,
+            preparationLabel: _cachedOrderDetails!.preparationLabel,
+            deliveryNote: _cachedOrderDetails!.deliveryNote,
+            expressItems: _cachedOrderDetails!.expressItems,
+            normalItems: _cachedOrderDetails!.normalItems,
+            warehouseItems: _cachedOrderDetails!.warehouseItems,
+            supplierItems: _cachedOrderDetails!.supplierItems,
+            vendorPickupItems: _cachedOrderDetails!.vendorPickupItems,
+            abayaItems: _cachedOrderDetails!.abayaItems,
+            expressCategories: _cachedOrderDetails!.expressCategories,
+            normalCategories: _cachedOrderDetails!.normalCategories,
+            warehouseCategories: _cachedOrderDetails!.warehouseCategories,
+            supplierCategories: _cachedOrderDetails!.supplierCategories,
+            vendorPickupCategories: _cachedOrderDetails!.vendorPickupCategories,
+            abayaCategories: _cachedOrderDetails!.abayaCategories,
+            expStatus: _getExpStatus(_cachedOrderDetails!.subgroupDetails),
+            nolStatus: _getNolStatus(_cachedOrderDetails!.subgroupDetails),
+            warStatus: _getWarStatus(_cachedOrderDetails!.subgroupDetails),
+            supStatus: _getSupStatus(_cachedOrderDetails!.subgroupDetails),
+            vpoStatus: _getVpoStatus(_cachedOrderDetails!.subgroupDetails),
+            abyStatus: _getAbyStatus(_cachedOrderDetails!.subgroupDetails),
+            paymentMethod: _cachedOrderDetails!.paymentMethod,
+          ),
+        );
+      }
     } else {
       if (!isClosed) {
         emit(OrderDetailsLoading(preparationId: _parseOrderId(orderId)));
@@ -107,8 +134,23 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
               deliveryNote: orderDetails.deliveryNote,
               expressItems: orderDetails.expressItems,
               normalItems: orderDetails.normalItems,
+              warehouseItems: orderDetails.warehouseItems,
+              supplierItems: orderDetails.supplierItems,
+              vendorPickupItems: orderDetails.vendorPickupItems,
+              abayaItems: orderDetails.abayaItems,
               expressCategories: orderDetails.expressCategories,
               normalCategories: orderDetails.normalCategories,
+              warehouseCategories: orderDetails.warehouseCategories,
+              supplierCategories: orderDetails.supplierCategories,
+              vendorPickupCategories: orderDetails.vendorPickupCategories,
+              abayaCategories: orderDetails.abayaCategories,
+              expStatus: _getExpStatus(orderDetails.subgroupDetails),
+              nolStatus: _getNolStatus(orderDetails.subgroupDetails),
+              warStatus: _getWarStatus(orderDetails.subgroupDetails),
+              supStatus: _getSupStatus(orderDetails.subgroupDetails),
+              vpoStatus: _getVpoStatus(orderDetails.subgroupDetails),
+              abyStatus: _getAbyStatus(orderDetails.subgroupDetails),
+              paymentMethod: orderDetails.paymentMethod,
             ),
           );
         }
@@ -125,6 +167,8 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
         );
         print('  - Total picked: ${picked.length}');
         print('  - Total toPick: ${toPick.length}');
+        // print('  - EXP Status: ${orderDetails.expStatus}');
+        // print('  - NOL Status: ${orderDetails.nolStatus}');
       } else {
         if (!isClosed) {
           emit(OrderDetailsError('No data received from server'));
@@ -132,6 +176,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
       }
     } catch (e) {
       if (!isClosed) {
+        log('🔍 OrderDetailsCubit - Error: $e');
         emit(OrderDetailsError(e.toString()));
       }
     }
@@ -141,6 +186,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
     required OrderItemModel item,
     required String status,
     required String scannedSku,
+    required int quantity,
     String? reason,
     String? priceOverride,
     int? isProduceOverride,
@@ -162,7 +208,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
         status: status,
         price: priceOverride ?? (item.price ?? 0.0).toString(),
         qty: item.quantity.toString(),
-        preparationId: int.parse(orderId),
+        preparationId: orderId,
         isProduce: isProduceOverride ?? (item.isProduce ? 1 : 0),
         reason: reason,
         token: token,
@@ -226,22 +272,30 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
   }
 
   void markPicked(OrderItemModel item) {
-    item.status = OrderItemStatus.picked;
+    // Create updated item with new status
+    final updatedItem = item.copyWith(status: OrderItemStatus.picked);
+    _updateItemInLists(item, updatedItem);
     updateState();
   }
 
   void markOutOfStock(OrderItemModel item) {
-    item.status = OrderItemStatus.itemNotAvailable;
+    // Create updated item with new status
+    final updatedItem = item.copyWith(status: OrderItemStatus.itemNotAvailable);
+    _updateItemInLists(item, updatedItem);
     updateState();
   }
 
   void markCanceled(OrderItemModel item) {
-    item.status = OrderItemStatus.canceled;
+    // Create updated item with new status
+    final updatedItem = item.copyWith(status: OrderItemStatus.canceled);
+    _updateItemInLists(item, updatedItem);
     updateState();
   }
 
   void updateQuantity(OrderItemModel item, int newQuantity) {
-    item.quantity = newQuantity;
+    // Create updated item with new quantity
+    final updatedItem = item.copyWith(quantity: newQuantity);
+    _updateItemInLists(item, updatedItem);
     updateState();
   }
 
@@ -258,10 +312,14 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
         ...currentState.notAvailable,
       ]) {
         if (notAvailableBarcode != null && item.sku == notAvailableBarcode) {
-          item.status = OrderItemStatus.itemNotAvailable;
+          final updatedItem = item.copyWith(
+            status: OrderItemStatus.itemNotAvailable,
+          );
+          _updateItemInLists(item, updatedItem);
         }
         if (pickedBarcode != null && item.sku == pickedBarcode) {
-          item.status = OrderItemStatus.picked;
+          final updatedItem = item.copyWith(status: OrderItemStatus.picked);
+          _updateItemInLists(item, updatedItem);
         }
       }
       updateState();
@@ -270,6 +328,57 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
 
   // Helper method to update an item in all lists
   void _updateItemInLists(OrderItemModel oldItem, OrderItemModel newItem) {
+    // Update the cached order details first
+    if (_cachedOrderDetails != null) {
+      // Create new delivery type groups with updated items
+      List<DeliveryTypeGroup> updatedDeliveryTypeGroups = [];
+
+      for (var group in _cachedOrderDetails!.deliveryTypeGroups) {
+        List<CategoryItemModel> updatedCategories = [];
+
+        for (var category in group.categories) {
+          List<OrderItemModel> updatedItems = [];
+
+          for (var item in category.items) {
+            if (item.id == oldItem.id) {
+              updatedItems.add(newItem);
+              print(
+                '🔍 OrderDetailsCubit - Updated item in category ${category.category}: ${newItem.name} -> Status: ${newItem.status}',
+              );
+            } else {
+              updatedItems.add(item);
+            }
+          }
+
+          updatedCategories.add(
+            CategoryItemModel(category: category.category, items: updatedItems),
+          );
+        }
+
+        updatedDeliveryTypeGroups.add(
+          DeliveryTypeGroup(
+            deliveryType: group.deliveryType,
+            categories: updatedCategories,
+          ),
+        );
+      }
+
+      // Update the cached order details with new delivery type groups
+      _cachedOrderDetails = OrderDetailsModel(
+        preparationLabel: _cachedOrderDetails!.preparationLabel,
+        status: _cachedOrderDetails!.status,
+        createdAt: _cachedOrderDetails!.createdAt,
+        subgroupIdentifier: _cachedOrderDetails!.subgroupIdentifier,
+        deliveryTypeGroups: updatedDeliveryTypeGroups,
+        deliveryNote: _cachedOrderDetails!.deliveryNote,
+        subgroupDetails: _cachedOrderDetails!.subgroupDetails,
+      );
+
+      print(
+        '🔍 OrderDetailsCubit - Updated cached order details with new item: ${newItem.name} -> Status: ${newItem.status}',
+      );
+    }
+
     final currentState = state;
     if (currentState is OrderDetailsLoaded) {
       // Update item in toPick list
@@ -327,8 +436,23 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
             deliveryNote: currentState.deliveryNote,
             expressItems: currentState.expressItems,
             normalItems: currentState.normalItems,
+            warehouseItems: currentState.warehouseItems,
+            supplierItems: currentState.supplierItems,
+            vendorPickupItems: currentState.vendorPickupItems,
+            abayaItems: currentState.abayaItems,
             expressCategories: currentState.expressCategories,
             normalCategories: currentState.normalCategories,
+            warehouseCategories: currentState.warehouseCategories,
+            supplierCategories: currentState.supplierCategories,
+            vendorPickupCategories: currentState.vendorPickupCategories,
+            abayaCategories: currentState.abayaCategories,
+            expStatus: currentState.expStatus,
+            nolStatus: currentState.nolStatus,
+            warStatus: currentState.warStatus,
+            supStatus: currentState.supStatus,
+            vpoStatus: currentState.vpoStatus,
+            abyStatus: currentState.abyStatus,
+            paymentMethod: currentState.paymentMethod,
           ),
         );
       }
@@ -336,16 +460,21 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
   }
 
   void updateState() {
+    print('🔍 OrderDetailsCubit - updateState() called');
     final currentState = state;
-    if (currentState is OrderDetailsLoaded) {
-      // Re-categorize items based on their current status
-      final allItems = [
-        ...currentState.toPick,
-        ...currentState.picked,
-        ...currentState.canceled,
-        ...currentState.notAvailable,
-      ];
+    if (currentState is OrderDetailsLoaded && _cachedOrderDetails != null) {
+      // Use cached order details to get the current state of all items
+      final allItems = _cachedOrderDetails!.allItems;
 
+      // Debug logging for updateState
+      print('🔍 OrderDetailsCubit - updateState called:');
+      print('  - Total items in cache: ${allItems.length}');
+      print('  - Items by status:');
+      for (var item in allItems) {
+        print('    - ${item.name}: ${item.status} (ID: ${item.id})');
+      }
+
+      // Re-categorize items based on their current status
       final toPick =
           allItems
               .where((item) => item.status == OrderItemStatus.toPick)
@@ -363,6 +492,12 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
               .where((item) => item.status == OrderItemStatus.itemNotAvailable)
               .toList();
 
+      print('🔍 OrderDetailsCubit - Re-categorized items:');
+      print('  - toPick: ${toPick.length}');
+      print('  - picked: ${picked.length}');
+      print('  - canceled: ${canceled.length}');
+      print('  - notAvailable: ${notAvailable.length}');
+
       if (!isClosed) {
         emit(
           OrderDetailsLoaded(
@@ -370,16 +505,36 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
             picked: picked,
             canceled: canceled,
             notAvailable: notAvailable,
-            categories: currentState.categories,
-            preparationLabel: currentState.preparationLabel,
-            deliveryNote: currentState.deliveryNote,
-            expressItems: currentState.expressItems,
-            normalItems: currentState.normalItems,
-            expressCategories: currentState.expressCategories,
-            normalCategories: currentState.normalCategories,
+            categories: _cachedOrderDetails!.categories,
+            preparationLabel: _cachedOrderDetails!.preparationLabel,
+            deliveryNote: _cachedOrderDetails!.deliveryNote,
+            expressItems: _cachedOrderDetails!.expressItems,
+            normalItems: _cachedOrderDetails!.normalItems,
+            warehouseItems: _cachedOrderDetails!.warehouseItems,
+            supplierItems: _cachedOrderDetails!.supplierItems,
+            vendorPickupItems: _cachedOrderDetails!.vendorPickupItems,
+            abayaItems: _cachedOrderDetails!.abayaItems,
+            expressCategories: _cachedOrderDetails!.expressCategories,
+            normalCategories: _cachedOrderDetails!.normalCategories,
+            warehouseCategories: _cachedOrderDetails!.warehouseCategories,
+            supplierCategories: _cachedOrderDetails!.supplierCategories,
+            vendorPickupCategories: _cachedOrderDetails!.vendorPickupCategories,
+            abayaCategories: _cachedOrderDetails!.abayaCategories,
+            expStatus: _getExpStatus(_cachedOrderDetails!.subgroupDetails),
+            nolStatus: _getNolStatus(_cachedOrderDetails!.subgroupDetails),
+            warStatus: _getWarStatus(_cachedOrderDetails!.subgroupDetails),
+            supStatus: _getSupStatus(_cachedOrderDetails!.subgroupDetails),
+            vpoStatus: _getVpoStatus(_cachedOrderDetails!.subgroupDetails),
+            abyStatus: _getAbyStatus(_cachedOrderDetails!.subgroupDetails),
+            paymentMethod: _cachedOrderDetails!.paymentMethod,
           ),
         );
+        print('🔍 OrderDetailsCubit - New state emitted');
       }
+    } else {
+      print(
+        '🔍 OrderDetailsCubit - updateState: No cached order details or invalid state',
+      );
     }
   }
 
@@ -399,13 +554,15 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
       final token = userData?.token;
 
       if (token == null) {
-        emit(OrderDetailsError('No authentication token found'));
+        if (!isClosed) {
+          emit(OrderDetailsError('No authentication token found'));
+        }
         return;
       }
 
       final response = await apiService.updateOrderStatus(
         'cancel_request',
-        int.parse(orderId),
+        orderId,
         token,
         orderNumber: orderNumber,
         cancelReason: cancelReason,
@@ -414,13 +571,19 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
       print('🔍 Cancel order API response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        emit(OrderDetailsError('Order canceled successfully'));
+        if (!isClosed) {
+          emit(OrderDetailsError('Order canceled successfully'));
+        }
       } else {
-        emit(OrderDetailsError('Failed to cancel order'));
+        if (!isClosed) {
+          emit(OrderDetailsError('Failed to cancel order'));
+        }
       }
     } catch (e) {
       print('❌ Error canceling order: $e');
-      emit(OrderDetailsError(e.toString()));
+      if (!isClosed) {
+        emit(OrderDetailsError(e.toString()));
+      }
     }
   }
 
@@ -430,24 +593,78 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
       final token = userData?.token;
 
       if (token == null) {
-        emit(OrderDetailsError('No authentication token found'));
+        if (!isClosed) {
+          emit(OrderDetailsError('No authentication token found'));
+        }
         return;
       }
 
       final response = await apiService.updateOrderStatus(
         'end_picking',
-        int.parse(orderId),
+        orderId,
         token,
         orderNumber: orderNumber,
       );
 
       if (response.statusCode == 200) {
-        emit(OrderDetailsError('Picking ended successfully'));
+        if (!isClosed) {
+          emit(OrderDetailsError('Picking ended successfully'));
+        }
       } else {
-        emit(OrderDetailsError('Failed to end picking'));
+        if (!isClosed) {
+          emit(OrderDetailsError('Failed to end picking'));
+        }
       }
     } catch (e) {
-      emit(OrderDetailsError(e.toString()));
+      if (!isClosed) {
+        emit(OrderDetailsError(e.toString()));
+      }
+    }
+  }
+
+  Future<void> updateOrderStatus({
+    required String status,
+    String? reason,
+  }) async {
+    try {
+      print('🔍 Updating order status to: $status with reason: $reason');
+
+      final userData = await UserStorageService.getUserData();
+      final token = userData?.token;
+
+      if (token == null) {
+        if (!isClosed) {
+          emit(OrderDetailsError('No authentication token found'));
+        }
+        return;
+      }
+
+      final response = await apiService.updateOrderStatus(
+        status,
+        orderId,
+        token,
+        orderNumber: '',
+        cancelReason: reason,
+      );
+
+      print('🔍 Update order status API response: ${response.statusCode}');
+
+      log('🔍 Update order status API response: ${response.body}');
+
+      if (response.statusCode == 200) {
+        if (!isClosed) {
+          emit(OrderDetailsError('Order status updated successfully'));
+        }
+      } else {
+        if (!isClosed) {
+          emit(OrderDetailsError('Failed to update order status'));
+        }
+      }
+    } catch (e) {
+      print('❌ Error updating order status: $e');
+      if (!isClosed) {
+        emit(OrderDetailsError(e.toString()));
+      }
     }
   }
 
@@ -457,6 +674,102 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
     } catch (e) {
       // Fallback to 0 if parsing fails
       return 0;
+    }
+  }
+
+  // Helper method to safely get EXP status
+  String? _getExpStatus(List<dynamic> subgroupDetails) {
+    try {
+      final expItem = subgroupDetails.firstWhere(
+        (item) => (item as Map<String, dynamic>)['subgroup_identifier']
+            .startsWith('EXP-'),
+        orElse: () => <String, dynamic>{},
+      );
+      return expItem.isNotEmpty
+          ? (expItem as Map<String, dynamic>)['status']
+          : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Helper method to safely get NOL status
+  String? _getNolStatus(List<dynamic> subgroupDetails) {
+    try {
+      final nolItem = subgroupDetails.firstWhere(
+        (item) => (item as Map<String, dynamic>)['subgroup_identifier']
+            .startsWith('NOL-'),
+        orElse: () => <String, dynamic>{},
+      );
+      return nolItem.isNotEmpty
+          ? (nolItem as Map<String, dynamic>)['status']
+          : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Helper method to safely get WAR status
+  String? _getWarStatus(List<dynamic> subgroupDetails) {
+    try {
+      final warItem = subgroupDetails.firstWhere(
+        (item) => (item as Map<String, dynamic>)['subgroup_identifier']
+            .startsWith('WAR-'),
+        orElse: () => <String, dynamic>{},
+      );
+      return warItem.isNotEmpty
+          ? (warItem as Map<String, dynamic>)['status']
+          : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Helper method to safely get SUP status
+  String? _getSupStatus(List<dynamic> subgroupDetails) {
+    try {
+      final supItem = subgroupDetails.firstWhere(
+        (item) => (item as Map<String, dynamic>)['subgroup_identifier']
+            .startsWith('SUP-'),
+        orElse: () => <String, dynamic>{},
+      );
+      return supItem.isNotEmpty
+          ? (supItem as Map<String, dynamic>)['status']
+          : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Helper method to safely get VPO status
+  String? _getVpoStatus(List<dynamic> subgroupDetails) {
+    try {
+      final vpoItem = subgroupDetails.firstWhere(
+        (item) => (item as Map<String, dynamic>)['subgroup_identifier']
+            .startsWith('VPO-'),
+        orElse: () => <String, dynamic>{},
+      );
+      return vpoItem.isNotEmpty
+          ? (vpoItem as Map<String, dynamic>)['status']
+          : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Helper method to safely get ABY status
+  String? _getAbyStatus(List<dynamic> subgroupDetails) {
+    try {
+      final abyItem = subgroupDetails.firstWhere(
+        (item) => (item as Map<String, dynamic>)['subgroup_identifier']
+            .startsWith('ABY-'),
+        orElse: () => <String, dynamic>{},
+      );
+      return abyItem.isNotEmpty
+          ? (abyItem as Map<String, dynamic>)['status']
+          : null;
+    } catch (e) {
+      return null;
     }
   }
 }

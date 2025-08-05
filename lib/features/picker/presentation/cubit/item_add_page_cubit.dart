@@ -19,14 +19,16 @@ class ItemAddPageCubit extends Cubit<ItemAddPageState> {
     String reason,
     String price,
     String qty,
-    int preparationId,
+    String preparationId,
     int isProduce,
     int productId,
     String productName,
     String orderNumber,
   ) async {
     try {
-      emit(ItemAddPageLoading());
+      if (!isClosed) {
+        emit(ItemAddPageLoading());
+      }
       final userData = await UserStorageService.getUserData();
       final token = userData?.token;
       final apiService = ApiService(HttpClient(), WebSocketClient());
@@ -36,7 +38,7 @@ class ItemAddPageCubit extends Cubit<ItemAddPageState> {
         status: "new",
         price: price,
         qty: qty,
-        preparationId: preparationId,
+        preparationId: preparationId.toString(),
         isProduce: isProduce,
         token: token!,
         productId: productId,
@@ -44,21 +46,31 @@ class ItemAddPageCubit extends Cubit<ItemAddPageState> {
         orderNumber: orderNumber,
       );
       if (response.statusCode == 200) {
-        emit(ItemAddPageSuccess());
+        if (!isClosed) {
+          emit(ItemAddPageSuccess());
+        }
       } else {
-        emit(ItemAddPageError('Failed to add item'));
+        if (!isClosed) {
+          emit(ItemAddPageError('Failed to add item'));
+        }
       }
     } catch (e) {
-      emit(ItemAddPageError('An error occurred'));
+      if (!isClosed) {
+        emit(ItemAddPageError('An error occurred'));
+      }
     }
   }
 
   void showError(String message) {
-    emit(ItemAddPageError(message));
+    if (!isClosed) {
+      emit(ItemAddPageError(message));
+    }
   }
 
   Future<void> scanBarcode(String barcode) async {
-    emit(ItemAddPageLoading());
+    if (!isClosed) {
+      emit(ItemAddPageLoading());
+    }
     final userData = await UserStorageService.getUserData();
     final token = userData?.token;
     final apiService = ApiService(HttpClient(), WebSocketClient());
@@ -66,15 +78,25 @@ class ItemAddPageCubit extends Cubit<ItemAddPageState> {
 
     if (response.statusCode == 200) {
       product = OrderReplacementProductModel.fromJson(response.data);
-      emit(ItemAddPageLoaded(product!));
+      if (!isClosed) {
+        emit(ItemAddPageLoaded(product!));
+      }
     } else if (response.statusCode == 404) {
-      emit(ItemAddPageError('Product not found'));
+      if (!isClosed) {
+        emit(ItemAddPageError('Product not found'));
+      }
     } else if (response.statusCode == 400) {
-      emit(ItemAddPageError('Invalid barcode format'));
+      if (!isClosed) {
+        emit(ItemAddPageError('Invalid barcode format'));
+      }
     } else if (response.statusCode == 500) {
-      emit(ItemAddPageError('Server error, please try again later'));
+      if (!isClosed) {
+        emit(ItemAddPageError('Server error, please try again later'));
+      }
     } else {
-      emit(ItemAddPageError('Unexpected error occurred'));
+      if (!isClosed) {
+        emit(ItemAddPageError('Unexpected error occurred'));
+      }
     }
   }
 }

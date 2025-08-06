@@ -1,31 +1,22 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:ansarlogisticsnew/core/constants/app_methods.dart';
 import 'package:ansarlogisticsnew/core/constants/app_strings.dart';
 import 'package:api_gateway/services/api_service.dart';
 import 'package:api_gateway/http/http_client.dart';
 import 'package:api_gateway/ws/websockt_client.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/order_model.dart';
-import '../../data/models/order_details_model.dart';
 import '../../data/models/order_item_model.dart';
 import '../cubit/order_details_cubit.dart';
-import '../widgets/order_item_tile.dart';
-import '../widgets/customer_card_widget.dart';
-import '../widgets/customer_comment_widget.dart';
 import '../widgets/cancel_reason_dialog.dart';
-import '../widgets/type_cards_widget.dart';
-import '../widgets/item_list_widget.dart';
-import 'order_item_details_page.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:ansarlogisticsnew/features/picker/presentation/pages/item_listing_page.dart';
-import 'package:ansarlogisticsnew/features/picker/presentation/pages/picker_orders_page.dart';
-import 'package:ansarlogisticsnew/core/services/user_storage_service.dart';
+
 import '../cubit/picker_orders_cubit.dart';
 import 'package:ansarlogisticsnew/features/navigation/presentation/pages/main_navigation_page.dart';
 import '../../../../core/widgets/safe_app_bar.dart';
-import 'package:flutter/foundation.dart';
 
 class OrderDetailsPage extends StatefulWidget {
   final OrderModel order;
@@ -55,7 +46,9 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
         // Load items after cubit is created (only if it's a new cubit)
         if (widget.existingCubit == null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            cubit.loadItems();
+            if (mounted) {
+              cubit.loadItems();
+            }
           });
         }
         return cubit;
@@ -131,7 +124,9 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: () {
-              context.read<OrderDetailsCubit>().loadItems();
+              if (mounted) {
+                context.read<OrderDetailsCubit>().loadItems();
+              }
             },
             icon: const Icon(Icons.refresh),
             label: const Text('Retry'),
@@ -180,7 +175,10 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
         ),
 
         // Action Buttons - Fixed at bottom
-        _buildActionButtons(context, state, cubit),
+        if (state.status != 'cancel_request' && state.status != 'end_picking')
+          _buildActionButtons(context, state, cubit)
+        else
+          const SizedBox.shrink(),
       ],
     );
   }
@@ -206,22 +204,22 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
             ),
 
             // Label
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.blue[50],
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue[200]!),
-              ),
-              child: Text(
-                '${state.preparationLabel.isNotEmpty ? state.preparationLabel : widget.order.preparationLabel ?? ''}',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.blue[700],
-                ),
-              ),
-            ),
+            // Container(
+            //   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            //   decoration: BoxDecoration(
+            //     color: Colors.blue[50],
+            //     borderRadius: BorderRadius.circular(8),
+            //     border: Border.all(color: Colors.blue[200]!),
+            //   ),
+            //   child: Text(
+            //     '${state.preparationLabel.isNotEmpty ? state.preparationLabel : widget.order.preparationLabel ?? ''}',
+            //     style: TextStyle(
+            //       fontSize: 14,
+            //       fontWeight: FontWeight.w600,
+            //       color: Colors.blue[700],
+            //     ),
+            //   ),
+            // ),
 
             // Contact Information
             Row(
@@ -288,7 +286,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Payment: ${state.paymentMethod}',
+                              'Payment: ${getPaymentMethodText(state.paymentMethod ?? '')}',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: Colors.grey[700],
@@ -369,6 +367,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
       ...state.picked,
       ...state.canceled,
       ...state.notAvailable,
+      ...state.holded,
     ];
 
     // Group items by delivery type
@@ -404,6 +403,10 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 Colors.orange,
                 cubit,
                 'exp',
+                expItems.isNotEmpty
+                    ? expItems.first.subgroupIdentifier ?? ''
+                    : '',
+                state.expTotal ?? '0',
               ),
             if (nolItems.isNotEmpty)
               _buildDeliveryTypeCard(
@@ -414,6 +417,10 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 Colors.blue,
                 cubit,
                 'nol',
+                nolItems.isNotEmpty
+                    ? nolItems.first.subgroupIdentifier ?? ''
+                    : '',
+                state.nolTotal ?? '0',
               ),
             if (warItems.isNotEmpty)
               _buildDeliveryTypeCard(
@@ -424,6 +431,10 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 Colors.purple,
                 cubit,
                 'war',
+                warItems.isNotEmpty
+                    ? warItems.first.subgroupIdentifier ?? ''
+                    : '',
+                state.warTotal ?? '0',
               ),
             if (supItems.isNotEmpty)
               _buildDeliveryTypeCard(
@@ -434,6 +445,10 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 Colors.teal,
                 cubit,
                 'sup',
+                supItems.isNotEmpty
+                    ? supItems.first.subgroupIdentifier ?? ''
+                    : '',
+                state.supTotal ?? '0',
               ),
             if (vpoItems.isNotEmpty)
               _buildDeliveryTypeCard(
@@ -444,6 +459,10 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 Colors.indigo,
                 cubit,
                 'vpo',
+                vpoItems.isNotEmpty
+                    ? vpoItems.first.subgroupIdentifier ?? ''
+                    : '',
+                state.vpoTotal ?? '0',
               ),
           ],
         ),
@@ -459,6 +478,8 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
     MaterialColor color,
     OrderDetailsCubit cubit,
     String deliveryType,
+    String orderNumber,
+    String total,
   ) {
     final pickedCount =
         items.where((item) => item.status.toString().contains('picked')).length;
@@ -471,7 +492,16 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
       child: InkWell(
         onTap:
             () =>
-                _navigateToItemList(context, title, items, cubit, deliveryType),
+                status == 'cancel_request'
+                    ? null
+                    : _navigateToItemList(
+                      context,
+                      title,
+                      items,
+                      cubit,
+                      deliveryType,
+                      orderNumber,
+                    ),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -502,19 +532,36 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
               // Title
               Expanded(
                 child: Center(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: color[800],
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: color[700],
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "Total: $total",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: color[700],
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
+
+              // // Total
+              // Text(
+              //   'Total: $total',
+              //   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              // ),
 
               // Action Button
               SizedBox(
@@ -529,6 +576,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                         items,
                         cubit,
                         deliveryType,
+                        orderNumber,
                       ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor:
@@ -540,10 +588,8 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                     ),
                   ),
                   child: Text(
-                    status == 'cancel_request'
-                        ? 'CANCEL REQUEST'
-                        : 'START PICKING',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                    getStatusText(status ?? ''),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -670,6 +716,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
     List<OrderItemModel> items,
     OrderDetailsCubit cubit,
     String deliveryType,
+    String orderNumber,
   ) {
     Navigator.push(
       context,
@@ -679,7 +726,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
               title: title,
               items: items,
               preparationId: widget.order.preparationLabel ?? '',
-              orderNumber: widget.order.preparationLabel ?? '',
+              orderNumber: orderNumber,
               order: widget.order,
               cubit: cubit,
               deliveryType: deliveryType,
@@ -695,6 +742,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
     List<OrderItemModel> items,
     OrderDetailsCubit cubit,
     String deliveryType,
+    String orderNumber,
   ) {
     if (status == 'cancel_request') {
       // Show cancel request info
@@ -706,7 +754,14 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
       );
     } else {
       // Navigate to item list for picking
-      _navigateToItemList(context, title, items, cubit, deliveryType);
+      _navigateToItemList(
+        context,
+        title,
+        items,
+        cubit,
+        deliveryType,
+        orderNumber,
+      );
     }
   }
 

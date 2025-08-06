@@ -170,8 +170,8 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                                             snapshot.data!;
 
                                         return SizedBox(
-                                          height: 250.0,
-                                          width: 250.0,
+                                          height: 270.0,
+                                          width: 270.0,
                                           child: Center(
                                             child: NetworkImageWithLoader(
                                               imageUrl:
@@ -1050,6 +1050,7 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
       scannedSku: widget.item.sku ?? '',
       reason: null,
       quantity: _quantity,
+      isProduceOverride: widget.item.isProduce ? 1 : 0,
     );
     if (mounted) {
       Navigator.of(context).pop('holded');

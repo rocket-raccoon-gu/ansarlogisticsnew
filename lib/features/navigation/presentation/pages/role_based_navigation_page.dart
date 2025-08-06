@@ -49,16 +49,20 @@ class _RoleBasedNavigationView extends StatelessWidget {
   }
 
   Widget _buildBody(BuildContext context, int currentIndex) {
+    // Team leaders should navigate like pickers
+    final isPickerOrTeamLeader =
+        userRole == UserRole.picker || userRole == UserRole.team_leader;
+
     switch (currentIndex) {
       case 0:
-        return userRole == UserRole.picker
+        return isPickerOrTeamLeader
             ? BlocProvider(
               create: (context) => getIt<PickerOrdersCubit>(),
               child: PickerOrdersPage(),
             )
             : DriverOrdersPage();
       case 1:
-        return userRole == UserRole.picker
+        return isPickerOrTeamLeader
             ? const PickerReportPage()
             : const DriverReportPage();
       case 2:
@@ -66,7 +70,7 @@ class _RoleBasedNavigationView extends StatelessWidget {
       case 3:
         return const ProfilePage();
       default:
-        return userRole == UserRole.picker
+        return isPickerOrTeamLeader
             ? const PickerOrdersPage()
             : DriverOrdersPage();
     }

@@ -10,10 +10,12 @@ class OrderDetailsLoading extends OrderDetailsState {
 }
 
 class OrderDetailsLoaded extends OrderDetailsState {
+  final String status;
   final List<OrderItemModel> toPick;
   final List<OrderItemModel> picked;
   final List<OrderItemModel> canceled;
   final List<OrderItemModel> notAvailable;
+  final List<OrderItemModel> holded;
   final List<CategoryItemModel> categories;
   final String preparationLabel;
   final String? deliveryNote;
@@ -24,6 +26,12 @@ class OrderDetailsLoaded extends OrderDetailsState {
   final String? vpoStatus;
   final String? abyStatus;
   final String? paymentMethod;
+  final String? expTotal;
+  final String? nolTotal;
+  final String? warTotal;
+  final String? supTotal;
+  final String? vpoTotal;
+  final String? abyTotal;
   // New fields for delivery type groups
   final List<OrderItemModel> expressItems;
   final List<OrderItemModel> normalItems;
@@ -39,10 +47,12 @@ class OrderDetailsLoaded extends OrderDetailsState {
   final List<CategoryItemModel> abayaCategories;
 
   OrderDetailsLoaded({
+    required this.status,
     required this.toPick,
     required this.picked,
     required this.canceled,
     required this.notAvailable,
+    required this.holded,
     required this.categories,
     required this.preparationLabel,
     this.deliveryNote,
@@ -65,6 +75,12 @@ class OrderDetailsLoaded extends OrderDetailsState {
     required this.vpoStatus,
     required this.abyStatus,
     this.paymentMethod,
+    required this.expTotal,
+    required this.nolTotal,
+    required this.warTotal,
+    required this.supTotal,
+    required this.vpoTotal,
+    required this.abyTotal,
   });
 }
 

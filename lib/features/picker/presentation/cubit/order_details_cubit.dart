@@ -34,6 +34,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
 
         emit(
           OrderDetailsLoaded(
+            status: _cachedOrderDetails!.status,
             toPick:
                 allItems
                     .where((item) => item.status == OrderItemStatus.toPick)
@@ -51,6 +52,10 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
                     .where(
                       (item) => item.status == OrderItemStatus.itemNotAvailable,
                     )
+                    .toList(),
+            holded:
+                allItems
+                    .where((item) => item.status == OrderItemStatus.holded)
                     .toList(),
             categories: _cachedOrderDetails!.categories,
             preparationLabel: _cachedOrderDetails!.preparationLabel,
@@ -74,6 +79,12 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
             vpoStatus: _getVpoStatus(_cachedOrderDetails!.subgroupDetails),
             abyStatus: _getAbyStatus(_cachedOrderDetails!.subgroupDetails),
             paymentMethod: _cachedOrderDetails!.paymentMethod,
+            expTotal: _getExTotal(_cachedOrderDetails!.subgroupDetails),
+            nolTotal: _getNolTotal(_cachedOrderDetails!.subgroupDetails),
+            warTotal: _getWarTotal(_cachedOrderDetails!.subgroupDetails),
+            supTotal: _getSupTotal(_cachedOrderDetails!.subgroupDetails),
+            vpoTotal: _getVpoTotal(_cachedOrderDetails!.subgroupDetails),
+            abyTotal: _getAbyTotal(_cachedOrderDetails!.subgroupDetails),
           ),
         );
       }
@@ -121,13 +132,19 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
                   (item) => item.status == OrderItemStatus.itemNotAvailable,
                 )
                 .toList();
+        final holded =
+            allItems
+                .where((item) => item.status == OrderItemStatus.holded)
+                .toList();
 
         if (!isClosed) {
           emit(
             OrderDetailsLoaded(
+              status: _cachedOrderDetails!.status,
               toPick: toPick,
               picked: picked,
               canceled: canceled,
+              holded: holded,
               notAvailable: notAvailable,
               categories: orderDetails.categories,
               preparationLabel: orderDetails.preparationLabel,
@@ -151,6 +168,12 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
               vpoStatus: _getVpoStatus(orderDetails.subgroupDetails),
               abyStatus: _getAbyStatus(orderDetails.subgroupDetails),
               paymentMethod: orderDetails.paymentMethod,
+              expTotal: _getExTotal(orderDetails.subgroupDetails),
+              nolTotal: _getNolTotal(orderDetails.subgroupDetails),
+              warTotal: _getWarTotal(orderDetails.subgroupDetails),
+              supTotal: _getSupTotal(orderDetails.subgroupDetails),
+              vpoTotal: _getVpoTotal(orderDetails.subgroupDetails),
+              abyTotal: _getAbyTotal(orderDetails.subgroupDetails),
             ),
           );
         }
@@ -189,7 +212,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
     required int quantity,
     String? reason,
     String? priceOverride,
-    int? isProduceOverride,
+    required int isProduceOverride,
   }) async {
     try {
       final userData = await UserStorageService.getUserData();
@@ -207,9 +230,9 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
         scannedSku: scannedSku,
         status: status,
         price: priceOverride ?? (item.price ?? 0.0).toString(),
-        qty: item.quantity.toString(),
+        qty: quantity.toString(),
         preparationId: orderId,
-        isProduce: isProduceOverride ?? (item.isProduce ? 1 : 0),
+        isProduce: isProduceOverride,
         reason: reason,
         token: token,
         orderNumber: item.subgroupIdentifier ?? '',
@@ -230,30 +253,36 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
           case 'holded':
             item.status = OrderItemStatus.holded;
             break;
+          case 'canceled':
+            item.status = OrderItemStatus.canceled;
+            break;
         }
 
-        // Update item price and produce status if provided
-        if (priceOverride != null || isProduceOverride != null) {
-          final newPrice =
-              priceOverride != null ? double.tryParse(priceOverride) : null;
-          final newIsProduceRaw =
-              isProduceOverride != null ? isProduceOverride.toString() : null;
+        // Create updated item with new status and quantity
+        final updatedItem = item.copyWith(
+          status: item.status,
+          quantity:
+              quantity, // Update the quantity to match what was sent to API
+          price:
+              priceOverride != null
+                  ? double.tryParse(priceOverride)
+                  : item.price,
+          finalPrice:
+              priceOverride != null
+                  ? double.tryParse(priceOverride)
+                  : item.finalPrice,
+          isProduceRaw:
+              isProduceOverride != null
+                  ? isProduceOverride.toString()
+                  : item.isProduceRaw,
+        );
 
-          // Create updated item with new values
-          final updatedItem = item.copyWith(
-            price: newPrice,
-            finalPrice:
-                newPrice, // Set final_price to the same value for produce items
-            isProduceRaw: newIsProduceRaw,
-          );
+        // Replace the item in all lists
+        _updateItemInLists(item, updatedItem);
 
-          // Replace the item in all lists
-          _updateItemInLists(item, updatedItem);
-
-          print(
-            '✅ Item updated: ${item.name} - Price: ${updatedItem.price}, Final Price: ${updatedItem.finalPrice}, IsProduce: ${updatedItem.isProduce}',
-          );
-        }
+        print(
+          '✅ Item updated: ${item.name} - Status: ${updatedItem.status}, Quantity: ${updatedItem.quantity}, Price: ${updatedItem.price}, Final Price: ${updatedItem.finalPrice}, IsProduce: ${updatedItem.isProduce}',
+        );
 
         updateState();
         return true;
@@ -427,6 +456,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
       if (!isClosed) {
         emit(
           OrderDetailsLoaded(
+            status: _cachedOrderDetails!.status,
             toPick: currentState.toPick,
             picked: currentState.picked,
             canceled: currentState.canceled,
@@ -453,6 +483,13 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
             vpoStatus: currentState.vpoStatus,
             abyStatus: currentState.abyStatus,
             paymentMethod: currentState.paymentMethod,
+            holded: currentState.holded,
+            expTotal: currentState.expTotal,
+            nolTotal: currentState.nolTotal,
+            warTotal: currentState.warTotal,
+            supTotal: currentState.supTotal,
+            vpoTotal: currentState.vpoTotal,
+            abyTotal: currentState.abyTotal,
           ),
         );
       }
@@ -491,6 +528,10 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
           allItems
               .where((item) => item.status == OrderItemStatus.itemNotAvailable)
               .toList();
+      final holded =
+          allItems
+              .where((item) => item.status == OrderItemStatus.holded)
+              .toList();
 
       print('🔍 OrderDetailsCubit - Re-categorized items:');
       print('  - toPick: ${toPick.length}');
@@ -501,10 +542,12 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
       if (!isClosed) {
         emit(
           OrderDetailsLoaded(
+            status: _cachedOrderDetails!.status,
             toPick: toPick,
             picked: picked,
             canceled: canceled,
             notAvailable: notAvailable,
+            holded: holded,
             categories: _cachedOrderDetails!.categories,
             preparationLabel: _cachedOrderDetails!.preparationLabel,
             deliveryNote: _cachedOrderDetails!.deliveryNote,
@@ -527,6 +570,12 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
             vpoStatus: _getVpoStatus(_cachedOrderDetails!.subgroupDetails),
             abyStatus: _getAbyStatus(_cachedOrderDetails!.subgroupDetails),
             paymentMethod: _cachedOrderDetails!.paymentMethod,
+            expTotal: _getExTotal(_cachedOrderDetails!.subgroupDetails),
+            nolTotal: _getNolTotal(_cachedOrderDetails!.subgroupDetails),
+            warTotal: _getWarTotal(_cachedOrderDetails!.subgroupDetails),
+            supTotal: _getSupTotal(_cachedOrderDetails!.subgroupDetails),
+            vpoTotal: _getVpoTotal(_cachedOrderDetails!.subgroupDetails),
+            abyTotal: _getAbyTotal(_cachedOrderDetails!.subgroupDetails),
           ),
         );
         print('🔍 OrderDetailsCubit - New state emitted');
@@ -571,9 +620,9 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
       print('🔍 Cancel order API response: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        if (!isClosed) {
-          emit(OrderDetailsError('Order canceled successfully'));
-        }
+        // Don't emit error state for successful cancellation
+        // Just print success message
+        print('✅ Order canceled successfully');
       } else {
         if (!isClosed) {
           emit(OrderDetailsError('Failed to cancel order'));
@@ -589,6 +638,17 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
 
   Future<void> endPicking({required String orderNumber}) async {
     try {
+      print('🔍 endPicking - orderId: $orderId');
+      print('🔍 endPicking - orderNumber: $orderNumber');
+
+      if (orderId.isEmpty) {
+        print('❌ endPicking - orderId is empty');
+        if (!isClosed) {
+          emit(OrderDetailsError('Order ID is missing'));
+        }
+        return;
+      }
+
       final userData = await UserStorageService.getUserData();
       final token = userData?.token;
 
@@ -607,15 +667,16 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
       );
 
       if (response.statusCode == 200) {
-        if (!isClosed) {
-          emit(OrderDetailsError('Picking ended successfully'));
-        }
+        // Don't emit error state for successful end picking
+        // Just print success message
+        print('✅ Picking ended successfully');
       } else {
         if (!isClosed) {
           emit(OrderDetailsError('Failed to end picking'));
         }
       }
     } catch (e) {
+      print('❌ endPicking error: $e');
       if (!isClosed) {
         emit(OrderDetailsError(e.toString()));
       }
@@ -652,9 +713,9 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
       log('🔍 Update order status API response: ${response.body}');
 
       if (response.statusCode == 200) {
-        if (!isClosed) {
-          emit(OrderDetailsError('Order status updated successfully'));
-        }
+        // Don't emit error state for successful status update
+        // Just print success message
+        print('✅ Order status updated successfully');
       } else {
         if (!isClosed) {
           emit(OrderDetailsError('Failed to update order status'));
@@ -767,6 +828,90 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
       );
       return abyItem.isNotEmpty
           ? (abyItem as Map<String, dynamic>)['status']
+          : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  String? _getExTotal(List<dynamic> subgroupDetails) {
+    try {
+      final exTotal = subgroupDetails.firstWhere(
+        (item) => (item as Map<String, dynamic>)['subgroup_identifier']
+            .startsWith('EXP-'),
+      );
+      return exTotal.isNotEmpty
+          ? (exTotal as Map<String, dynamic>)['order_amount'].toString()
+          : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  String? _getNolTotal(List<dynamic> subgroupDetails) {
+    try {
+      final nolTotal = subgroupDetails.firstWhere(
+        (item) => (item as Map<String, dynamic>)['subgroup_identifier']
+            .startsWith('NOL-'),
+      );
+      return nolTotal.isNotEmpty
+          ? (nolTotal as Map<String, dynamic>)['order_amount'].toString()
+          : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  String? _getWarTotal(List<dynamic> subgroupDetails) {
+    try {
+      final warTotal = subgroupDetails.firstWhere(
+        (item) => (item as Map<String, dynamic>)['subgroup_identifier']
+            .startsWith('WAR-'),
+      );
+      return warTotal.isNotEmpty
+          ? (warTotal as Map<String, dynamic>)['order_amount'].toString()
+          : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  String? _getSupTotal(List<dynamic> subgroupDetails) {
+    try {
+      final supTotal = subgroupDetails.firstWhere(
+        (item) => (item as Map<String, dynamic>)['subgroup_identifier']
+            .startsWith('SUP-'),
+      );
+      return supTotal.isNotEmpty
+          ? (supTotal as Map<String, dynamic>)['order_amount'].toString()
+          : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  String? _getVpoTotal(List<dynamic> subgroupDetails) {
+    try {
+      final vpoTotal = subgroupDetails.firstWhere(
+        (item) => (item as Map<String, dynamic>)['subgroup_identifier']
+            .startsWith('VPO-'),
+      );
+      return vpoTotal.isNotEmpty
+          ? (vpoTotal as Map<String, dynamic>)['order_amount'].toString()
+          : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  String? _getAbyTotal(List<dynamic> subgroupDetails) {
+    try {
+      final abyTotal = subgroupDetails.firstWhere(
+        (item) => (item as Map<String, dynamic>)['subgroup_identifier']
+            .startsWith('ABY-'),
+      );
+      return abyTotal.isNotEmpty
+          ? (abyTotal as Map<String, dynamic>)['order_amount'].toString()
           : null;
     } catch (e) {
       return null;

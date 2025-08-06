@@ -80,8 +80,8 @@ void main() async {
         // If it's a new order, also show the in-app dialog
         if (message.data.containsKey('type') &&
             message.data['type'] == 'new_order') {
-          final orderId = message.data['order_id'] ?? 'Unknown Order';
-          final userRole = message.data['user_role'] ?? 'picker';
+          final orderId = message.data['orderId'] ?? 'Unknown Order';
+          final userRole = message.data['userRole'] ?? 'picker';
           GlobalNotificationService.showNewOrderNotification(
             orderId: orderId,
             userRole: userRole,

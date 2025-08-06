@@ -10,6 +10,8 @@ class RoleUtils {
       case 2:
       case 3:
         return UserRole.driver;
+      case 4:
+        return UserRole.team_leader;
       default:
         // Fallback based on driverType field
         if (driverType.toLowerCase().contains('driver')) {
@@ -26,6 +28,8 @@ class RoleUtils {
         return 'Picker';
       case UserRole.driver:
         return 'Driver';
+      case UserRole.team_leader:
+        return 'Team Leader';
     }
   }
 
@@ -35,6 +39,8 @@ class RoleUtils {
         return 'Picker Orders';
       case UserRole.driver:
         return 'Driver Orders';
+      case UserRole.team_leader:
+        return 'Team Leader Orders';
     }
   }
 
@@ -44,6 +50,8 @@ class RoleUtils {
         return 'Picker Report';
       case UserRole.driver:
         return 'Driver Report';
+      case UserRole.team_leader:
+        return 'Team Leader Report';
     }
   }
 }

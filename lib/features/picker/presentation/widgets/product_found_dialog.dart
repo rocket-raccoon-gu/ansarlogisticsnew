@@ -189,7 +189,10 @@ class _ProductFoundDialogState extends State<ProductFoundDialog> {
                                           widget.responseData['sku'] ?? '',
                                       priceOverride:
                                           apiPrice.isNotEmpty ? apiPrice : null,
-                                      isProduceOverride: 1,
+                                      isProduceOverride: int.parse(
+                                        widget.responseData['is_produce'] ??
+                                            '1',
+                                      ),
                                       quantity: widget.quantity,
                                     );
 

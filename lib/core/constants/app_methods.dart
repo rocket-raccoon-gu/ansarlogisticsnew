@@ -39,6 +39,8 @@ Color getStatusColor(String status) {
       return AppColors.materialRequest;
     case 'customer_not_answer':
       return const Color.fromARGB(255, 243, 18, 18);
+    case 'cancel_request':
+      return const Color.fromARGB(255, 243, 18, 18);
     default:
       return AppColors.notAvailable;
   }
@@ -84,7 +86,22 @@ String getStatusText(String status) {
       return 'Material Request';
     case 'customer_not_answer':
       return 'Customer Not Answer';
+    case 'cancel_request':
+      return 'Cancel Request';
     default:
       return status;
+  }
+}
+
+String getPaymentMethodText(String paymentMethod) {
+  switch (paymentMethod.toLowerCase()) {
+    case 'cashondelivery':
+      return 'Cash on Delivery';
+    case 'cardondelivery':
+      return 'Card on Delivery';
+    case 'banktransfer':
+      return 'Bank Transfer';
+    default:
+      return paymentMethod;
   }
 }

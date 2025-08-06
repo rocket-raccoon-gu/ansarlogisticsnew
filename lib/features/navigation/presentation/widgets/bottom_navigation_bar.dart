@@ -36,10 +36,13 @@ class CustomBottomNavigationBar extends StatelessWidget {
             children: [
               _buildNavItem(
                 icon:
-                    role == UserRole.picker
+                    (role == UserRole.picker || role == UserRole.team_leader)
                         ? Icons.shopping_cart
                         : Icons.local_shipping,
-                label: role == UserRole.picker ? 'Orders' : 'Orders',
+                label:
+                    (role == UserRole.picker || role == UserRole.team_leader)
+                        ? 'Orders'
+                        : 'Orders',
                 index: 0,
                 isSelected: currentIndex == 0,
               ),

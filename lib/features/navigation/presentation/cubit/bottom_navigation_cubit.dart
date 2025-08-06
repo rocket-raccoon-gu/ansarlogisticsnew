@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 part 'bottom_navigation_state.dart';
 
-enum UserRole { picker, driver }
+enum UserRole { picker, driver, team_leader }
 
 class BottomNavigationCubit extends Cubit<BottomNavigationState> {
   BottomNavigationCubit({UserRole role = UserRole.picker})

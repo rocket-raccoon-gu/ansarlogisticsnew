@@ -8,10 +8,6 @@ import '../widgets/order_item_tile.dart';
 import '../widgets/category_item_list.dart';
 import '../cubit/order_details_cubit.dart';
 import 'order_item_details_page.dart';
-import 'package:ansarlogisticsnew/core/services/user_storage_service.dart';
-import 'order_details_page.dart';
-import 'picker_orders_page.dart';
-import '../cubit/picker_orders_cubit.dart';
 import 'package:ansarlogisticsnew/features/navigation/presentation/pages/main_navigation_page.dart';
 
 class ItemListingPage extends StatefulWidget {
@@ -43,6 +39,7 @@ class ItemListingPage extends StatefulWidget {
 class _ItemListingPageState extends State<ItemListingPage> {
   int _selectedIndex = 0;
   String? _selectedDeliveryType;
+  List<OrderItemModel> filteredItems = [];
 
   @override
   void initState() {
@@ -96,10 +93,13 @@ class _ItemListingPageState extends State<ItemListingPage> {
         final toPickItems =
             filtered
                 .where((item) => item.status == OrderItemStatus.toPick)
+                .where((item) => item.quantity != 0)
                 .toList();
         print('🔍 ItemListingPage - To Pick tab: ${toPickItems.length} items');
         for (var item in toPickItems) {
-          print('    - ${item.name}: ${item.status}');
+          print(
+            '    - ${item.name}: status=${item.status}, qty=${item.quantity}',
+          );
         }
         return toPickItems;
       case 1:
@@ -111,8 +111,13 @@ class _ItemListingPageState extends State<ItemListingPage> {
             .where((item) => item.status == OrderItemStatus.holded)
             .toList();
       case 3:
+        // Show both not available and canceled items in Not Available tab
         return filtered
-            .where((item) => item.status == OrderItemStatus.itemNotAvailable)
+            .where(
+              (item) =>
+                  item.status == OrderItemStatus.itemNotAvailable ||
+                  item.status == OrderItemStatus.canceled,
+            )
             .toList();
       default:
         return filtered;
@@ -163,6 +168,7 @@ class _ItemListingPageState extends State<ItemListingPage> {
                 items:
                     category.items
                         .where((item) => item.status == OrderItemStatus.picked)
+                        .where((item) => item.quantity != 0)
                         .toList(),
               );
             })
@@ -190,7 +196,8 @@ class _ItemListingPageState extends State<ItemListingPage> {
                     category.items
                         .where(
                           (item) =>
-                              item.status == OrderItemStatus.itemNotAvailable,
+                              item.status == OrderItemStatus.itemNotAvailable ||
+                              item.status == OrderItemStatus.canceled,
                         )
                         .toList(),
               );
@@ -279,6 +286,7 @@ class _ItemListingPageState extends State<ItemListingPage> {
                                           item.deliveryType ==
                                           widget.deliveryType,
                                     )
+                                    .where((item) => item.quantity != 0)
                                     .toList();
 
                             return CategoryItemModel(
@@ -364,29 +372,29 @@ class _ItemListingPageState extends State<ItemListingPage> {
                         try {
                           if (widget.cubit != null) {
                             log(
-                              '🔍 ItemListingPage - cubit: ${widget.deliveryType}',
+                              '🔍 ItemListingPage - orderNumber: ${widget.orderNumber}',
                             );
 
-                            String modifiedOrderNumber = widget.orderNumber;
+                            //   String modifiedOrderNumber = widget.orderNumber;
 
-                            // Check if order number starts with PREN
-                            if (widget.orderNumber.startsWith('PREN')) {
-                              // Modify order number based on delivery type
-                              if (widget.deliveryType == 'exp') {
-                                // Replace PREN with PREXP for express orders
-                                modifiedOrderNumber = widget.orderNumber
-                                    .replaceFirst('PREN', 'PREXP');
-                              } else if (widget.deliveryType == 'nol') {
-                                // Replace PREN with PRNOL for normal orders
-                                modifiedOrderNumber = widget.orderNumber
-                                    .replaceFirst('PREN', 'PRNOL');
-                              }
-                              // For other delivery types, keep the original PREN
-                            }
-                            // If order number doesn't start with PREN, use original order number
+                            //   // Check if order number starts with PREN
+                            //   if (widget.orderNumber.startsWith('PREN')) {
+                            //     // Modify order number based on delivery type
+                            //     if (widget.deliveryType == 'exp') {
+                            //       // Replace PREN with PREXP for express orders
+                            //       modifiedOrderNumber = widget.orderNumber
+                            //           .replaceFirst('PREN', 'PREXP');
+                            //     } else if (widget.deliveryType == 'nol') {
+                            //       // Replace PREN with PRNOL for normal orders
+                            //       modifiedOrderNumber = widget.orderNumber
+                            //           .replaceFirst('PREN', 'PRNOL');
+                            //     }
+                            //     // For other delivery types, keep the original PREN
+                            //   }
+                            //   // If order number doesn't start with PREN, use original order number
 
                             await widget.cubit!.cancelOrder(
-                              orderNumber: modifiedOrderNumber,
+                              orderNumber: widget.orderNumber,
                             );
                           }
                           if (mounted) {
@@ -398,32 +406,21 @@ class _ItemListingPageState extends State<ItemListingPage> {
                                 ),
                               ),
                             );
-                            // Navigate to OrderDetailsPage and on pop, go to PickerOrdersPage
-                            Navigator.of(context)
-                                .push(
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) => OrderDetailsPage(
-                                          order: widget.order,
-                                          existingCubit: widget.cubit,
-                                        ),
-                                  ),
-                                )
-                                .then((_) {
-                                  Navigator.of(context).pushAndRemoveUntil(
-                                    MaterialPageRoute(
-                                      builder:
-                                          (context) =>
-                                              const MainNavigationPage(),
-                                    ),
-                                    (route) => false,
-                                  );
-                                });
+                            // Navigate directly to MainNavigationPage
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder:
+                                    (context) => const MainNavigationPage(),
+                              ),
+                              (route) => false,
+                            );
                           }
                         } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error: ${e.toString()}')),
-                          );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: ${e.toString()}')),
+                            );
+                          }
                         }
                       }
                     },
@@ -481,6 +478,134 @@ class _ItemListingPageState extends State<ItemListingPage> {
                 unselectedItemColor: Colors.grey,
                 type: BottomNavigationBarType.fixed,
               ),
+              bottomSheet:
+                  _selectedIndex == 1 && filteredItems.isEmpty
+                      ? Container(
+                        color: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
+                        ),
+                        child: SafeArea(
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              icon: Icon(
+                                Icons.check_circle,
+                                color: Colors.white,
+                              ),
+                              label: Text(
+                                'Finish Picking',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: () async {
+                                print(
+                                  '🔍 Finish Picking - orderNumber: ${widget.orderNumber}',
+                                );
+                                print(
+                                  '🔍 Finish Picking - orderNumber.isEmpty: ${widget.orderNumber.isEmpty}',
+                                );
+
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder:
+                                      (context) => AlertDialog(
+                                        title: Text('Finish Picking'),
+                                        content: Text(
+                                          'Are you sure you want to finish picking for this order?',
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed:
+                                                () => Navigator.pop(
+                                                  context,
+                                                  false,
+                                                ),
+                                            child: Text('No'),
+                                          ),
+                                          ElevatedButton(
+                                            onPressed:
+                                                () => Navigator.pop(
+                                                  context,
+                                                  true,
+                                                ),
+                                            child: Text('Yes'),
+                                          ),
+                                        ],
+                                      ),
+                                );
+                                if (confirmed == true) {
+                                  try {
+                                    if (widget.orderNumber.isNotEmpty) {
+                                      await widget.cubit!.endPicking(
+                                        orderNumber: widget.orderNumber,
+                                      );
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Picking ended successfully.',
+                                            ),
+                                          ),
+                                        );
+                                        Navigator.of(
+                                          context,
+                                        ).pushAndRemoveUntil(
+                                          MaterialPageRoute(
+                                            builder:
+                                                (context) =>
+                                                    const MainNavigationPage(),
+                                          ),
+                                          (route) => false,
+                                        );
+                                      }
+                                    } else {
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Error: Order number is missing.',
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Error ending picking: $e',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      )
+                      : null,
             );
           } else if (state is OrderDetailsLoading) {
             return const Scaffold(
@@ -488,7 +613,7 @@ class _ItemListingPageState extends State<ItemListingPage> {
             );
           } else {
             // Fallback to original behavior if no cubit provided
-            final filteredItems = _getFilteredItems(widget.items);
+            filteredItems = _getFilteredItems(widget.items);
             return _buildScaffoldWithItems(filteredItems);
           }
         },
@@ -586,30 +711,20 @@ class _ItemListingPageState extends State<ItemListingPage> {
                         content: Text('Cancel request sent successfully.'),
                       ),
                     );
-                    // Navigate to OrderDetailsPage and on pop, go to PickerOrdersPage
-                    Navigator.of(context)
-                        .push(
-                          MaterialPageRoute(
-                            builder:
-                                (context) => OrderDetailsPage(
-                                  order: widget.order,
-                                  existingCubit: widget.cubit,
-                                ),
-                          ),
-                        )
-                        .then((_) {
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(
-                              builder: (context) => const MainNavigationPage(),
-                            ),
-                            (route) => false,
-                          );
-                        });
+                    // Navigate directly to MainNavigationPage
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (context) => const MainNavigationPage(),
+                      ),
+                      (route) => false,
+                    );
                   }
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: ${e.toString()}')),
-                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: ${e.toString()}')),
+                    );
+                  }
                 }
               }
             },
@@ -688,7 +803,7 @@ class _ItemListingPageState extends State<ItemListingPage> {
         'orderNumber': orderNumber,
       },
     );
-    if (result == 'added') {
+    if (result == 'added' && mounted) {
       widget.cubit?.loadItems();
       setState(() {
         _selectedIndex = 1; // Switch to Picked tab
@@ -714,14 +829,19 @@ class _ItemListingPageState extends State<ItemListingPage> {
               ),
         ),
       );
-      if (result == 'updated' ||
-          result == 'added' ||
-          result == 'replaced' ||
-          result == 'holded') {
+      if ((result == 'updated' ||
+              result == 'added' ||
+              result == 'replaced' ||
+              result == 'holded' ||
+              result == 'canceled') &&
+          mounted) {
         await widget.cubit!.reloadItemsFromApi();
         setState(() {
-          if (result == 'added' || result == 'replaced') {
-            _selectedIndex = 1; // Switch to Picked tab
+          if (result == 'added' ||
+              result == 'replaced' ||
+              result == 'canceled') {
+            _selectedIndex =
+                1; // Switch to Picked tab or another appropriate tab
           }
           if (result == 'holded') {
             _selectedIndex = 2; // Switch to On Hold tab

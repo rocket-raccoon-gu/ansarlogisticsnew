@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/models/order_item_model.dart';
 import 'package:ansarlogisticsnew/core/constants/app_methods.dart';
-import 'package:ansarlogisticsnew/core/constants/app_colors.dart';
 import 'package:api_gateway/config/api_config.dart';
-import 'stable_scanner_widget.dart';
 import 'package:api_gateway/services/api_service.dart';
 import 'package:api_gateway/http/http_client.dart';
 import 'package:api_gateway/ws/websockt_client.dart';
@@ -40,7 +38,6 @@ class OrderItemTile extends StatelessWidget {
         final isSmallScreen = constraints.maxWidth < 400;
         final isMediumScreen =
             constraints.maxWidth >= 400 && constraints.maxWidth < 600;
-        final isLargeScreen = constraints.maxWidth >= 600;
 
         // Responsive image size
         final imageSize =
@@ -263,15 +260,25 @@ class OrderItemTile extends StatelessWidget {
                                 vertical: isSmallScreen ? 4 : 6,
                               ),
                               decoration: BoxDecoration(
-                                color: getStatusColor(
-                                  item.status.toString().split('.').last,
-                                ),
+                                color:
+                                    item.status == OrderItemStatus.canceled ||
+                                            item.quantity == 0
+                                        ? Colors.red[400]
+                                        : getStatusColor(
+                                          item.status
+                                              .toString()
+                                              .split('.')
+                                              .last,
+                                        ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                getStatusText(
-                                  item.status.toString().split('.').last,
-                                ),
+                                item.status == OrderItemStatus.canceled ||
+                                        item.quantity == 0
+                                    ? 'Canceled'
+                                    : getStatusText(
+                                      item.status.toString().split('.').last,
+                                    ),
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: isSmallScreen ? 11 : detailFontSize,
@@ -329,113 +336,6 @@ class OrderItemTile extends StatelessWidget {
         );
       },
     );
-  }
-
-  void _openScanner(BuildContext context) {
-    // Show a brief message about scanning
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Scanning barcode for: ${item.name}'),
-        duration: const Duration(seconds: 2),
-        backgroundColor: Colors.blue,
-      ),
-    );
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder:
-            (context) => StableScannerWidget(
-              title: 'Scan Barcode',
-              subtitle: 'Scan the barcode for ${item.name}',
-              onBarcodeScanned:
-                  (barcode) => _handleBarcodeScanned(context, barcode),
-            ),
-      ),
-    );
-  }
-
-  Future<void> _handleBarcodeScanned(
-    BuildContext context,
-    String barcode,
-  ) async {
-    try {
-      // Show loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
-
-      // Get user token
-      final userData = await UserStorageService.getUserData();
-      final token = userData?.token;
-
-      if (token == null) {
-        Navigator.pop(context); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Authentication token not found'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
-      // Call API to scan barcode and pick item
-      final apiService = ApiService(HttpClient(), WebSocketClient());
-      final response = await apiService.scanBarcodeAndPickItem(
-        barcode,
-        token,
-        item.sku ?? '',
-      );
-
-      // Close loading dialog
-      Navigator.pop(context);
-
-      // Check API response
-      if (response.data != null && response.data['match'] == "0") {
-        // Close scanner on success
-        Navigator.pop(context);
-
-        // Show product found dialog with pickup button
-        _showProductFoundDialog(context, response.data);
-      } else if (response.data != null && response.data['match'] == "1") {
-        // Close scanner
-        Navigator.pop(context);
-
-        // Show product not matching dialog with replace button
-        _showProductNotMatchingDialog(context, response.data, barcode);
-      } else {
-        // Show error message from API but don't close scanner
-        final errorMessage = response.data?['message'] ?? 'Failed to pick item';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-
-        // Don't close scanner - let user retry
-        // The scanner will automatically resume after 1 second due to the debounce mechanism
-      }
-    } catch (e) {
-      // Close loading dialog
-      Navigator.pop(context);
-
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to pick item: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-
-      // Don't close scanner - let user retry
-      // The scanner will automatically resume after 1 second due to the debounce mechanism
-    }
   }
 
   void _showProductFoundDialog(

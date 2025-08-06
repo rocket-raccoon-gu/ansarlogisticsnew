@@ -352,9 +352,6 @@ class _OrderListItemWidgetState extends State<OrderListItemWidget> {
 
   Future<void> _handleStartPicking(BuildContext context) async {
     try {
-      // Optimistic update - immediately notify parent to refresh orders
-      widget.onStatusUpdated?.call();
-
       // Show quick success feedback
       if (mounted) {
         _scaffoldMessenger?.showSnackBar(
@@ -411,6 +408,9 @@ class _OrderListItemWidgetState extends State<OrderListItemWidget> {
         widget.order.preparationLabel ?? '0',
         token,
       );
+
+      // Now notify parent to refresh orders
+      widget.onStatusUpdated?.call();
 
       // Show final success message
       if (mounted) {

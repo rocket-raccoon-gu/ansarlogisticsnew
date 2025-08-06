@@ -96,6 +96,7 @@ class _ConfirmationDialogState extends State<ConfirmationDialog> {
         scannedSku: widget.item.sku ?? '',
         reason: widget.reason,
         quantity: widget.quantity,
+        isProduceOverride: widget.item.isProduce ? 1 : 0,
       );
 
       if (!mounted) return;

@@ -53,11 +53,17 @@ class _DriverOrderDetailsPageState extends State<DriverOrderDetailsPage> {
     });
   }
 
-  void _launchWhatsApp(String phone) async {
-    final uri = Uri.parse('https://wa.me/$phone');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
+  void _launchWhatsApp(String phone, String? username, String? ordernum) async {
+    // whatsapp://send?phone=${contactsplit}&text=Hello,this is ${UserController.userController.profile.name} Your *Ansar Gallery Order Picker*. I am here to assist with Preparing your order ${ordernum}
+    // final uri = Uri.parse('https://wa.me/$phone');
+
+    // if (await canLaunchUrl(uri)) {
+    await launchUrl(
+      Uri.parse(
+        'whatsapp://send?phone=${phone}&text=Hello,this is ${username} Your *Ansar Gallery Order Driver*. I am here to assist with Delivering your order ${ordernum}',
+      ),
+    );
+    // }
   }
 
   @override
@@ -289,6 +295,8 @@ class _DriverOrderDetailsPageState extends State<DriverOrderDetailsPage> {
                                     onPressed:
                                         () => _launchWhatsApp(
                                           details.customer.mobileNumber,
+                                          state.username,
+                                          widget.order.id,
                                         ),
                                   ),
                                 ],
@@ -359,7 +367,7 @@ class _DriverOrderDetailsPageState extends State<DriverOrderDetailsPage> {
                                         _cubit.updateOrderStatusDriver(
                                           _token!,
                                           widget.order.id,
-                                          'customer_not_answering',
+                                          'customer_not_answer',
                                         );
                                       },
                                     ),

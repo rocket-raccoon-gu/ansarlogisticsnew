@@ -5,22 +5,15 @@ import 'package:ansarlogisticsnew/features/driver/presentation/cubit/driver_orde
 import 'package:ansarlogisticsnew/core/services/user_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:flutter_foreground_task/flutter_foreground_task.dart';
-import 'package:http/http.dart' as http;
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:api_gateway/ws/websockt_client.dart';
-import 'dart:convert';
 import '../../../../core/services/driver_location_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injector.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../data/models/driver_order_model.dart';
 import '../widgets/driver_order_list_item.dart';
 import 'driver_order_details_page.dart';
 import 'driver_route_page.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:api_gateway/services/api_service.dart';
-import 'package:api_gateway/http/http_client.dart';
 
 class DriverOrdersPage extends StatefulWidget {
   const DriverOrdersPage({super.key});
@@ -108,18 +101,121 @@ class _DriverOrdersPageContentState extends State<_DriverOrdersPageContent>
   late DriverLocationService _locationService;
   LocationTrackingStatus _currentStatus = LocationTrackingStatus.idle;
 
+  // Filter/Search State
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearchVisible = false;
+  bool _isFilterVisible = false;
+  List<DriverOrderModel> _filteredOrders = [];
+  bool _isSearching = false;
+  bool _isFiltering = false;
+  String? _selectedStatus;
+
+  static const Map<String, String> _statusOptions = {
+    'all': 'All Orders',
+    'assigned_driver': 'Assigned Driver',
+    'on_the_way': 'On The Way',
+    'customer_not_answer': 'Customer Not Answer',
+  };
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _locationService = getIt<DriverLocationService>();
     _initializeLocationStatus();
+    _searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _searchController.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged() {
+    _applyFilters();
+  }
+
+  void _onStatusChanged(String? status) {
+    setState(() {
+      _selectedStatus = status;
+      _isFiltering = status != null && status != 'all';
+      _isFilterVisible = false;
+    });
+    _applyFilters();
+  }
+
+  void _applyFilters() {
+    final query = _searchController.text.toLowerCase();
+    final hasSearchQuery = query.isNotEmpty;
+    final hasStatusFilter = _selectedStatus != null && _selectedStatus != 'all';
+
+    final cubit = context.read<DriverOrdersPageCubit>();
+    final currentState = cubit.state;
+    if (currentState is DriverOrdersPageLoaded) {
+      List<DriverOrderModel> filtered = currentState.orders;
+
+      // Apply status filter
+      if (hasStatusFilter) {
+        filtered =
+            filtered
+                .where(
+                  (order) =>
+                      order.driverStatus.toLowerCase() ==
+                      _selectedStatus!.toLowerCase(),
+                )
+                .toList();
+      }
+
+      // Apply search filter (search by id, status, customer name)
+      if (hasSearchQuery) {
+        filtered =
+            filtered.where((order) {
+              return order.id.toLowerCase().contains(query) ||
+                  order.driverStatus.toLowerCase().contains(query) ||
+                  order.customer.name.toLowerCase().contains(query);
+            }).toList();
+      }
+
+      setState(() {
+        _filteredOrders = filtered;
+        _isSearching = hasSearchQuery;
+        _isFiltering = hasStatusFilter;
+      });
+    }
+  }
+
+  void _clearAllFilters() {
+    setState(() {
+      _searchController.clear();
+      _selectedStatus = null;
+      _isSearching = false;
+      _isFiltering = false;
+      _filteredOrders = [];
+    });
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearchVisible = !_isSearchVisible;
+      if (!_isSearchVisible) {
+        _searchController.clear();
+        _isSearching = false;
+        _applyFilters();
+      }
+    });
+  }
+
+  void _toggleFilter() {
+    setState(() {
+      _isFilterVisible = !_isFilterVisible;
+      if (!_isFilterVisible) {
+        _selectedStatus = null;
+        _isFiltering = false;
+        _applyFilters();
+      }
+    });
   }
 
   @override
@@ -167,10 +263,9 @@ class _DriverOrdersPageContentState extends State<_DriverOrdersPageContent>
       body: SafeArea(
         child: Column(
           children: [
-            // Custom Modern App Bar
             _buildCustomAppBar(),
-
-            // Main Content
+            if (_isSearchVisible) _buildSearchBar(),
+            if (_isFilterVisible) _buildFilterBar(),
             Expanded(child: _buildMainContent()),
           ],
         ),
@@ -246,18 +341,19 @@ class _DriverOrdersPageContentState extends State<_DriverOrdersPageContent>
     return BlocBuilder<DriverOrdersPageCubit, DriverOrdersPageState>(
       builder: (context, state) {
         if (state is DriverOrdersPageLoaded) {
-          final orders = state.orders;
+          final ordersToShow =
+              (_isSearching || _isFiltering) ? _filteredOrders : state.orders;
           return Column(
             children: [
               // Route View Button
-              if (orders.isNotEmpty) _buildRouteButton(),
+              if (ordersToShow.isNotEmpty) _buildRouteButton(),
 
               // Orders List
               Expanded(
                 child:
-                    orders.isEmpty
+                    ordersToShow.isEmpty
                         ? _buildEmptyState()
-                        : _buildOrdersList(orders),
+                        : _buildOrdersList(ordersToShow),
               ),
             ],
           );
@@ -268,15 +364,25 @@ class _DriverOrdersPageContentState extends State<_DriverOrdersPageContent>
   }
 
   // Custom Modern App Bar
+  Color _getAppBarColor(LocationTrackingStatus status) {
+    switch (status) {
+      case LocationTrackingStatus.tracking:
+        return Colors.green[100]!;
+      case LocationTrackingStatus.loading:
+        return Colors.orange[100]!;
+      case LocationTrackingStatus.idle:
+        return Colors.blue[50]!;
+    }
+  }
+
   Widget _buildCustomAppBar() {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.white, Colors.white],
-        ),
+        color: _getAppBarColor(_currentStatus),
+        gradient: null, // Remove gradient for color animation
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -287,34 +393,238 @@ class _DriverOrdersPageContentState extends State<_DriverOrdersPageContent>
       ),
       child: Column(
         children: [
-          // Top Row - Welcome and Refresh
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _UsernameDisplay(),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.refresh, color: Colors.black),
-                  onPressed: () {
-                    // Use BlocProvider.of to get the cubit from the correct context
-                    final cubit = BlocProvider.of<DriverOrdersPageCubit>(
-                      context,
-                    );
-                    cubit.loadOrders();
-                  },
+              Expanded(child: _UsernameDisplay()),
+              const SizedBox(width: 12),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Search Button
+                  Container(
+                    decoration: BoxDecoration(
+                      color:
+                          _isSearchVisible
+                              ? Colors.blue[100]
+                              : Colors.grey[200],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        _isSearchVisible ? Icons.close : Icons.search,
+                        color:
+                            _isSearchVisible
+                                ? Colors.blue[700]
+                                : Colors.grey[600],
+                      ),
+                      onPressed: _toggleSearch,
+                      tooltip:
+                          _isSearchVisible ? 'Close Search' : 'Search Orders',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Filter Button
+                  Container(
+                    decoration: BoxDecoration(
+                      color:
+                          _isFilterVisible
+                              ? Colors.green[100]
+                              : Colors.grey[200],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        _isFilterVisible ? Icons.close : Icons.filter_list,
+                        color:
+                            _isFilterVisible
+                                ? Colors.green[700]
+                                : Colors.grey[600],
+                      ),
+                      onPressed: _toggleFilter,
+                      tooltip:
+                          _isFilterVisible
+                              ? 'Close Filter'
+                              : 'Filter by Status',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Refresh Button
+                  BlocBuilder<DriverOrdersPageCubit, DriverOrdersPageState>(
+                    builder: (context, state) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.refresh, color: Colors.black),
+                          onPressed: () {
+                            final cubit =
+                                BlocProvider.of<DriverOrdersPageCubit>(context);
+                            cubit.loadOrders();
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _buildLocationTrackingSection(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        decoration: const InputDecoration(
+          hintText: 'Search by Order ID, Status, or Customer',
+          border: InputBorder.none,
+          icon: Icon(Icons.search),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterBar() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.filter_list, color: Colors.green[700], size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Filter by Status',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green[700],
                 ),
               ),
             ],
           ),
-
-          const SizedBox(height: 20),
-
-          // Location Tracking Section
-          _buildLocationTrackingSection(),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children:
+                _statusOptions.entries.map((entry) {
+                  final isSelected = _selectedStatus == entry.key;
+                  final statusColor =
+                      entry.key == 'all'
+                          ? Colors.grey
+                          : (entry.key == 'assigned_driver'
+                              ? Colors.orange
+                              : entry.key == 'on_the_way'
+                              ? Colors.blue
+                              : entry.key == 'customer_not_answer'
+                              ? Colors.red
+                              : Colors.grey);
+                  final statusIcon =
+                      entry.key == 'all' ? Icons.list : Icons.circle;
+                  return GestureDetector(
+                    onTap: () => _onStatusChanged(entry.key),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            isSelected
+                                ? statusColor.withOpacity(0.2)
+                                : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isSelected ? statusColor : Colors.grey[300]!,
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(statusIcon, color: statusColor, size: 18),
+                          const SizedBox(width: 6),
+                          Text(
+                            entry.value,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontWeight:
+                                  isSelected
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Selected: ${_selectedStatus != null ? _statusOptions[_selectedStatus!]! : 'All Orders'}',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: _clearAllFilters,
+                icon: const Icon(Icons.clear_all, size: 16),
+                label: const Text('Clear All'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[100],
+                  foregroundColor: Colors.red[700],
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -323,7 +633,7 @@ class _DriverOrdersPageContentState extends State<_DriverOrdersPageContent>
   // Location Tracking Section
   Widget _buildLocationTrackingSection() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.15),
         borderRadius: BorderRadius.circular(16),
@@ -333,7 +643,7 @@ class _DriverOrdersPageContentState extends State<_DriverOrdersPageContent>
         children: [
           // Status Icon
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: _getStatusColor(_currentStatus).withOpacity(0.2),
               borderRadius: BorderRadius.circular(8),

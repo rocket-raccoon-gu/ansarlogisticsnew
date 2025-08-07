@@ -4,6 +4,7 @@ import '../../data/models/driver_order_model.dart';
 import 'package:api_gateway/services/api_service.dart';
 import 'package:api_gateway/http/http_client.dart';
 import 'package:api_gateway/ws/websockt_client.dart';
+import '../../../../core/services/user_storage_service.dart';
 
 part 'driver_order_details_state.dart';
 
@@ -14,6 +15,8 @@ class DriverOrderDetailsCubit extends Cubit<DriverOrderDetailsState> {
     : _apiService = apiService ?? ApiService(HttpClient(), WebSocketClient()),
       super(DriverOrderDetailsInitial());
 
+  String? _cachedUsername;
+
   Future<void> fetchOrderDetails(String orderId, String token) async {
     if (!isClosed) {
       emit(DriverOrderDetailsLoading());
@@ -21,8 +24,10 @@ class DriverOrderDetailsCubit extends Cubit<DriverOrderDetailsState> {
     try {
       final response = await _apiService.getDriverOrderDetails(orderId, token);
       final details = DriverOrderDetailsModel.fromJson(response.data);
+      final userData = await UserStorageService.getUserData();
+      _cachedUsername = userData?.user?.name;
       if (!isClosed) {
-        emit(DriverOrderDetailsLoaded(details));
+        emit(DriverOrderDetailsLoaded(details, _cachedUsername));
       }
     } catch (e) {
       if (!isClosed) {

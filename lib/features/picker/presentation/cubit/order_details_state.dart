@@ -45,6 +45,7 @@ class OrderDetailsLoaded extends OrderDetailsState {
   final List<CategoryItemModel> supplierCategories;
   final List<CategoryItemModel> vendorPickupCategories;
   final List<CategoryItemModel> abayaCategories;
+  final String? username;
 
   OrderDetailsLoaded({
     required this.status,
@@ -81,6 +82,7 @@ class OrderDetailsLoaded extends OrderDetailsState {
     required this.supTotal,
     required this.vpoTotal,
     required this.abyTotal,
+    this.username,
   });
 }
 

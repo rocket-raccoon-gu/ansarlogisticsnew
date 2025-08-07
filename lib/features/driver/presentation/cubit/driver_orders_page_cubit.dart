@@ -132,6 +132,12 @@ class DriverOrdersPageCubit extends Cubit<DriverOrdersPageState> {
     }
   }
 
+  List<DriverOrderModel> filterOrdersByStatus(List<String> statuses) {
+    return orders
+        .where((order) => statuses.contains(order.orderStatus))
+        .toList();
+  }
+
   @override
   Future<void> close() {
     // Optionally disconnect WebSocket here if needed

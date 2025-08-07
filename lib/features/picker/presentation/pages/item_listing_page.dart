@@ -224,6 +224,20 @@ class _ItemListingPageState extends State<ItemListingPage> {
     }
   }
 
+  bool checkList(List<OrderItemModel> allItems) {
+    return allItems.any((item) => item.status == OrderItemStatus.toPick);
+  }
+
+  bool _isToPickTabEmpty() {
+    final toPickItems =
+        widget.items
+            .where((item) => item.status == OrderItemStatus.toPick)
+            .toList();
+    return toPickItems.isEmpty;
+  }
+
+  List<CategoryItemModel> filteredCategories = [];
+
   @override
   Widget build(BuildContext context) {
     // Debug logging for items passed to ItemListingPage
@@ -251,7 +265,6 @@ class _ItemListingPageState extends State<ItemListingPage> {
         builder: (context, state) {
           if (state is OrderDetailsLoaded) {
             // Use the cubit's categories but filter them to only include items that match the delivery type
-            List<CategoryItemModel> filteredCategories = [];
 
             if (widget.deliveryType != null) {
               // Use delivery-type-specific categories based on the delivery type
@@ -479,7 +492,7 @@ class _ItemListingPageState extends State<ItemListingPage> {
                 type: BottomNavigationBarType.fixed,
               ),
               bottomSheet:
-                  _selectedIndex == 1 && filteredItems.isEmpty
+                  _selectedIndex == 1 && _isToPickTabEmpty()
                       ? Container(
                         color: Colors.white,
                         padding: const EdgeInsets.symmetric(

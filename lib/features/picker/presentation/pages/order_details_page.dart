@@ -13,6 +13,7 @@ import '../cubit/order_details_cubit.dart';
 import '../widgets/cancel_reason_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ansarlogisticsnew/features/picker/presentation/pages/item_listing_page.dart';
+import 'package:ansarlogisticsnew/features/driver/data/models/caller_model.dart';
 
 import '../cubit/picker_orders_cubit.dart';
 import 'package:ansarlogisticsnew/features/navigation/presentation/pages/main_navigation_page.dart';
@@ -30,6 +31,8 @@ class OrderDetailsPage extends StatefulWidget {
 
 class _OrderDetailsPageState extends State<OrderDetailsPage> {
   int _selectedIndex = 0;
+
+  CallLogs c1 = CallLogs();
 
   @override
   Widget build(BuildContext context) {
@@ -262,7 +265,11 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                               ),
                               IconButton(
                                 onPressed:
-                                    () => _openWhatsApp(widget.order.phone),
+                                    () => _openWhatsApp(
+                                      widget.order.phone,
+                                      state.username,
+                                      widget.order.preparationLabel,
+                                    ),
                                 icon: Icon(
                                   Icons.message,
                                   color: Colors.green,
@@ -700,13 +707,21 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
   // Helper methods
   void _makePhoneCall(String? phoneNumber) {
     if (phoneNumber != null && phoneNumber.isNotEmpty) {
-      launchUrl(Uri.parse('tel:$phoneNumber'));
+      c1.call(phoneNumber, () {
+        log("📞 Call initiated for driver order: $phoneNumber");
+      });
     }
   }
 
-  void _openWhatsApp(String? phoneNumber) {
+  void _openWhatsApp(String? phoneNumber, String? username, String? ordernum) {
     if (phoneNumber != null && phoneNumber.isNotEmpty) {
-      launchUrl(Uri.parse('https://wa.me/$phoneNumber'));
+      // whatsapp://send?phone=${phoneNumber}&text=Hello,this is ${UserController.userController.profile.name} Your *Ansar Gallery Order Picker*. I am here to assist with Preparing your order ${ordernum}
+      // launchUrl(Uri.parse('https://wa.me/$phoneNumber'));
+      launchUrl(
+        Uri.parse(
+          'whatsapp://send?phone=${phoneNumber}&text=Hello,this is ${username} Your *Ansar Gallery Order Picker*. I am here to assist with Preparing your order ${ordernum}',
+        ),
+      );
     }
   }
 

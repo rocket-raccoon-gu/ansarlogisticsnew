@@ -19,8 +19,13 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
   OrderDetailsCubit({required this.orderId, required this.apiService})
     : super(OrderDetailsInitial());
 
+  String? _cachedUsername;
+
   Future<void> loadItems() async {
     // If we have cached data, show it immediately
+    final userData = await UserStorageService.getUserData();
+    _cachedUsername = userData?.user?.name;
+
     if (_cachedOrderDetails != null) {
       final allItems = _cachedOrderDetails!.allItems;
       if (!isClosed) {
@@ -85,6 +90,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
             supTotal: _getSupTotal(_cachedOrderDetails!.subgroupDetails),
             vpoTotal: _getVpoTotal(_cachedOrderDetails!.subgroupDetails),
             abyTotal: _getAbyTotal(_cachedOrderDetails!.subgroupDetails),
+            username: _cachedUsername,
           ),
         );
       }
@@ -174,6 +180,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
               supTotal: _getSupTotal(orderDetails.subgroupDetails),
               vpoTotal: _getVpoTotal(orderDetails.subgroupDetails),
               abyTotal: _getAbyTotal(orderDetails.subgroupDetails),
+              username: _cachedUsername,
             ),
           );
         }
@@ -576,6 +583,7 @@ class OrderDetailsCubit extends Cubit<OrderDetailsState> {
             supTotal: _getSupTotal(_cachedOrderDetails!.subgroupDetails),
             vpoTotal: _getVpoTotal(_cachedOrderDetails!.subgroupDetails),
             abyTotal: _getAbyTotal(_cachedOrderDetails!.subgroupDetails),
+            username: _cachedUsername,
           ),
         );
         print('🔍 OrderDetailsCubit - New state emitted');

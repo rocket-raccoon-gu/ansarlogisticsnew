@@ -12,9 +12,10 @@ class DriverOrderDetailsLoading extends DriverOrderDetailsState {}
 
 class DriverOrderDetailsLoaded extends DriverOrderDetailsState {
   final DriverOrderDetailsModel details;
-  const DriverOrderDetailsLoaded(this.details);
+  final String? username;
+  const DriverOrderDetailsLoaded(this.details, this.username);
   @override
-  List<Object?> get props => [details];
+  List<Object?> get props => [details, username];
 }
 
 class DriverOrderDetailsError extends DriverOrderDetailsState {

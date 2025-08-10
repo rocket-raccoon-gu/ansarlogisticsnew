@@ -84,6 +84,7 @@ class DriverOrderLocation {
   final String longitude;
   final String zone;
   final String street;
+  final String building;
 
   DriverOrderLocation({
     required this.name,
@@ -91,6 +92,7 @@ class DriverOrderLocation {
     required this.longitude,
     required this.zone,
     required this.street,
+    required this.building,
   });
 
   factory DriverOrderLocation.fromJson(Map<String, dynamic> json) {
@@ -100,6 +102,7 @@ class DriverOrderLocation {
       longitude: json['longitude']?.toString() ?? '',
       zone: json['zone']?.toString() ?? '',
       street: json['street']?.toString() ?? '',
+      building: json['building']?.toString() ?? '',
     );
   }
 }
@@ -199,6 +202,7 @@ class DriverOrderDetailsOrder {
   final String? preOrderDate;
   final String vehicleChoice;
   final String merchantOrderId;
+  final String? deliveryNote;
 
   DriverOrderDetailsOrder({
     required this.subTotal,
@@ -209,6 +213,7 @@ class DriverOrderDetailsOrder {
     this.preOrderDate,
     required this.vehicleChoice,
     required this.merchantOrderId,
+    this.deliveryNote,
   });
 
   factory DriverOrderDetailsOrder.fromJson(Map<String, dynamic> json) {
@@ -224,6 +229,7 @@ class DriverOrderDetailsOrder {
       preOrderDate: json['pre_order_date']?.toString(),
       vehicleChoice: json['vehicle_choice']?.toString() ?? '',
       merchantOrderId: json['merchant_order_id']?.toString() ?? '',
+      deliveryNote: json['delivery_note']?.toString(),
     );
   }
 }

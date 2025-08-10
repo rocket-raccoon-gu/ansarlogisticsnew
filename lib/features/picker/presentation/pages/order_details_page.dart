@@ -499,7 +499,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
       child: InkWell(
         onTap:
             () =>
-                status == 'cancel_request'
+                status == 'cancel_request' || status == null
                     ? null
                     : _navigateToItemList(
                       context,
@@ -595,7 +595,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                     ),
                   ),
                   child: Text(
-                    getStatusText(status ?? ''),
+                    status == null ? 'Delivered' : getStatusText(status ?? ''),
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                 ),

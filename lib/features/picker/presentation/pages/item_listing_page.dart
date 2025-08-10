@@ -236,6 +236,21 @@ class _ItemListingPageState extends State<ItemListingPage> {
     return toPickItems.isEmpty;
   }
 
+  // Helper method to check if both exp and nol cards are present
+  bool _hasBothExpAndNolCards(OrderDetailsLoaded state) {
+    // Check if both exp and nol status are not null
+    // This indicates that both delivery types are present in the order
+    final hasBoth = state.expStatus != null && state.nolStatus != null;
+
+    // Debug logging
+    print('🔍 ItemListingPage - _hasBothExpAndNolCards:');
+    print('  - expStatus: ${state.expStatus}');
+    print('  - nolStatus: ${state.nolStatus}');
+    print('  - hasBoth: $hasBoth');
+
+    return hasBoth;
+  }
+
   List<CategoryItemModel> filteredCategories = [];
 
   @override
@@ -335,6 +350,19 @@ class _ItemListingPageState extends State<ItemListingPage> {
             final tabFilteredCategories = _getFilteredCategories(
               filteredCategories,
             );
+
+            // Debug logging for bottom sheet condition
+            final shouldShowBottomSheet =
+                _selectedIndex == 1 &&
+                _isToPickTabEmpty() &&
+                _hasBothExpAndNolCards(state);
+            print('🔍 ItemListingPage - Bottom sheet condition:');
+            print('  - _selectedIndex == 1: ${_selectedIndex == 1}');
+            print('  - _isToPickTabEmpty(): ${_isToPickTabEmpty()}');
+            print(
+              '  - _hasBothExpAndNolCards(state): ${_hasBothExpAndNolCards(state)}',
+            );
+            print('  - shouldShowBottomSheet: $shouldShowBottomSheet');
 
             return Scaffold(
               appBar: AppBar(
@@ -492,7 +520,9 @@ class _ItemListingPageState extends State<ItemListingPage> {
                 type: BottomNavigationBarType.fixed,
               ),
               bottomSheet:
-                  _selectedIndex == 1 && _isToPickTabEmpty()
+                  _selectedIndex == 1 &&
+                          _isToPickTabEmpty() &&
+                          _hasBothExpAndNolCards(state)
                       ? Container(
                         color: Colors.white,
                         padding: const EdgeInsets.symmetric(

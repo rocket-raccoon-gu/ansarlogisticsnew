@@ -26,6 +26,14 @@ class DriverOrderDetailsCubit extends Cubit<DriverOrderDetailsState> {
       final details = DriverOrderDetailsModel.fromJson(response.data);
       final userData = await UserStorageService.getUserData();
       _cachedUsername = userData?.user?.name;
+
+      // Debug logging for delivery note
+      print(
+        '🔍 DriverOrderDetailsCubit - Delivery note: ${details.data.order.deliveryNote}',
+      );
+      print(
+        '🔍 DriverOrderDetailsCubit - Delivery note is empty: ${details.data.order.deliveryNote?.isEmpty ?? true}',
+      );
       if (!isClosed) {
         emit(DriverOrderDetailsLoaded(details, _cachedUsername));
       }

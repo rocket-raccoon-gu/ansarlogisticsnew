@@ -141,6 +141,15 @@ class _DriverOrderDetailsPageState extends State<DriverOrderDetailsPage> {
             }
             if (state is DriverOrderDetailsLoaded) {
               final details = state.details.data;
+
+              // Debug logging for delivery note in UI
+              print(
+                '🔍 DriverOrderDetailsPage - Delivery note: ${details.order.deliveryNote}',
+              );
+              print(
+                '🔍 DriverOrderDetailsPage - Should show delivery note: ${details.order.deliveryNote?.isNotEmpty ?? false}',
+              );
+
               return SingleChildScrollView(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -322,7 +331,7 @@ class _DriverOrderDetailsPageState extends State<DriverOrderDetailsPage> {
                               Row(
                                 children: [
                                   const Icon(
-                                    Icons.home,
+                                    Icons.streetview_sharp,
                                     color: Colors.grey,
                                     size: 18,
                                   ),
@@ -330,6 +339,23 @@ class _DriverOrderDetailsPageState extends State<DriverOrderDetailsPage> {
                                   Expanded(
                                     child: Text(
                                       details.address.street,
+                                      style: TextStyle(fontSize: 15),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.apartment,
+                                    color: Colors.grey,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      details.address.building,
                                       style: TextStyle(fontSize: 15),
                                     ),
                                   ),
@@ -377,7 +403,66 @@ class _DriverOrderDetailsPageState extends State<DriverOrderDetailsPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      // Delivery Notes Card
+                      if (details.order.deliveryNote?.isNotEmpty ?? false) ...[
+                        // const SizedBox(height: 20),
+                        Card(
+                          elevation: 3,
+                          color: Colors.orange[50],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.edit_note,
+                                      color: Colors.orange[700],
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      'Delivery Notes',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.orange[800],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 5),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.orange[200]!,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    details.order.deliveryNote!,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.orange[800],
+                                      fontWeight: FontWeight.w500,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 10),
                       Text(
                         'Order Items',
                         style: TextStyle(

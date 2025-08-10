@@ -308,7 +308,7 @@ class ApiService {
       log('Scan barcode and pick item: $orderSku, $token, $sku');
       final response = await dio.post(
         '${ApiConfig.baseUrl}picker/orders/check-sku',
-        data: {'sku': orderSku, 'skuAction': 'pick', 'skuOrder': sku},
+        data: {'sku': sku, 'skuAction': 'pick', 'skuOrder': orderSku},
         options: Options(
           headers: {
             'Content-Type': 'application/json',

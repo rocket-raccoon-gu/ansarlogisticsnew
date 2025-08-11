@@ -4,32 +4,19 @@ import 'package:flutter/material.dart';
 import '../../data/models/order_item_model.dart';
 import '../../data/models/order_model.dart';
 import '../cubit/order_details_cubit.dart';
-import '../widgets/barcode_scanner_widget.dart';
-import '../widgets/optimized_barcode_scanner_widget.dart';
-import '../widgets/simple_barcode_scanner_widget.dart';
-import '../widgets/test_scanner_widget.dart';
-import '../widgets/minimal_scanner_widget.dart';
-import '../widgets/debug_scanner_widget.dart';
-import '../widgets/production_scanner_widget.dart';
-import '../widgets/stable_scanner_widget.dart';
-import '../widgets/product_found_dialog.dart';
-import '../widgets/product_not_matching_dialog.dart';
-import '../widgets/improved_product_dialog.dart';
 import 'package:api_gateway/services/api_service.dart';
 import 'package:api_gateway/http/http_client.dart';
 import 'package:api_gateway/ws/websockt_client.dart';
 import '../../../../core/services/user_storage_service.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:ansarlogisticsnew/features/picker/presentation/pages/item_listing_page.dart';
-import 'package:ansarlogisticsnew/core/routes/app_router.dart';
 import '../widgets/confirmation_dialog.dart';
-import '../widgets/notfound_dialog.dart';
 import 'dart:developer';
-import '../../../../core/services/barcode_scanner_service.dart';
-import '../../../../core/di/injector.dart';
 import '../../../../core/widgets/safe_app_bar.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ansarlogisticsnew/core/widgets/network_image_with_loader.dart';
+import '../widgets/stable_scanner_widget.dart';
+import '../widgets/product_found_dialog.dart';
+import '../widgets/product_not_matching_dialog.dart';
 
 class OrderItemDetailsPage extends StatefulWidget {
   final OrderItemModel item;
@@ -53,6 +40,8 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
   late int _quantity;
   bool _isProcessing = false;
   late TextEditingController _manualBarcodeController;
+  late TextEditingController _holdReasonController;
+  bool _showHoldReason = false;
   int selectedindex = 0; // Track selected image index
 
   @override
@@ -60,11 +49,13 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
     super.initState();
     _quantity = 0; // Initialize to 0 as requested
     _manualBarcodeController = TextEditingController();
+    _holdReasonController = TextEditingController();
   }
 
   @override
   void dispose() {
     _manualBarcodeController.dispose();
+    _holdReasonController.dispose();
     super.dispose();
   }
 
@@ -592,8 +583,7 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                   ),
 
                 if (widget.item.status != OrderItemStatus.picked &&
-                    widget.item.status != OrderItemStatus.itemNotAvailable &&
-                    widget.item.status != OrderItemStatus.holded)
+                    widget.item.status != OrderItemStatus.itemNotAvailable)
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -800,6 +790,67 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                 ),
                 const SizedBox(height: 12),
 
+                // Hold Reason input (shown only when Hold is clicked)
+                if (_showHoldReason)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextField(
+                          controller: _holdReasonController,
+                          maxLines: 2,
+                          decoration: const InputDecoration(
+                            labelText: 'Hold Reason',
+                            hintText: 'Enter a reason for holding the item',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  final reason =
+                                      _holdReasonController.text.trim();
+                                  if (reason.isEmpty) {
+                                    Fluttertoast.showToast(
+                                      msg:
+                                          'Please enter a reason for holding the item.',
+                                      toastLength: Toast.LENGTH_SHORT,
+                                      gravity: ToastGravity.BOTTOM,
+                                      backgroundColor: Colors.red,
+                                    );
+                                    return;
+                                  }
+                                  _handleHoldAction(reason);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.amber,
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: Text('Confirm Hold'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _showHoldReason = false;
+                                    _holdReasonController.clear();
+                                  });
+                                },
+                                child: Text('Cancel'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
                 // Responsive action buttons layout
                 LayoutBuilder(
                   builder: (context, constraints) {
@@ -896,7 +947,11 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                               onPressed:
                                   widget.item.status == OrderItemStatus.holded
                                       ? null
-                                      : () => _handleHoldAction(),
+                                      : () {
+                                        setState(() {
+                                          _showHoldReason = true;
+                                        });
+                                      },
                             ),
                           ),
                         ],
@@ -988,7 +1043,11 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
                               onPressed:
                                   widget.item.status == OrderItemStatus.holded
                                       ? null
-                                      : () => _handleHoldAction(),
+                                      : () {
+                                        setState(() {
+                                          _showHoldReason = true;
+                                        });
+                                      },
                             ),
                           ),
                         ],
@@ -1043,13 +1102,13 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
     );
   }
 
-  Future<void> _handleHoldAction() async {
+  Future<void> _handleHoldAction(String reason) async {
     await widget.cubit.updateItemStatus(
       item: widget.item,
       status: 'holded',
       scannedSku: widget.item.sku ?? '',
-      reason: null,
-      quantity: _quantity,
+      reason: reason,
+      quantity: widget.item.quantity,
       isProduceOverride: widget.item.isProduce ? 1 : 0,
     );
     if (mounted) {

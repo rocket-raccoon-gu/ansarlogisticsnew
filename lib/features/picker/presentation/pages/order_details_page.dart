@@ -388,6 +388,8 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
         allItems.where((item) => item.deliveryType == 'sup').toList();
     final vpoItems =
         allItems.where((item) => item.deliveryType == 'vpo').toList();
+    final abyItems =
+        allItems.where((item) => item.deliveryType == 'aby').toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -470,6 +472,20 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                     ? vpoItems.first.subgroupIdentifier ?? ''
                     : '',
                 state.vpoTotal ?? '0',
+              ),
+            if (abyItems.isNotEmpty)
+              _buildDeliveryTypeCard(
+                context,
+                'ABY (Abyssinia)',
+                abyItems,
+                state.abyStatus,
+                Colors.brown,
+                cubit,
+                'aby',
+                abyItems.isNotEmpty
+                    ? abyItems.first.subgroupIdentifier ?? ''
+                    : '',
+                state.abyTotal ?? '0',
               ),
           ],
         ),

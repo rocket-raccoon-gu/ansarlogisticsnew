@@ -17,6 +17,7 @@ import 'package:ansarlogisticsnew/core/widgets/network_image_with_loader.dart';
 import '../widgets/stable_scanner_widget.dart';
 import '../widgets/product_found_dialog.dart';
 import '../widgets/product_not_matching_dialog.dart';
+import 'package:dio/dio.dart';
 
 class OrderItemDetailsPage extends StatefulWidget {
   final OrderItemModel item;
@@ -1188,11 +1189,38 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
           widget.preparationId,
         );
       } else {
-        // Show error message from API
-        final errorMessage = response.data?['message'] ?? 'Failed to pick item';
+        // Handle error response with message from API
+        String errorMessage = 'Failed to pick item';
+
+        try {
+          // Try to extract error message from response data
+          if (response.data != null && response.data is Map<String, dynamic>) {
+            final responseData = response.data as Map<String, dynamic>;
+
+            // Check for message field in the response
+            if (responseData.containsKey('message')) {
+              errorMessage = responseData['message'] ?? errorMessage;
+            }
+
+            // Check for suggestion field and append it if available
+            if (responseData.containsKey('suggestion')) {
+              final suggestion = responseData['suggestion'];
+              if (suggestion != null && suggestion.isNotEmpty) {
+                errorMessage += '\n\nSuggestion: $suggestion';
+              }
+            }
+
+            // Log the full error response for debugging
+            print('🔍 Barcode scan error response: $responseData');
+          }
+        } catch (e) {
+          print('Error parsing error response: $e');
+        }
+
+        // Show error message in toast
         Fluttertoast.showToast(
           msg: errorMessage,
-          toastLength: Toast.LENGTH_SHORT,
+          toastLength: Toast.LENGTH_LONG,
           gravity: ToastGravity.CENTER,
           backgroundColor: Colors.red,
         );
@@ -1200,9 +1228,111 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
     } catch (e) {
       if (!context.mounted) return;
 
+      // Handle DioException and other exceptions
+      String errorMessage = 'An error occurred while processing the barcode';
+
+      try {
+        // Check if it's a DioException (API error)
+        if (e is DioException) {
+          final dioError = e as DioException;
+
+          // Handle different DioException types
+          switch (dioError.type) {
+            case DioExceptionType.badResponse:
+              // This is what we get for 404, 400, 500, etc.
+              if (dioError.response != null) {
+                final statusCode = dioError.response!.statusCode;
+                final responseData = dioError.response!.data;
+
+                print(
+                  '🔍 DioException - Status: $statusCode, Data: $responseData',
+                );
+
+                if (statusCode == 404) {
+                  // Handle 404 specifically - this is likely the "Product not found" case
+                  if (responseData != null &&
+                      responseData is Map<String, dynamic>) {
+                    final data = responseData as Map<String, dynamic>;
+
+                    // Extract message and suggestion from response data
+                    if (data.containsKey('message')) {
+                      errorMessage =
+                          data['message'] ??
+                          'Product not found in website or ERP system';
+                    } else {
+                      errorMessage =
+                          'Product not found in website or ERP system';
+                    }
+
+                    // Add suggestion if available
+                    if (data.containsKey('suggestion')) {
+                      final suggestion = data['suggestion'];
+                      if (suggestion != null && suggestion.isNotEmpty) {
+                        errorMessage += '\n\nSuggestion: $suggestion';
+                      }
+                    }
+                  } else {
+                    errorMessage = 'Product not found in website or ERP system';
+                  }
+                } else if (statusCode == 400) {
+                  errorMessage =
+                      'Bad request - please check the barcode format';
+                } else if (statusCode == 401) {
+                  errorMessage = 'Authentication failed - please login again';
+                } else if (statusCode == 403) {
+                  errorMessage = 'Access denied - insufficient permissions';
+                } else if (statusCode == 500) {
+                  errorMessage = 'Server error - please try again later';
+                } else {
+                  // Try to extract error message from response data
+                  if (responseData != null &&
+                      responseData is Map<String, dynamic>) {
+                    final data = responseData as Map<String, dynamic>;
+                    if (data.containsKey('message')) {
+                      errorMessage = data['message'] ?? 'An error occurred';
+                    }
+                  }
+                }
+              } else {
+                errorMessage = 'Server returned an error response';
+              }
+              break;
+
+            case DioExceptionType.connectionTimeout:
+            case DioExceptionType.receiveTimeout:
+            case DioExceptionType.sendTimeout:
+              errorMessage =
+                  'Connection timeout. Please check your internet connection.';
+              break;
+
+            case DioExceptionType.connectionError:
+              errorMessage =
+                  'Connection error. Please check your internet connection.';
+              break;
+
+            default:
+              errorMessage = 'Network error: ${dioError.message}';
+              break;
+          }
+        } else if (e.toString().contains('SocketException') ||
+            e.toString().contains('TimeoutException')) {
+          errorMessage =
+              'Connection timeout. Please check your internet connection.';
+        } else if (e.toString().contains('FormatException')) {
+          errorMessage = 'Invalid response format from server.';
+        } else if (e.toString().contains('Exception')) {
+          errorMessage = 'An unexpected error occurred: ${e.toString()}';
+        }
+      } catch (parseError) {
+        print('Error parsing exception: $parseError');
+        errorMessage = 'An error occurred: ${e.toString()}';
+      }
+
+      print('🔍 Barcode scan exception: $e');
+
       Fluttertoast.showToast(
-        msg: 'Failed to pick item: ${e.toString()}',
-        toastLength: Toast.LENGTH_SHORT,
+        msg: errorMessage,
+        toastLength: Toast.LENGTH_LONG,
         gravity: ToastGravity.CENTER,
         backgroundColor: Colors.red,
       );
@@ -1348,9 +1478,111 @@ class _OrderItemDetailsPageState extends State<OrderItemDetailsPage> {
       }
     } catch (e) {
       log('Error in produce barcode processing: $e');
+
+      // Handle DioException and other exceptions
+      String errorMessage =
+          'An error occurred while processing the produce barcode';
+
+      try {
+        // Check if it's a DioException (API error)
+        if (e is DioException) {
+          final dioError = e as DioException;
+
+          // Handle different DioException types
+          switch (dioError.type) {
+            case DioExceptionType.badResponse:
+              // This is what we get for 404, 400, 500, etc.
+              if (dioError.response != null) {
+                final statusCode = dioError.response!.statusCode;
+                final responseData = dioError.response!.data;
+
+                print(
+                  '🔍 Produce DioException - Status: $statusCode, Data: $responseData',
+                );
+
+                if (statusCode == 404) {
+                  // Handle 404 specifically - this is likely the "Product not found" case
+                  if (responseData != null &&
+                      responseData is Map<String, dynamic>) {
+                    final data = responseData as Map<String, dynamic>;
+
+                    // Extract message and suggestion from response data
+                    if (data.containsKey('message')) {
+                      errorMessage =
+                          data['message'] ??
+                          'Product not found in website or ERP system';
+                    } else {
+                      errorMessage =
+                          'Product not found in website or ERP system';
+                    }
+
+                    // Add suggestion if available
+                    if (data.containsKey('suggestion')) {
+                      final suggestion = data['suggestion'];
+                      if (suggestion != null && suggestion.isNotEmpty) {
+                        errorMessage += '\n\nSuggestion: $suggestion';
+                      }
+                    }
+                  } else {
+                    errorMessage = 'Product not found in website or ERP system';
+                  }
+                } else if (statusCode == 400) {
+                  errorMessage =
+                      'Bad request - please check the barcode format';
+                } else if (statusCode == 401) {
+                  errorMessage = 'Authentication failed - please login again';
+                } else if (statusCode == 403) {
+                  errorMessage = 'Access denied - insufficient permissions';
+                } else if (statusCode == 500) {
+                  errorMessage = 'Server error - please try again later';
+                } else {
+                  // Try to extract error message from response data
+                  if (responseData != null &&
+                      responseData is Map<String, dynamic>) {
+                    final data = responseData as Map<String, dynamic>;
+                    if (data.containsKey('message')) {
+                      errorMessage = data['message'] ?? 'An error occurred';
+                    }
+                  }
+                }
+              } else {
+                errorMessage = 'Server returned an error response';
+              }
+              break;
+
+            case DioExceptionType.connectionTimeout:
+            case DioExceptionType.receiveTimeout:
+            case DioExceptionType.sendTimeout:
+              errorMessage =
+                  'Connection timeout. Please check your internet connection.';
+              break;
+
+            case DioExceptionType.connectionError:
+              errorMessage =
+                  'Connection error. Please check your internet connection.';
+              break;
+
+            default:
+              errorMessage = 'Network error: ${dioError.message}';
+              break;
+          }
+        } else if (e.toString().contains('SocketException') ||
+            e.toString().contains('TimeoutException')) {
+          errorMessage =
+              'Connection timeout. Please check your internet connection.';
+        } else if (e.toString().contains('FormatException')) {
+          errorMessage = 'Invalid response format from server.';
+        } else if (e.toString().contains('Exception')) {
+          errorMessage = 'An unexpected error occurred: ${e.toString()}';
+        }
+      } catch (parseError) {
+        print('Error parsing produce exception: $parseError');
+        errorMessage = 'An error occurred: ${e.toString()}';
+      }
+
       Fluttertoast.showToast(
-        msg: 'Error: ${e.toString()}',
-        toastLength: Toast.LENGTH_SHORT,
+        msg: errorMessage,
+        toastLength: Toast.LENGTH_LONG,
         gravity: ToastGravity.BOTTOM,
         backgroundColor: Colors.red,
       );

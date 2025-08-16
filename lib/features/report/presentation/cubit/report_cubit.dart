@@ -35,6 +35,9 @@ class ReportCubit extends Cubit<ReportState> {
           startedOrders: 8,
           completedOrders: 7,
           endPickedOrders: 6,
+          holdedOrders: 1,
+          materialRequestOrders: 2,
+          cancelRequestOrders: 0,
           fromDate: _fromDate,
           toDate: _toDate,
         ),
@@ -109,19 +112,50 @@ class ReportCubit extends Cubit<ReportState> {
   ) async {
     print('🌐 ReportCubit: Calling API for $role report');
     try {
-      final response = await _apiService.getReport(
-        token: token,
-        role: role,
-        fromDate: fromDate,
-        toDate: toDate,
-      );
-
-      print('📡 ReportCubit: API response received - ${response.statusCode}');
-      print('📄 ReportCubit: API response data - ${response.data}');
-
       if (role == 'picker') {
-        return PickerReportModel.fromJson(response.data);
+        // Use the new picker report API
+        final response = await _apiService.getPickerReport(
+          token: token,
+          startDate: fromDate,
+          endDate: toDate,
+        );
+
+        print(
+          '📡 ReportCubit: Picker API response received - ${response.statusCode}',
+        );
+        print('📄 ReportCubit: Picker API response data - ${response.data}');
+
+        // Parse the new API response format
+        final pickerReportData = PickerReportDataModel.fromJson(response.data);
+        return pickerReportData.toPickerReportModel(fromDate, toDate);
+      } else if (role == 'driver') {
+        // Use the new driver report API
+        final response = await _apiService.getDriverReport(
+          token: token,
+          startDate: fromDate,
+          endDate: toDate,
+        );
+
+        print(
+          '📡 ReportCubit: Driver API response received - ${response.statusCode}',
+        );
+        print('📄 ReportCubit: Driver API response data - ${response.data}');
+
+        // Parse the new API response format
+        final driverReportData = DriverReportDataModel.fromJson(response.data);
+        return driverReportData.toDriverReportModel(fromDate, toDate);
       } else {
+        // Use the existing report API for other roles
+        final response = await _apiService.getReport(
+          token: token,
+          role: role,
+          fromDate: fromDate,
+          toDate: toDate,
+        );
+
+        print('📡 ReportCubit: API response received - ${response.statusCode}');
+        print('📄 ReportCubit: API response data - ${response.data}');
+
         return DriverReportModel.fromJson(response.data);
       }
     } catch (e) {
@@ -135,6 +169,9 @@ class ReportCubit extends Cubit<ReportState> {
           startedOrders: 38,
           completedOrders: 35,
           endPickedOrders: 32,
+          holdedOrders: 3,
+          materialRequestOrders: 4,
+          cancelRequestOrders: 2,
           fromDate: fromDate,
           toDate: toDate,
         );
@@ -146,6 +183,10 @@ class ReportCubit extends Cubit<ReportState> {
           completedOrders: 22,
           onTheWayOrders: 18,
           deliveredOrders: 20,
+          orderCollectedOrders: 2,
+          customerNotAnswerOrders: 5,
+          cancelRequestOrders: 1,
+          materialRequestOrders: 3,
           fromDate: fromDate,
           toDate: toDate,
         );

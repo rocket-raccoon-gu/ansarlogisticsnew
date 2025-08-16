@@ -304,17 +304,11 @@ class ApiService {
     String orderSku,
   ) async {
     try {
-      final dio = Dio();
       log('Scan barcode and pick item: $orderSku, $token, $sku');
-      final response = await dio.post(
-        '${ApiConfig.baseUrl}picker/orders/check-sku',
+      final response = await _httpClient.post(
+        'picker/orders/check-sku',
         data: {'sku': sku, 'skuAction': 'pick', 'skuOrder': orderSku},
-        options: Options(
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-        ),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       log('Scan barcode response status: ${response.statusCode}');
       log('Scan barcode response data: ${response.data}');
@@ -361,7 +355,6 @@ class ApiService {
     required String orderNumber,
   }) async {
     try {
-      final dio = Dio();
       log('Update item status: $itemId, $scannedSku, $status, $qty');
 
       final data = {
@@ -375,18 +368,16 @@ class ApiService {
         'is_produce': isProduce,
         'productId': productId ?? 0,
         'name': productName ?? '',
-        if (reason != null) 'reason': reason,
+        'reason': reason ?? '',
       };
       log('Update item status data: $data');
 
-      final response = await dio.patch(
-        '${ApiConfig.baseUrl}picker/orders/item/status',
+      final response = await _httpClient.patch(
+        'picker/orders/item/status',
         data: data,
         options: Options(
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
+          method: 'PATCH',
+          headers: {'Authorization': 'Bearer $token'},
         ),
       );
       log('Update item status response status: ${response.statusCode}');
@@ -460,6 +451,68 @@ class ApiService {
       return response;
     } catch (e) {
       log('Report error: ${e.toString()}');
+      rethrow;
+    }
+  }
+
+  Future<Response> getPickerReport({
+    required String token,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    try {
+      final dio = Dio();
+      final response = await dio.get(
+        '${ApiConfig.baseUrl}picker/report',
+        queryParameters: {
+          'start_date':
+              startDate.toIso8601String().split('T')[0], // Format as YYYY-MM-DD
+          'end_date':
+              endDate.toIso8601String().split('T')[0], // Format as YYYY-MM-DD
+        },
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+      log('Picker Report response status: ${response.statusCode}');
+      log('Picker Report response data: ${response.data}');
+      return response;
+    } catch (e) {
+      log('Picker Report error: ${e.toString()}');
+      rethrow;
+    }
+  }
+
+  Future<Response> getDriverReport({
+    required String token,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    try {
+      final dio = Dio();
+      final response = await dio.get(
+        '${ApiConfig.baseUrl}driver/report',
+        queryParameters: {
+          'start_date':
+              startDate.toIso8601String().split('T')[0], // Format as YYYY-MM-DD
+          'end_date':
+              endDate.toIso8601String().split('T')[0], // Format as YYYY-MM-DD
+        },
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+      log('Driver Report response status: ${response.statusCode}');
+      log('Driver Report response data: ${response.data}');
+      return response;
+    } catch (e) {
+      log('Driver Report error: ${e.toString()}');
       rethrow;
     }
   }

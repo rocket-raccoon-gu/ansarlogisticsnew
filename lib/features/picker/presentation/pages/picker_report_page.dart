@@ -11,176 +11,115 @@ class PickerReportPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create:
-          (_) =>
-              ReportCubit()
-                ..updateRole('picker')
-                ..fetchReport(),
-      child: Scaffold(
-        backgroundColor: Colors.grey[50],
-        body: Column(
-          children: [
-            const CustomAppBar(title: 'Picker Reports & Analytics'),
-            Expanded(
-              child: BlocBuilder<ReportCubit, ReportState>(
-                builder: (context, state) {
-                  // Debug widget to show current state
-                  print(
-                    '🔍 PickerReportPage: Current state is ${state.runtimeType}',
-                  );
-
-                  if (state is ReportLoading) {
-                    return const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircularProgressIndicator(),
-                          SizedBox(height: 16),
-                          Text(
-                            'Loading picker report data...',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  if (state is ReportError) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            size: 64,
-                            color: Colors.red[300],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Error loading picker report',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[700],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            state.message,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              context.read<ReportCubit>().fetchReport();
-                            },
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  return SingleChildScrollView(
-                    padding: const EdgeInsets.only(bottom: 20),
+    return Scaffold(
+      backgroundColor: Colors.grey[50],
+      body: Column(
+        children: [
+          CustomAppBar(
+            title: 'Picker Reports & Analytics',
+            trailing: IconButton(
+              onPressed: () {
+                context.read<ReportCubit>().fetchReport();
+              },
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Refresh Data',
+            ),
+          ),
+          Expanded(
+            child: BlocBuilder<ReportCubit, ReportState>(
+              builder: (context, state) {
+                if (state is ReportLoading) {
+                  return const Center(
                     child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Debug info widget
-                        Container(
-                          margin: const EdgeInsets.all(16),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.orange[50],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.orange[200]!),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Picker Report Debug:',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.orange[700],
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text('State: ${state.runtimeType}'),
-                              Text(
-                                'Role: ${context.read<ReportCubit>().selectedRole}',
-                              ),
-                              Text(
-                                'From Date: ${DateFormat('yyyy-MM-dd').format(context.read<ReportCubit>().fromDate)}',
-                              ),
-                              Text(
-                                'To Date: ${DateFormat('yyyy-MM-dd').format(context.read<ReportCubit>().toDate)}',
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: ElevatedButton(
-                                      onPressed: () {
-                                        context.read<ReportCubit>().testCubit();
-                                      },
-                                      child: const Text('Test Cubit'),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: ElevatedButton(
-                                      onPressed: () {
-                                        context
-                                            .read<ReportCubit>()
-                                            .fetchReport();
-                                      },
-                                      child: const Text('Fetch Report'),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text(
+                          'Loading picker report data...',
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
                         ),
-                        const DateRangeFilterCard(),
-                        if (state is ReportLoaded) ...[
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Column(
-                              children: [
-                                const SummaryCard(),
-                                const SizedBox(height: 20),
-                                const StatisticsGrid(),
-                                const SizedBox(height: 20),
-                                const PerformanceChart(),
-                              ],
-                            ),
-                          ),
-                        ] else ...[
-                          const SizedBox(height: 100),
-                          const Center(
-                            child: Text(
-                              'Select date range to view picker reports',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   );
-                },
-              ),
+                }
+
+                if (state is ReportError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: Colors.red[300],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Error loading picker report',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          state.message,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            context.read<ReportCubit>().fetchReport();
+                          },
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: Column(
+                    children: [
+                      const DateRangeFilterCard(),
+                      if (state is ReportLoaded) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            children: [
+                              const SummaryCard(),
+                              const SizedBox(height: 20),
+                              const StatisticsGrid(),
+                              const SizedBox(height: 20),
+                              const StatusBreakdownCard(),
+                              const SizedBox(height: 20),
+                              const PerformanceChart(),
+                            ],
+                          ),
+                        ),
+                      ] else ...[
+                        const SizedBox(height: 100),
+                        const Center(
+                          child: Text(
+                            'Select date range to view picker reports',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -383,7 +322,7 @@ class SummaryCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       const Text(
-                        'Picker Performance Summary',
+                        'Picker Summary',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -509,13 +448,17 @@ class StatisticsGrid extends StatelessWidget {
                 ),
                 _buildStatCard(
                   'Success Rate',
-                  '${((report.completedOrders / report.assignedOrders) * 100).toStringAsFixed(1)}%',
+                  report.assignedOrders > 0
+                      ? '${((report.completedOrders / report.assignedOrders) * 100).toStringAsFixed(1)}%'
+                      : '0%',
                   Icons.trending_up,
                   Colors.green,
                 ),
                 _buildStatCard(
                   'Efficiency',
-                  '${((report.completedOrders / report.startedOrders) * 100).toStringAsFixed(1)}%',
+                  report.startedOrders > 0
+                      ? '${((report.completedOrders / report.startedOrders) * 100).toStringAsFixed(1)}%'
+                      : '0%',
                   Icons.speed,
                   Colors.amber,
                 ),
@@ -573,6 +516,170 @@ class StatisticsGrid extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class StatusBreakdownCard extends StatelessWidget {
+  const StatusBreakdownCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ReportCubit, ReportState>(
+      builder: (context, state) {
+        if (state is! ReportLoaded) return const SizedBox.shrink();
+
+        final report = state.report;
+        if (report is! PickerReportModel) return const SizedBox.shrink();
+
+        return Card(
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.pie_chart, color: Colors.orange[600], size: 24),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Status Breakdown',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatusItem(
+                        'Assigned',
+                        report.assignedOrders,
+                        Colors.blue,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildStatusItem(
+                        'Started',
+                        report.startedOrders,
+                        Colors.orange,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatusItem(
+                        'Completed',
+                        report.completedOrders,
+                        Colors.green,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildStatusItem(
+                        'End Picked',
+                        report.endPickedOrders,
+                        Colors.purple,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatusItem(
+                        'Holded',
+                        report.holdedOrders,
+                        Colors.red,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildStatusItem(
+                        'Material Request',
+                        report.materialRequestOrders,
+                        Colors.amber,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatusItem(
+                        'Cancel Request',
+                        report.cancelRequestOrders,
+                        Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildStatusItem(
+                        'Total',
+                        report.assignedOrders +
+                            report.startedOrders +
+                            report.completedOrders +
+                            report.endPickedOrders +
+                            report.holdedOrders +
+                            report.materialRequestOrders +
+                            report.cancelRequestOrders,
+                        Colors.indigo,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatusItem(String label, int value, Color color) {
+    return Column(
+      children: [
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(40),
+          ),
+          child: Center(
+            child: Text(
+              value.toString(),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
     );
   }
 }

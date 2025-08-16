@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/bottom_navigation_cubit.dart';
 import '../../../../core/di/injector.dart';
+import '../../../../core/utils/role_utils.dart';
 import '../widgets/bottom_navigation_bar.dart';
 import '../../../picker/presentation/pages/picker_orders_page.dart';
 import '../../../picker/presentation/pages/picker_report_page.dart';
 import '../../../driver/presentation/pages/driver_orders_page.dart';
 import '../../../driver/presentation/pages/driver_report_page.dart';
+import '../../../driver/presentation/pages/driver_bloc_wrapper.dart';
 import '../../../products/presentation/pages/products_page.dart';
 import '../../../profile/presentation/pages/profile_page.dart';
 import '../../../picker/presentation/cubit/picker_orders_cubit.dart';
+import '../../../report/presentation/cubit/report_cubit.dart';
 
 class RoleBasedNavigationPage extends StatelessWidget {
   final UserRole userRole;
@@ -63,8 +66,22 @@ class _RoleBasedNavigationView extends StatelessWidget {
             : DriverOrdersPage();
       case 1:
         return isPickerOrTeamLeader
-            ? const PickerReportPage()
-            : const DriverReportPage();
+            ? BlocProvider(
+              create:
+                  (context) =>
+                      ReportCubit()
+                        ..updateRole('picker')
+                        ..fetchReport(),
+              child: const PickerReportPage(),
+            )
+            : BlocProvider(
+              create:
+                  (context) =>
+                      ReportCubit()
+                        ..updateRole('driver')
+                        ..fetchReport(),
+              child: const DriverReportPage(),
+            );
       case 2:
         return const ProductsPage();
       case 3:
